@@ -531,13 +531,13 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         domain = apr_pstrcat(ptemp, mconf->basefilename, "/manager.domain", NULL);
         jgroupsid = apr_pstrcat(ptemp, mconf->basefilename, "/manager.jgroupsid", NULL);
     } else {
-        node = ap_server_root_relative(ptemp, "logs/manager.node");
-        context = ap_server_root_relative(ptemp, "logs/manager.context");
-        host = ap_server_root_relative(ptemp, "logs/manager.host");
-        balancer = ap_server_root_relative(ptemp, "logs/manager.balancer");
-        sessionid = ap_server_root_relative(ptemp, "logs/manager.sessionid");
-        domain = ap_server_root_relative(ptemp, "logs/manager.domain");
-        jgroupsid = ap_server_root_relative(ptemp, "logs/manager.jgroupsid");
+        node = ap_server_root_relative(ptemp, "cache/manager.node");
+        context = ap_server_root_relative(ptemp, "cache/manager.context");
+        host = ap_server_root_relative(ptemp, "cache/manager.host");
+        balancer = ap_server_root_relative(ptemp, "cache/manager.balancer");
+        sessionid = ap_server_root_relative(ptemp, "cache/manager.sessionid");
+        domain = ap_server_root_relative(ptemp, "cache/manager.domain");
+        jgroupsid = ap_server_root_relative(ptemp, "cache/manager.jgroupsid");
     }
 
     /* Do some sanity checks */
