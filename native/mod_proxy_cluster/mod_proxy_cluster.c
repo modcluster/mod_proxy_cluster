@@ -2199,7 +2199,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
     int checking_standby = 0;
     int checked_standby = 0;
     int checked_domain = 1;
-    // Create a separate array of available workers, to be sorted later
+    /* Create a separate array of available workers, to be sorted later */
     proxy_worker *workers = apr_pcalloc(r->pool, sizeof(proxy_worker) * balancer->workers->nelts);
     int workers_length = 0;
     const char *session_id_with_route;
@@ -2322,13 +2322,13 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
         }
         session_id_with_route = apr_table_get(r->notes, "session-id");
         session_id = session_id_with_route ? apr_strtok(strdup(session_id_with_route), ".", &tokenizer) : NULL;
-        // Determine deterministic route, if session is associated with a route, but that route wasn't used
+        /* Determine deterministic route, if session is associated with a route, but that route wasn't used */
         if (deterministic_failover && session_id && strchr(session_id_with_route, '.') && workers_length > 0) {
-            // Deterministic selection of target route
+            /* Deterministic selection of target route */
             if (workers_length > 1) {
 	            qsort(workers, workers_length, sizeof(*workers), &proxy_worker_cmp);
 	        }
-            // Compute consistent int from session id
+            /* Compute consistent int from session id */
             for (i = 0; session_id[i] != 0; ++i) {
                 hash += session_id[i];
             }
