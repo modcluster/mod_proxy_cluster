@@ -135,8 +135,6 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id)
     memcpy(ou, node, sizeof(nodeinfo_t));
     ou->mess.id = ident;
     *id = ident;
-    s->storage->ap_slotmem_unlock(s->slotmem);
-    ou->updatetime = apr_time_now();
 
     /* set of offset to the proxy_worker_stat */
     ou->offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int);
@@ -144,6 +142,9 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id)
 
     /* blank the proxy status information */
     memset(&(ou->stat), '\0', SIZEOFSCORE);
+
+    s->storage->ap_slotmem_unlock(s->slotmem);
+    ou->updatetime = apr_time_now();
 
     return APR_SUCCESS;
 }
@@ -186,7 +187,10 @@ nodeinfo_t * read_node(mem_t *s, nodeinfo_t *node)
  */
 apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids)
 {
-  return(s->storage->ap_slotmem_mem(s->slotmem, ids, (void **) node));
+  s->storage->ap_slotmem_lock(s->slotmem);
+  apr_status_t status = s->storage->ap_slotmem_mem(s->slotmem, ids, (void **) node);
+  s->storage->ap_slotmem_unlock(s->slotmem);
+  return(status);
 }
 
 /**
