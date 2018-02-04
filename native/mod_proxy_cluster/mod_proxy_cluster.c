@@ -246,7 +246,6 @@ static apr_status_t conn_pool_cleanup(void *theworker)
 static void init_conn_pool(apr_pool_t *p, proxy_worker *worker)
 {
     apr_pool_t *pool;
-    proxy_conn_pool *cp;
 
     /*
      * Create a connection pool's subpool.
@@ -2413,7 +2412,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
         session_id_with_route = apr_table_get(r->notes, "session-id");
         session_id = session_id_with_route ? apr_strtok(strdup(session_id_with_route), ".", &tokenizer) : NULL;
         /* Determine deterministic route, if session is associated with a route, but that route wasn't used */
-        if (deterministic_failover && session_id && strchr(session_id_with_route, '.') && workers_length > 0) {
+        if (deterministic_failover && session_id && strchr((char *)session_id_with_route, '.') && workers_length > 0) {
             /* Deterministic selection of target route */
             if (workers_length > 1) {
 	            qsort(workers, workers_length, sizeof(*workers), &proxy_worker_cmp);
@@ -3651,7 +3650,7 @@ static int rewrite_url(request_rec *r, proxy_worker *worker,
 /*
  * Remove the session information
  */
-void remove_session_route(request_rec *r, const char *name)
+static void remove_session_route(request_rec *r, const char *name)
 {
     char *path = NULL;
     char *url = r->filename;
