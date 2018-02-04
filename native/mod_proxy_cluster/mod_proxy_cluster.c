@@ -36,6 +36,7 @@
 #include "http_request.h"
 #include "http_protocol.h"
 #include "http_core.h"
+#include "scoreboard.h"
 #include "ap_mpm.h"
 #include "mod_proxy.h"
 
@@ -154,6 +155,17 @@ static int proxy_worker_cmp(const void *a, const void *b)
     return strcmp(route1, route2);
 }
 
+static char * normalize_hostname(apr_pool_t *p, char *hostname)
+{
+    char *ret = apr_palloc(p, strlen(hostname) + 1);
+    char *ptr = ret;
+    strcpy(ptr, hostname);
+    for (;*ptr; ++ptr) {
+       *ptr = apr_tolower(*ptr);
+    }
+    return ret;
+}
+
 #if AP_MODULE_MAGIC_AT_LEAST(20101223,1)
 static int (*ap_proxy_retry_worker_fn)(const char *proxy_function,
         proxy_worker *worker, server_rec *s) = NULL;
@@ -234,7 +246,6 @@ static apr_status_t conn_pool_cleanup(void *theworker)
 static void init_conn_pool(apr_pool_t *p, proxy_worker *worker)
 {
     apr_pool_t *pool;
-    proxy_conn_pool *cp;
 
     /*
      * Create a connection pool's subpool.
@@ -277,7 +288,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
     apr_uri_t uri;
 
     /* build the name (scheme and port) when needed */
-    url = apr_pstrcat(pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL);
+    url = apr_pstrcat(pool, node->mess.Type, "://", normalize_hostname(pool,node->mess.Host), ":", node->mess.Port, NULL);
     if (apr_uri_parse(pool, url, &uri) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, server,
                      "Created: worker for %s failed: Unable to parse URL", url);
@@ -452,7 +463,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
     int sizew = conf->workers->elt_size;
     proxy_worker *worker;
     /* build the name (scheme and port) when needed */
-    url = apr_pstrcat(pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL);
+    url = apr_pstrcat(pool, node->mess.Type, "://", normalize_hostname(pool, node->mess.Host), ":", node->mess.Port, NULL);
 
     worker = ap_proxy_get_worker(pool, conf, url);
     if (worker == NULL) {
@@ -891,7 +902,7 @@ static void add_balancers_workers(nodeinfo_t *node, apr_pool_t *pool)
 
 /* the worker corresponding to the id, note that we need to compare the shared memory pointer too */
 #if AP_MODULE_MAGIC_AT_LEAST(20101223,1)
-static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, proxy_worker_shared *stat)
+static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, proxy_worker_shared *stat, nodeinfo_t *node)
 {
     int i;
     char *ptr = conf->balancers->elts;
@@ -907,6 +918,18 @@ static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, pr
             proxy_worker **worker = (proxy_worker **) ptrw;
             proxy_cluster_helper *helper = (proxy_cluster_helper *) (*worker)->context;
             if ((*worker)->s == stat && helper->index == id) {
+
+                /* Check that the worker is really the one we need */
+                char sport[7];
+                apr_snprintf(sport, sizeof(sport), "%d", (*worker)->s->port);
+                if (strcmp((*worker)->s->scheme, node->mess.Type) ||
+                    strcasecmp((*worker)->s->hostname, node->mess.Host) ||
+                    strcmp(sport, node->mess.Port)) {
+                    (*worker)->s->index = 0;
+                    /* XXX: broken  ap_my_generation--; mark old generation that will recreate the process */
+                    continue; /* skip it */
+                }
+
                 return *worker;
             }
         }
@@ -914,7 +937,7 @@ static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, pr
     return NULL;
 }
 #else
-static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, proxy_worker_stat *stat)
+static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, proxy_worker_stat *stat, nodeinfo_t *node)
 {
     int i;
     int sizew = conf->workers->elt_size;
@@ -923,6 +946,18 @@ static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, pr
     for (i = 0; i < conf->workers->nelts; i++, ptrw=ptrw+sizew) {
         proxy_worker *worker = (proxy_worker *) ptrw;
         if (worker->id == id && worker->s == stat) {
+
+                /* Check that the worker is really the one we need */
+                char sport[7];
+                apr_snprintf(sport, sizeof(sport), "%d", worker->port);
+                if (strcmp(worker->scheme, node->mess.Type) ||
+                    strcasecmp(worker->hostname, node->mess.Host) ||
+                    strcmp(sport, node->mess.Port)) {
+                    worker->id = 0;
+                    ap_my_generation--; /* mark old generation that will recreate the process */
+                    continue; /* skip it */
+                }
+
             return worker;
         }
         worker++;
@@ -943,9 +978,9 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
     pptr = pptr + node->offset;
 
 #if AP_MODULE_MAGIC_AT_LEAST(20101223,1)
-    worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_shared *) pptr);
+    worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_shared *) pptr, node);
 #else
-    worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_stat *) pptr);
+    worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_stat *) pptr, node);
 #endif
     if (!worker) {
         /* XXX: Another process may use it, can't do: node_storage->remove_node(node); */
@@ -954,7 +989,7 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
     }
 
     /* prevent other threads using it */
-    worker->s->status |= PROXY_WORKER_IN_ERROR;
+    worker->s->status = worker->s->status | PROXY_WORKER_IN_ERROR;
 
     /* apr_reslist_acquired_count */
     i = 0;
@@ -1457,6 +1492,33 @@ static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *wor
     return status;
 }
 
+/* read the node and check that it corresponds to the worker */
+static apr_status_t read_node_worker(int id, nodeinfo_t **node, proxy_worker *worker)
+{
+    char sport[7];
+    apr_status_t status = node_storage->read_node(id, node);
+    if (status != APR_SUCCESS)
+        return status;
+#if AP_MODULE_MAGIC_AT_LEAST(20101223,1)
+    apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
+    if (strcmp(worker->s->scheme, (* node)->mess.Type) ||
+        strcasecmp(worker->s->hostname, (* node)->mess.Host) ||
+        strcmp(sport, (* node)->mess.Port)) {
+        /* for some reasons it is not the right node */
+        return APR_NOTFOUND;
+    }
+#else
+    apr_snprintf(sport, sizeof(sport), "%d", worker->port);
+    if (strcmp(worker->scheme, (* node)->mess.Type) ||
+        strcasecmp(worker->hostname, (* node)->mess.Host) ||
+        strcmp(sport, (* node)->mess.Port)) {
+        /* for some reasons it is not the right node */
+        return APR_NOTFOUND;
+    }
+#endif
+    return APR_SUCCESS;
+}
+
 /*
  * update the lbfactor of each node if needed,
  */
@@ -1510,17 +1572,40 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 apr_status_t rv;
                 apr_pool_t *rrp;
                 request_rec *rnew;
-                proxy_worker *worker = get_worker_from_id_stat(conf, id[i], stat);
+                proxy_worker *worker;
+                apr_thread_mutex_lock(lock);
+                worker = get_worker_from_id_stat(conf, id[i], stat, ou);
+                apr_thread_mutex_unlock(lock);
+
                 if (worker == NULL)
                     continue; /* skip it */
 #if AP_MODULE_MAGIC_AT_LEAST(20101223,1)
                 apr_snprintf(sport, sizeof(sport), ":%d", worker->s->port);
+
+                if (strcmp(worker->s->scheme, ou->mess.Type) ||
+                    strcasecmp(worker->s->hostname, ou->mess.Host) ||
+                    strcmp(sport, ou->mess.Port)) {
+                    /* the worker doesn't correspond to the node */
+                    worker->s->index = 0;
+                    /* XXX: broken ap_my_generation--; mark old generation that will recreate the process */ 
+                    continue; /* skip it */
+                }
+
                 if (strchr(worker->s->hostname, ':') != NULL)
                     url = apr_pstrcat(pool, worker->s->scheme, "://[", worker->s->hostname, "]", sport, "/", NULL);
                 else
                     url = apr_pstrcat(pool, worker->s->scheme, "://", worker->s->hostname,  sport, "/", NULL);
 #else
                 apr_snprintf(sport, sizeof(sport), ":%d", worker->port);
+                if (strcmp(worker->scheme, ou->mess.Type) ||
+                    strcasecmp(worker->hostname, ou->mess.Host) ||
+                    strcmp(sport, ou->mess.Port)) {
+                    /* the worker doesn't correspond to the node */
+                    worker->id = 0;
+                    ap_my_generation--; /* mark old generation that will recreate the process */ 
+                    continue; /* skip it */
+                }
+
                 if (strchr(worker->hostname, ':') != NULL)
                     url = apr_pstrcat(pool, worker->scheme, "://[", worker->hostname, "]", sport, "/", NULL);
                 else
@@ -1545,6 +1630,10 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 rnew->uri = "/";
                 rnew->headers_in = apr_table_make(rnew->pool, 1);
                 rv = proxy_cluster_try_pingpong(rnew, worker, url, conf, ou->mess.ping, ou->mess.timeout);
+
+                if (read_node_worker(id[i], &ou, worker) != APR_SUCCESS)
+                    continue;
+
                 if (rv != APR_SUCCESS) {
                     /* We can't reach the node */
                     worker->s->status |= PROXY_WORKER_IN_ERROR;
@@ -2272,9 +2361,9 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
              * and that can map the context.
              */
 #if AP_MODULE_MAGIC_AT_LEAST(20101223,1)
-            if (node_storage->read_node(worker->s->index, &node) != APR_SUCCESS)
+            if (read_node_worker(worker->s->index, &node, worker) != APR_SUCCESS)
 #else
-            if (node_storage->read_node(worker->id, &node) != APR_SUCCESS)
+            if (read_node_worker(worker->id, &node, worker) != APR_SUCCESS)
 #endif
                 continue; /* Can't read node */
 
@@ -2303,9 +2392,9 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
                         int lbstatus, lbstatus1;
 
 #if AP_MODULE_MAGIC_AT_LEAST(20101223,1)
-                        if (node_storage->read_node(mycandidate->s->index, &node1) != APR_SUCCESS)
+                        if (read_node_worker(mycandidate->s->index, &node1, mycandidate) != APR_SUCCESS)
 #else
-                        if (node_storage->read_node(mycandidate->id, &node1) != APR_SUCCESS)
+                        if (read_node_worker(mycandidate->id, &node1, mycandidate) != APR_SUCCESS)
 #endif
                             continue;
                         lbstatus1 = ((mycandidate->s->elected - node1->mess.oldelected) * 1000)/mycandidate->s->lbfactor;
@@ -2323,7 +2412,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
         session_id_with_route = apr_table_get(r->notes, "session-id");
         session_id = session_id_with_route ? apr_strtok(strdup(session_id_with_route), ".", &tokenizer) : NULL;
         /* Determine deterministic route, if session is associated with a route, but that route wasn't used */
-        if (deterministic_failover && session_id && strchr(session_id_with_route, '.') && workers_length > 0) {
+        if (deterministic_failover && session_id && strchr((char *)session_id_with_route, '.') && workers_length > 0) {
             /* Deterministic selection of target route */
             if (workers_length > 1) {
 	            qsort(workers, workers_length, sizeof(*workers), &proxy_worker_cmp);
@@ -2428,7 +2517,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
         void *sconf = s->module_config;
         conf = (proxy_server_conf *) ap_get_module_config(sconf, &proxy_module);
 
-        worker = get_worker_from_id_stat(conf, id, stat);
+        worker = get_worker_from_id_stat(conf, id, stat, node);
         if (worker != NULL)
             break;
         s = s->next;
@@ -3307,7 +3396,7 @@ static proxy_worker *find_route_worker(request_rec *r,
                 if (worker && PROXY_WORKER_IS_USABLE(worker)) {
                     /* The context may not be available */
                     nodeinfo_t *node;
-                    if (node_storage->read_node(index, &node) != APR_SUCCESS)
+                    if (read_node_worker(index, &node, worker) != APR_SUCCESS)
                         return NULL; /* can't read node */
                     if ((nodecontext = context_host_ok(r, balancer, index, vhost_table, context_table, node_table)) != NULL) {
                         apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", apr_psprintf(r->pool, "%d", (*nodecontext).context));
@@ -3561,7 +3650,7 @@ static int rewrite_url(request_rec *r, proxy_worker *worker,
 /*
  * Remove the session information
  */
-void remove_session_route(request_rec *r, const char *name)
+static void remove_session_route(request_rec *r, const char *name)
 {
     char *path = NULL;
     char *url = r->filename;
