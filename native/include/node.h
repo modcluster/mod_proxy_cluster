@@ -211,7 +211,7 @@ int (* get_ids_used_node)(int *ids);
 /**
  * read the max number of nodes in the shared table
  */
-int (*get_max_size_node)();
+int (*get_max_size_node)(void);
 /**
  * check the nodes for modifications.
  * XXX: void *data is server_rec *s in fact.
@@ -237,12 +237,12 @@ void (*remove_host_context)(int node, apr_pool_t *pool);
 /*
  * lock the nodes table
  */
-void (*lock_nodes)();
+void (*lock_nodes)(void);
 
 /*
  * unlock the nodes table
  */
-void (*unlock_nodes)();
+void (*unlock_nodes)(void);
 
 };
 #endif /*NODE_H*/
