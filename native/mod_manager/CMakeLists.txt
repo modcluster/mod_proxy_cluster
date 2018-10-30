@@ -14,7 +14,6 @@ SET(MOD_MANAGER_SRCS    ${PROJECT_SOURCE_DIR}/mod_manager.c
         ${PROJECT_SOURCE_DIR}/context.c
         ${PROJECT_SOURCE_DIR}/domain.c
         ${PROJECT_SOURCE_DIR}/host.c
-        ${PROJECT_SOURCE_DIR}/jgroupsid.c
         ${PROJECT_SOURCE_DIR}/node.c
         ${PROJECT_SOURCE_DIR}/sessionid.c
 )

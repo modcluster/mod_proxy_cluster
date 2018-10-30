@@ -51,13 +51,11 @@
 #include "balancer.h"
 #include "sessionid.h"
 #include "domain.h"
-#include "jgroupsid.h"
 
 #define DEFMAXCONTEXT   100
 #define DEFMAXNODE      20
 #define DEFMAXHOST      20
 #define DEFMAXSESSIONID 0 /* it has performance/security impact */
-#define DEFMAXJGROUPSID  0
 #define MAXMESSSIZE     1024
 
 /* Warning messages */
@@ -123,7 +121,6 @@ static mem_t *hoststatsmem = NULL;
 static mem_t *balancerstatsmem = NULL;
 static mem_t *sessionidstatsmem = NULL;
 static mem_t *domainstatsmem = NULL;
-static mem_t *jgroupsidstatsmem = NULL;
 
 static slotmem_storage_method *storage = NULL;
 static balancer_method *balancerhandler = NULL;
@@ -145,8 +142,6 @@ typedef struct mod_manager_config
     int maxhost;
     /* max number of session supported */
     int maxsessionid;
-    /* max number of jgroupsid supported */
-    int maxjgroupsid;
 
     /* version, the version is increased each time the node update logic is called */
     unsigned int tableversion;
@@ -186,17 +181,10 @@ static int loc_get_ids_used_node(int *ids)
 {
     return(get_ids_used_node(nodestatsmem, ids)); 
 }
-static int loc_get_max_size_node()
+static int loc_get_max_size_node(void)
 {
     if (nodestatsmem)
         return(get_max_size_node(nodestatsmem));
-    else
-        return 0;
-}
-static int loc_get_max_size_jgroupsid()
-{
-    if (jgroupsidstatsmem)
-        return(get_max_size_jgroupsid(jgroupsidstatsmem));
     else
         return 0;
 }
@@ -240,22 +228,22 @@ static int loc_worker_nodes_are_updated(void *data, unsigned int last)
     mconf->tableversion = last;
     return (0);
 }
-static void loc_lock_nodes()
+static void loc_lock_nodes(void)
 {
     lock_nodes(nodestatsmem);
 }
-static void loc_unlock_nodes()
+static void loc_unlock_nodes(void)
 {
     unlock_nodes(nodestatsmem);
 }
-static int loc_get_max_size_context()
+static int loc_get_max_size_context(void)
 {
     if (contextstatsmem)
         return(get_max_size_context(contextstatsmem));
     else
         return 0;
 }
-static int loc_get_max_size_host()
+static int loc_get_max_size_host(void)
 {
     if (hoststatsmem)
         return(get_max_size_host(hoststatsmem));
@@ -320,11 +308,11 @@ static int loc_get_ids_used_context(int *ids)
 {
     return(get_ids_used_context(contextstatsmem, ids)); 
 }
-static void loc_lock_contexts()
+static void loc_lock_contexts(void)
 {
     lock_contexts(contextstatsmem);
 }
-static void loc_unlock_contexts()
+static void loc_unlock_contexts(void)
 {
     unlock_contexts(contextstatsmem);
 }
@@ -366,7 +354,7 @@ static int loc_get_ids_used_balancer(int *ids)
 {
     return(get_ids_used_balancer(balancerstatsmem, ids)); 
 }
-static int loc_get_max_size_balancer()
+static int loc_get_max_size_balancer(void)
 {
     if (balancerstatsmem)
         return(get_max_size_balancer(balancerstatsmem));
@@ -390,7 +378,7 @@ static int loc_get_ids_used_sessionid(int *ids)
 {
     return(get_ids_used_sessionid(sessionidstatsmem, ids)); 
 }
-static int loc_get_max_size_sessionid()
+static int loc_get_max_size_sessionid(void)
 {
     if (sessionidstatsmem)
         return(get_max_size_sessionid(sessionidstatsmem));
@@ -425,7 +413,7 @@ static int loc_get_ids_used_domain(int *ids)
 {
     return(get_ids_used_domain(domainstatsmem, ids)); 
 }
-static int loc_get_max_size_domain()
+static int loc_get_max_size_domain(void)
 {
     if (domainstatsmem)
         return(get_max_size_domain(domainstatsmem));
@@ -473,7 +461,6 @@ static apr_status_t cleanup_manager(void *param)
     balancerstatsmem = NULL;
     sessionidstatsmem = NULL;
     domainstatsmem = NULL;
-    jgroupsidstatsmem = NULL;
     return APR_SUCCESS;
 }
 static void mc_initialize_cleanup(apr_pool_t *p)
@@ -481,7 +468,7 @@ static void mc_initialize_cleanup(apr_pool_t *p)
     apr_pool_cleanup_register(p, NULL, cleanup_manager, apr_pool_cleanup_null);
 }
 
-void normalize_balancer_name(char* balancer_name, server_rec *s)
+static void normalize_balancer_name(char* balancer_name, server_rec *s)
 {
     int upper_case_char_found = 0;
     char* balancer_name_start = balancer_name;
@@ -510,7 +497,6 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     char *balancer;
     char *sessionid;
     char *domain;
-    char *jgroupsid;
     void *data;
     const char *userdata_key = "mod_manager_init";
     apr_uuid_t uuid;
@@ -529,7 +515,6 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         balancer = apr_pstrcat(ptemp, mconf->basefilename, "/manager.balancer", NULL);
         sessionid = apr_pstrcat(ptemp, mconf->basefilename, "/manager.sessionid", NULL);
         domain = apr_pstrcat(ptemp, mconf->basefilename, "/manager.domain", NULL);
-        jgroupsid = apr_pstrcat(ptemp, mconf->basefilename, "/manager.jgroupsid", NULL);
     } else {
         node = ap_server_root_relative(ptemp, "logs/manager.node");
         context = ap_server_root_relative(ptemp, "logs/manager.context");
@@ -537,7 +522,6 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         balancer = ap_server_root_relative(ptemp, "logs/manager.balancer");
         sessionid = ap_server_root_relative(ptemp, "logs/manager.sessionid");
         domain = ap_server_root_relative(ptemp, "logs/manager.domain");
-        jgroupsid = ap_server_root_relative(ptemp, "logs/manager.jgroupsid");
     }
 
     /* Do some sanity checks */
@@ -595,15 +579,6 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     if (domainstatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_domain failed");
         return  !OK;
-    }
-
-    if (mconf->maxjgroupsid) {
-        /* Only create jgroupsid stuff if required */
-        jgroupsidstatsmem = create_mem_jgroupsid(jgroupsid, &mconf->maxjgroupsid, mconf->persistent, p, storage);
-        if (jgroupsidstatsmem == NULL) {
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_jgroupsid failed");
-            return  !OK;
-        }
     }
 
     /* Get a provider to ping/pong logics */
@@ -1070,7 +1045,7 @@ static char * process_dump(request_rec *r, int *errtype)
     unsigned char type;
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
 
-    if (accept_header && strstr(accept_header, "text/xml") != NULL )  {
+    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL )  {
         ap_set_content_type(r, "text/xml");
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
@@ -1289,7 +1264,7 @@ static char * process_info(request_rec *r, int *errtype)
     unsigned char type;
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
 
-    if (accept_header && strstr(accept_header, "text/xml") != NULL )  {
+    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL )  {
         ap_set_content_type(r, "text/xml");
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
@@ -1818,124 +1793,6 @@ static char * process_remove(request_rec *r, char **ptr, int *errtype, int globa
 }
 
 /*
- * JGroups feature routines
- */
-static char * process_addid(request_rec *r, char **ptr, int *errtype)
-{
-    jgroupsidinfo_t jgroupsid;
-    int i = 0;
-    jgroupsid.jgroupsid[0] = '\0';
-    while (ptr[i]) {
-        if (strcasecmp(ptr[i], "JGroupUuid") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(jgroupsid.jgroupsid)) {
-                 *errtype = TYPESYNTAX;
-                 return SJIDBIG;
-            }
-            strcpy(jgroupsid.jgroupsid, ptr[i+1]);
-        }
-        if (strcasecmp(ptr[i], "JGroupData") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(jgroupsid.data)) {
-                 *errtype = TYPESYNTAX;
-                 return SJDDBIG;
-            }
-            strcpy(jgroupsid.data, ptr[i+1]);
-        }
-        i++;
-        i++;
-    }
-    if (jgroupsid.jgroupsid[0] == '\0') {
-        *errtype = TYPESYNTAX;
-        return SJIDBAD;
-    }
-    if (insert_update_jgroupsid(jgroupsidstatsmem, &jgroupsid) != APR_SUCCESS) {
-        *errtype = TYPEMEM;
-        return MJBIDUI;
-    }
-
-    return NULL;
-}
-static char * process_removeid(request_rec *r, char **ptr, int *errtype)
-{
-    jgroupsidinfo_t jgroupsid;
-    int i = 0;
-    jgroupsid.jgroupsid[0] = '\0';
-    while (ptr[i]) {
-        if (strcasecmp(ptr[i], "JGroupUuid") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(jgroupsid.jgroupsid)) {
-                 *errtype = TYPESYNTAX;
-                 return SJIDBIG;
-            }
-            strcpy(jgroupsid.jgroupsid, ptr[i+1]);
-        }
-        i++;
-        i++;
-    }
-    if (jgroupsid.jgroupsid[0] == '\0') {
-        *errtype = TYPESYNTAX;
-        return SJIDBAD;
-    }
-    remove_jgroupsid(jgroupsidstatsmem, &jgroupsid);
-    return NULL;
-}
-/*
- * Query out should be something like:
- * JGroup: [9],JGroupUuid: node4, JGroupData: jgroupdata4
- * JGroup: [11],JGroupUuid: node6, JGroupData: jgroupdata6
- */
-static void print_jgroupsid(request_rec *r, int id, jgroupsidinfo_t *jgroupsid)
-{
-    ap_rprintf(r, "JGroup: [%d],JGroupUuid: %.*s,JGroupData: %.*s\n",
-               id,
-               (int) sizeof(jgroupsid->jgroupsid), jgroupsid->jgroupsid,
-               (int) sizeof(jgroupsid->data), jgroupsid->data);
-}
-static char * process_query(request_rec *r, char **ptr, int *errtype)
-{
-    jgroupsidinfo_t jgroupsid;
-    int i = 0;
-    jgroupsid.jgroupsid[0] = '\0';
-    while (ptr[i]) {
-        if (strcasecmp(ptr[i], "JGroupUuid") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(jgroupsid.jgroupsid)) {
-                 *errtype = TYPESYNTAX;
-                 return SJIDBIG;
-            }
-            strcpy(jgroupsid.jgroupsid, ptr[i+1]);
-        }
-        i++;
-        i++;
-    }
-    if (jgroupsid.jgroupsid[0] == '\0') {
-        jgroupsid.jgroupsid[0] = '*';
-        jgroupsid.jgroupsid[1] = '\0';
-    }
-    if (strcmp(jgroupsid.jgroupsid, "*") == 0) {
-        int size, i;
-        int *id;
-        size = loc_get_max_size_jgroupsid();
-        if (size == 0)
-            return NULL;
-        id = apr_palloc(r->pool, sizeof(int) * size);
-        size = get_ids_used_jgroupsid(jgroupsidstatsmem, id);
-        for (i=0; i<size; i++) {
-             jgroupsidinfo_t *ou;
-             if (get_jgroupsid(jgroupsidstatsmem, &ou, id[i]) != APR_SUCCESS)
-                 continue;
-             print_jgroupsid(r, id[i], ou);
-        }
-    } else {
-        jgroupsidinfo_t *ou;
-        ou = read_jgroupsid(jgroupsidstatsmem, &jgroupsid);
-        if (ou == NULL) {
-           *errtype = TYPEMEM;
-           return MJBIDRD;
-        } else
-            print_jgroupsid(r, ou->id, ou);
-    }
-    return NULL;
-}
-
-/*
  * Call the ping/pong logic
  * Do a ping/png request to the node and set the load factor.
  */
@@ -2023,7 +1880,7 @@ static char * process_version(request_rec *r, char **ptr, int *errtype)
 {
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
 
-    if (accept_header && strstr(accept_header, "text/xml") != NULL )  {
+    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL )  {
         ap_set_content_type(r, "text/xml");
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
         ap_rprintf(r, "<version><release>%s</release><protocol>%s</protocol></version>", MOD_CLUSTER_EXPOSED_VERSION, VERSION_PROTOCOL);
@@ -3015,12 +2872,6 @@ static int manager_handler(request_rec *r)
         errstring = process_info(r, &errtype);
     else if (strcasecmp(r->method, "PING") == 0)
         errstring = process_ping(r, ptr, &errtype);
-    else if (strcasecmp(r->method, "ADDID") == 0)
-        errstring = process_addid(r, ptr, &errtype);
-    else if (strcasecmp(r->method, "REMOVEID") == 0)
-        errstring = process_removeid(r, ptr, &errtype);
-    else if (strcasecmp(r->method, "QUERY") == 0)
-        errstring = process_query(r, ptr, &errtype);
     else if (strcasecmp(r->method, "VERSION") == 0)
         errstring = process_version(r, ptr, &errtype);
     else {
@@ -3156,16 +3007,6 @@ static const char *cmd_manager_maxsessionid(cmd_parms *cmd, void *mconfig, const
         return err;
     }
     mconf->maxsessionid = atoi(word);
-    return NULL;
-}
-static const char *cmd_manager_maxjgroupsid(cmd_parms *cmd, void *mconfig, const char *word)
-{
-    mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
-    const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    if (err != NULL) {
-        return err;
-    }
-    mconf->maxjgroupsid = atoi(word);
     return NULL;
 }
 static const char *cmd_manager_memmanagerfile(cmd_parms *cmd, void *mconfig, const char *word)
@@ -3324,13 +3165,6 @@ static const command_rec  manager_cmds[] =
         "Maxsessionid - number session (Used to track number of sessions per nodes) supported by mod_cluster"
     ),
     AP_INIT_TAKE1(
-        "Maxjgroupsid",
-        cmd_manager_maxjgroupsid,
-        NULL,
-        OR_ALL,
-        "Maxjgroupsid - number jgroupsid supported by mod_cluster"
-    ),
-    AP_INIT_TAKE1(
         "MemManagerFile",
         cmd_manager_memmanagerfile,
         NULL,
@@ -3443,7 +3277,6 @@ static void *create_manager_config(apr_pool_t *p)
     mconf->maxnode = DEFMAXNODE;
     mconf->maxhost = DEFMAXHOST;
     mconf->maxsessionid = DEFMAXSESSIONID;
-    mconf->maxjgroupsid = DEFMAXJGROUPSID;
     mconf->tableversion = 0;
     mconf->persistent = 0;
     mconf->nonce = -1;
@@ -3502,11 +3335,6 @@ static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf,
         mconf->maxsessionid = mconf2->maxsessionid;
     else if (mconf1->maxsessionid != DEFMAXSESSIONID)
         mconf->maxsessionid = mconf1->maxsessionid;
-
-    if (mconf2->maxjgroupsid != DEFMAXJGROUPSID)
-        mconf->maxjgroupsid = mconf2->maxjgroupsid;
-    else if (mconf1->maxjgroupsid != DEFMAXJGROUPSID)
-        mconf->maxjgroupsid = mconf1->maxjgroupsid;
 
     if (mconf2->persistent != 0)
         mconf->persistent = mconf2->persistent;

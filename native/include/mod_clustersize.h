@@ -48,8 +48,4 @@
 /* For sessionid.h */
 #define SESSIONIDSZ 128
 
-/* For jgroupsid.h */
-#define JGROUPSIDSZ   80
-#define JGROUPSDATASZ 200
-
 #endif /* MOD_CLUSTERSIZE_H */
