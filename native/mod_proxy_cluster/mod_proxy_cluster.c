@@ -1102,6 +1102,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 rnew->server = server;
                 rnew->connection = apr_pcalloc(rrp, sizeof(conn_rec));
                 rnew->connection->log_id = "-";
+                rnew->connection->conn_config = ap_create_conn_config(rrp);
                 rnew->log_id = "-";
                 rnew->useragent_addr = apr_pcalloc(rrp, sizeof(apr_sockaddr_t));
                 rnew->per_dir_config = server->lookup_defaults;
