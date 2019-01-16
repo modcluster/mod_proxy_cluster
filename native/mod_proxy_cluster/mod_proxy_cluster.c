@@ -1078,7 +1078,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
 
                 if (worker == NULL)
                     continue; /* skip it */
-                apr_snprintf(sport, sizeof(sport), ":%d", worker->s->port);
+                apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
 
                 if (strcmp(worker->s->scheme, ou->mess.Type) ||
                     strcasecmp(worker->s->hostname, ou->mess.Host) ||
@@ -1090,9 +1090,9 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 }
 
                 if (strchr(worker->s->hostname, ':') != NULL)
-                    url = apr_pstrcat(pool, worker->s->scheme, "://[", worker->s->hostname, "]", sport, "/", NULL);
+                    url = apr_pstrcat(pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
                 else
-                    url = apr_pstrcat(pool, worker->s->scheme, "://", worker->s->hostname,  sport, "/", NULL);
+                    url = apr_pstrcat(pool, worker->s->scheme, "://", worker->s->hostname,  ":", sport, "/", NULL);
 
                 apr_pool_create(&rrp, pool);
                 apr_pool_tag(rrp, "subrequest");
@@ -1935,11 +1935,11 @@ static int proxy_node_isup(request_rec *r, int id, int load)
         /* Only try usuable nodes */
         char sport[7];
         char *url;
-        apr_snprintf(sport, sizeof(sport), ":%d", worker->s->port);
+        apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
         if (strchr(worker->s->hostname, ':') != NULL)
-            url = apr_pstrcat(r->pool, worker->s->scheme, "://[", worker->s->hostname, "]", sport, "/", NULL);
+            url = apr_pstrcat(r->pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
         else
-            url = apr_pstrcat(r->pool, worker->s->scheme, "://", worker->s->hostname,  sport, "/", NULL);
+            url = apr_pstrcat(r->pool, worker->s->scheme, "://", worker->s->hostname,  ":" , sport, "/", NULL);
         worker->s->error_time = 0; /* Force retry now */
         rv = proxy_cluster_try_pingpong(r, worker, url, conf, node->mess.ping, node->mess.timeout);
         if (rv != APR_SUCCESS) {
