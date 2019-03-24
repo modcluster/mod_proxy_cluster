@@ -1166,7 +1166,7 @@ static void remove_timeout_sessionid(proxy_server_conf *conf, apr_pool_t *pool, 
 /*
  * remove the domain that have timeout
  */
-static void remove_timeout_domain(apr_pool_t *pool, server_rec *server)
+static void remove_timeout_domain(apr_pool_t *pool)
 {
     int *id, size, i;
     apr_time_t now;
@@ -2029,7 +2029,7 @@ static const struct balancer_method balancerhandler =
 /*
  * Remove node that have beeen marked removed for more than 10 seconds.
  */
-static void remove_removed_node(apr_pool_t *pool, server_rec *server)
+static void remove_removed_node(apr_pool_t *pool)
 {
     int *id, size, i;
     apr_time_t now = apr_time_now();
@@ -2048,10 +2048,6 @@ static void remove_removed_node(apr_pool_t *pool, server_rec *server)
         if (ou->mess.remove && (now - ou->updatetime) >= wait_for_remove &&
             (now - ou->mess.lastcleantry) >= wait_for_remove) {
             /* if it has a domain store it in the domain */
-#if HAVE_CLUSTER_EX_DEBUG
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                     "remove_removed_node: %s %s %s", ou->mess.JVMRoute, ou->mess.balancer, ou->mess.Domain);
-#endif
             if (ou->mess.Domain[0] != '\0') {
                 domaininfo_t dom;
                 strncpy(dom.JVMRoute, ou->mess.JVMRoute, sizeof(dom.JVMRoute));
@@ -2061,7 +2057,7 @@ static void remove_removed_node(apr_pool_t *pool, server_rec *server)
                 strncpy(dom.domain, ou->mess.Domain, sizeof(dom.domain));
                 dom.domain[sizeof(dom.domain) - 1] = '\0';
                 if (domain_storage->insert_update_domain(&dom)!=APR_SUCCESS) {
-                    remove_timeout_domain(pool, server);
+                    remove_timeout_domain(pool);
                     domain_storage->insert_update_domain(&dom);
                 }
             }
@@ -2134,8 +2130,6 @@ static void * APR_THREAD_FUNC proxy_cluster_watchdog_func(apr_thread_t *thd, voi
                 update_workers_node(conf, pool, s, 0);
             /* removed nodes: check for workers */
             remove_workers_nodes(conf, pool, s);
-            /* cleanup removed node in shared memory */
-            remove_removed_node(pool, s);
             /* Calculate the lbstatus for each node */
             update_workers_lbstatus(conf, pool, s);
             /* Free sessionid slots */
@@ -2143,6 +2137,8 @@ static void * APR_THREAD_FUNC proxy_cluster_watchdog_func(apr_thread_t *thd, voi
                 remove_timeout_sessionid(conf, pool, s);
             s = s->next;
         }
+        /* cleanup removed node in shared memory */
+        remove_removed_node(pool);
         apr_pool_destroy(pool);
         if (last)
             node_storage->worker_nodes_are_updated(main_server, last);
