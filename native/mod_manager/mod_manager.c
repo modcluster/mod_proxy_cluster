@@ -487,6 +487,10 @@ static apr_status_t cleanup_manager(void *param)
         apr_file_close(nodes_global_lock);
         nodes_global_lock = NULL;
     }
+    if (contexts_global_lock) {
+        apr_file_close(contexts_global_lock);
+        contexts_global_lock = NULL;
+    }
     return APR_SUCCESS;
 }
 static void mc_initialize_cleanup(apr_pool_t *p)
@@ -2941,6 +2945,11 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
                     "manager_child_init: apr_thread_mutex_create failed");
         return;
     }
+    if (apr_thread_mutex_create(&contexts_global_mutex, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                    "manager_child_init: apr_thread_mutex_create failed");
+        return;
+    }
 
     mconf->tableversion = 0;
 
@@ -2965,6 +2974,13 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
                     "manager_child_init: apr_file_open for lock failed");
         return;
     }
+    filename = apr_pstrcat(p, context , ".lock", NULL);
+    if (apr_file_open(&contexts_global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                    "manager_child_init: apr_file_open for lock failed");
+        return;
+    }
+
 
     nodestatsmem = get_mem_node(node, &mconf->maxnode, p, storage);
     if (nodestatsmem == NULL) {
