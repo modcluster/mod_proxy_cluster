@@ -115,8 +115,8 @@
 #define TEXT_XML 2
 
 /* mutex and lock for nodes tables/slotmen */
-static apr_thread_mutex_t *globalmutex_lock = NULL;
-static apr_file_t *global_lock = NULL;
+static apr_thread_mutex_t *nodes_global_mutex = NULL;
+static apr_file_t *nodes_global_lock = NULL;
 
 /* shared memory */
 static mem_t *contextstatsmem = NULL;
@@ -235,18 +235,18 @@ static int loc_worker_nodes_are_updated(void *data, unsigned int last)
 static apr_status_t loc_lock_nodes(void)
 {
     apr_status_t rv;
-    rv = apr_file_lock(global_lock, APR_FLOCK_EXCLUSIVE);
+    rv = apr_file_lock(nodes_global_lock, APR_FLOCK_EXCLUSIVE);
     if (rv != APR_SUCCESS)
         return rv;
-    rv = apr_thread_mutex_lock(globalmutex_lock);
+    rv = apr_thread_mutex_lock(nodes_global_mutex);
     if (rv != APR_SUCCESS)
-        apr_file_unlock(global_lock);
+        apr_file_unlock(nodes_global_lock);
     return rv;
 }
 static apr_status_t loc_unlock_nodes(void)
 {
-    apr_thread_mutex_unlock(globalmutex_lock);
-    return(apr_file_unlock(global_lock));
+    apr_thread_mutex_unlock(nodes_global_mutex);
+    return(apr_file_unlock(nodes_global_lock));
 }
 static int loc_get_max_size_context(void)
 {
@@ -473,9 +473,9 @@ static apr_status_t cleanup_manager(void *param)
     balancerstatsmem = NULL;
     sessionidstatsmem = NULL;
     domainstatsmem = NULL;
-    if (global_lock) {
-        apr_file_close(global_lock);
-        global_lock = NULL;
+    if (nodes_global_lock) {
+        apr_file_close(nodes_global_lock);
+        nodes_global_lock = NULL;
     }
     return APR_SUCCESS;
 }
@@ -2926,7 +2926,7 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "Fatal storage provider not initialized");
         return;
     }
-    if (apr_thread_mutex_create(&globalmutex_lock, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
+    if (apr_thread_mutex_create(&nodes_global_mutex, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
                     "manager_child_init: apr_thread_mutex_create failed");
         return;
@@ -2950,7 +2950,7 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
 
     /* create the global node file look */
     filename = apr_pstrcat(p, node , ".lock", NULL);
-    if (apr_file_open(&global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, p) != APR_SUCCESS) {
+    if (apr_file_open(&nodes_global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, p) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
                     "manager_child_init: apr_file_open for lock failed");
         return;
