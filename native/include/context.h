@@ -100,18 +100,6 @@ apr_status_t get_context(mem_t *s, contextinfo_t **context, int ids);
 apr_status_t remove_context(mem_t *s, contextinfo_t *context);
 
 /*
- * lock the context table
- * @param pointer to the shared table.
- */
-void lock_contexts(mem_t *s);
-
-/*
- * unlock the context table
- * @param pointer to the shared table.
- */
-void unlock_contexts(mem_t *s);
-
-/*
  * get the ids for the used (not free) contexts in the table
  * @param pointer to the shared table.
  * @param ids array of int to store the used id (must be big enough).
@@ -168,11 +156,11 @@ int (*get_max_size_context)(void);
 /*
  * lock the context table
  */
-void (*lock_contexts)(void);
+apr_status_t (*lock_contexts)(void);
 /*
  * unlock the context table
  */
-void (*unlock_contexts)(void);
+apr_status_t (*unlock_contexts)(void);
 
 };
 #endif /*CONTEXT_H*/

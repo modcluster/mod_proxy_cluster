@@ -114,9 +114,11 @@
 #define TEXT_PLAIN 1
 #define TEXT_XML 2
 
-/* mutex and lock for nodes tables/slotmen */
+/* mutex and lock for tables/slotmen */
 static apr_thread_mutex_t *nodes_global_mutex = NULL;
 static apr_file_t *nodes_global_lock = NULL;
+static apr_thread_mutex_t *contexts_global_mutex = NULL;
+static apr_file_t *contexts_global_lock = NULL;
 
 /* shared memory */
 static mem_t *contextstatsmem = NULL;
@@ -232,21 +234,29 @@ static int loc_worker_nodes_are_updated(void *data, unsigned int last)
     mconf->tableversion = last;
     return (0);
 }
-static apr_status_t loc_lock_nodes(void)
+static apr_status_t lock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
 {
     apr_status_t rv;
-    rv = apr_file_lock(nodes_global_lock, APR_FLOCK_EXCLUSIVE);
+    rv = apr_file_lock(file, APR_FLOCK_EXCLUSIVE);
     if (rv != APR_SUCCESS)
         return rv;
-    rv = apr_thread_mutex_lock(nodes_global_mutex);
+    rv = apr_thread_mutex_lock(mutex);
     if (rv != APR_SUCCESS)
-        apr_file_unlock(nodes_global_lock);
+        apr_file_unlock(file);
     return rv;
+}
+static apr_status_t unlock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
+{
+    apr_thread_mutex_unlock(mutex);
+    return(apr_file_unlock(file));
+}
+static apr_status_t loc_lock_nodes(void)
+{
+    return(lock_memory(nodes_global_lock, nodes_global_mutex));
 }
 static apr_status_t loc_unlock_nodes(void)
 {
-    apr_thread_mutex_unlock(nodes_global_mutex);
-    return(apr_file_unlock(nodes_global_lock));
+    return(unlock_memory(nodes_global_lock, nodes_global_mutex));
 }
 static int loc_get_max_size_context(void)
 {
@@ -320,13 +330,13 @@ static int loc_get_ids_used_context(int *ids)
 {
     return(get_ids_used_context(contextstatsmem, ids)); 
 }
-static void loc_lock_contexts(void)
+static apr_status_t loc_lock_contexts(void)
 {
-    lock_contexts(contextstatsmem);
+    return(lock_memory(contexts_global_lock, contexts_global_mutex));
 }
-static void loc_unlock_contexts(void)
+static apr_status_t loc_unlock_contexts(void)
 {
-    unlock_contexts(contextstatsmem);
+    return(unlock_memory(contexts_global_lock, contexts_global_mutex));
 }
 static const struct context_storage_method context_storage =
 {
