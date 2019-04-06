@@ -2812,8 +2812,8 @@ static int manager_handler(request_rec *r)
     else {
        /* we calculate it */
        maxbufsiz = 9 + JVMROUTESZ;
-       maxbufsiz = bufsiz + (mconf->maxhost * HOSTALIASZ) + 7;
-       maxbufsiz = bufsiz + (mconf->maxcontext * CONTEXTSZ) + 8;
+       maxbufsiz = maxbufsiz + (mconf->maxhost * HOSTALIASZ) + 7;
+       maxbufsiz = maxbufsiz + (mconf->maxcontext * CONTEXTSZ) + 8;
     }
     if (maxbufsiz< MAXMESSSIZE)
        maxbufsiz = MAXMESSSIZE;
