@@ -817,7 +817,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         strcpy(balancerinfo.balancer, "mycluster");
     }
     balancerinfo.StickySession = 1;
-    balancerinfo.StickySessionForce = 1;
+    balancerinfo.StickySessionForce = 0;
     strcpy(balancerinfo.StickySessionCookie, "JSESSIONID");
     strcpy(balancerinfo.StickySessionPath, "jsessionid");
     balancerinfo.Maxattempts = 1;
@@ -859,8 +859,8 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                 balancerinfo.StickySessionRemove = 1;
         }
         if (strcasecmp(ptr[i], "StickySessionForce") == 0) {
-            if (strcasecmp(ptr[i+1], "no") == 0)
-                balancerinfo.StickySessionForce = 0;
+            if (strcasecmp(ptr[i+1], "yes") == 0)
+                balancerinfo.StickySessionForce = 1;
         }
         /* Note that it is workerTimeout (set/getWorkerTimeout in java code) */ 
         if (strcasecmp(ptr[i], "WaitWorker") == 0) {
