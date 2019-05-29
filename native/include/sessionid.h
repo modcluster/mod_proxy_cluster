@@ -48,8 +48,8 @@ typedef struct mem mem_t;
 
 /* status of the sessionid as read/store in httpd. */
 struct sessionidinfo {
-    char sessionid[SESSIONIDSZ]; /* Sessionid value */
-    char JVMRoute[JVMROUTESZ];   /* corresponding node */
+    char sessionid[SESSIONIDSZ+1]; /* Sessionid value */
+    char JVMRoute[JVMROUTESZ+1];   /* corresponding node */
 
     apr_time_t updatetime;    /* time of last received message */
     int id;                      /* id in table */

@@ -414,7 +414,7 @@ static proxy_balancer *add_balancer_node(nodeinfo_t *node, proxy_server_conf *co
                           "add_balancer_node: Can't create lock for balancer");
         }
         balancer->workers = apr_array_make(conf->pool, 5, sizeof(proxy_worker *));
-        strncpy(balancer->s->name, name, PROXY_BALANCER_MAX_NAME_SIZE);
+        strncpy(balancer->s->name, name, PROXY_BALANCER_MAX_NAME_SIZE-1);
         balancer->lbmethod = ap_lookup_provider(PROXY_LBMETHOD, "byrequests", "0");
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG|APLOG_NOERRNO, 0, server,
@@ -2252,7 +2252,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
     }
     if (SIZEOFSCORE <= sizeof(proxy_worker_shared)) {
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
-                     "SIZEOFSCORE too small for mod_proxy shared stat structure %d <= %d",
+                     "SIZEOFSCORE too small for mod_proxy shared stat structure %d <= %ld",
                      SIZEOFSCORE, sizeof(proxy_worker_shared));
         return HTTP_INTERNAL_SERVER_ERROR;
     }
