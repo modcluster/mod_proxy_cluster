@@ -2265,8 +2265,7 @@ static char*context_string(request_rec *r, contextinfo_t *ou, char *Alias, char 
 {
     char context[CONTEXTSZ+1];
     char *raw;
-    context[CONTEXTSZ] = '\0';
-    memcpy(context, ou->context, CONTEXTSZ);
+    strncpy(context, ou->context, CONTEXTSZ+1);
     raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
     return raw;
 }
