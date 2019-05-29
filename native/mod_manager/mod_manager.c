@@ -214,7 +214,7 @@ static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
 /*
  * Increase the version of the nodes table
  */
-static void inc_version_node()
+static void inc_version_node(void)
 {
     version_data *base;
     base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
@@ -539,6 +539,19 @@ static void normalize_balancer_name(char* balancer_name, server_rec *s)
 }
 
 /*
+ * Whether the module is called from a MPM that re-enter main() and
+ * pre/post_config phases.
+ */
+static APR_INLINE int is_child_process(void)
+{
+#ifdef WIN32
+    return getenv("AP_PARENT_PID") != NULL;
+#else
+    return 0;
+#endif
+}
+
+/*
  * call after parser the configuration.
  * create the shared memory.
  */
@@ -557,6 +570,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     const char *userdata_key = "mod_manager_init";
     apr_uuid_t uuid;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
+    apr_status_t rv;
     apr_pool_userdata_get(&data, userdata_key, s->process->pool);
     if (!data) {
         /* first call do nothing */
@@ -639,9 +653,13 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         return  !OK;
     }
 
-    if (apr_shm_create(&versionipc_shm, sizeof(version_data),
-                        (const char *) version, p) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_share_version failed");
+    if (is_child_process()) {
+        rv = apr_shm_attach(&versionipc_shm, (const char *) version, p);
+    } else {
+        rv = apr_shm_create(&versionipc_shm, sizeof(version_data), (const char *) version, p);
+    }
+    if (rv != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_EMERG, rv, s, "create_share_version failed");
         return  !OK;
     }
     base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
@@ -723,7 +741,7 @@ static apr_status_t  insert_update_hosts(mem_t *mem, char *str, int node, int vh
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            strncpy(info.host, previous, sizeof(info.host));
+            strncpy(info.host, previous, HOSTALIASZ);
             status = insert_update_host(mem, &info); 
             if (status != APR_SUCCESS)
                 return status;
@@ -1723,7 +1741,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     if (vhost->host != NULL) {
         char *s = hostinfo.host;
         int j = 1;
-        strncpy(hostinfo.host, vhost->host, sizeof(hostinfo.host));
+        strncpy(hostinfo.host, vhost->host, HOSTALIASZ);
         while (*s != ',' && j<sizeof(hostinfo.host)) {
            j++;
            s++;
@@ -1843,7 +1861,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         contextinfo_t in;
         contextinfo_t *ou;
         in.id = 0;
-        strncpy(in.context, vhost->context, sizeof(in.context));
+        strncpy(in.context, vhost->context, CONTEXTSZ);
         in.vhost = host->vhost;
         in.node = node->mess.id;
         ou = read_context(contextstatsmem, &in);
@@ -2245,10 +2263,10 @@ static int manager_trans(request_rec *r)
 /* Create the commands that are possible on the context */
 static char*context_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
 {
-    char context[sizeof(ou->context)+1];
+    char context[CONTEXTSZ+1];
     char *raw;
-    context[sizeof(ou->context)] = '\0';
-    strncpy(context, ou->context, sizeof(ou->context));
+    context[CONTEXTSZ] = '\0';
+    memcpy(context, ou->context, CONTEXTSZ);
     raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
     return raw;
 }

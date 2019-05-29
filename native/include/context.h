@@ -54,7 +54,7 @@ typedef struct mem mem_t;
 
 /* status of the context as read/store in httpd. */
 struct contextinfo {
-    char context[CONTEXTSZ]; /* Context where the application is mapped. */
+    char context[CONTEXTSZ+1]; /* Context where the application is mapped. */
     int vhost;        /* id of the correspond virtual host in hosts table */
     int node;         /* id of the correspond node in nodes table */
     int status;       /* status: ENABLED/DISABLED/STOPPED */
