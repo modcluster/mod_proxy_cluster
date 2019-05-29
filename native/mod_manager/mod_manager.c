@@ -114,11 +114,19 @@
 #define TEXT_PLAIN 1
 #define TEXT_XML 2
 
+/* Data structure for shared memory block */
+typedef struct version_data {
+    apr_uint64_t counter;
+} version_data;
+
 /* mutex and lock for tables/slotmen */
 static apr_thread_mutex_t *nodes_global_mutex = NULL;
 static apr_file_t *nodes_global_lock = NULL;
 static apr_thread_mutex_t *contexts_global_mutex = NULL;
 static apr_file_t *contexts_global_lock = NULL;
+
+/* counter for the version (nodes) */
+static apr_shm_t *versionipc_shm = NULL;
 
 /* shared memory */
 static mem_t *contextstatsmem = NULL;
@@ -203,6 +211,16 @@ static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
     return (find_node(nodestatsmem, node, route));
 }
 
+/*
+ * Increase the version of the nodes table
+ */
+static void inc_version_node()
+{
+    version_data *base;
+    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    base->counter++;
+}
+
 /* Check is the nodes (in shared memory) were modified since last
  * call to worker_nodes_are_updated().
  * return codes:
@@ -214,13 +232,15 @@ static unsigned int loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
     int size;
     server_rec *s = (server_rec *) data;
     unsigned int last = 0;
+    version_data *base;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
 
     size = loc_get_max_size_node();
     if (size == 0)
         return 0; /* broken */
 
-    last = get_version_node(nodestatsmem);
+    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    last = base->counter;
 
     if (last != mconf->tableversion)
         return last;
@@ -491,6 +511,10 @@ static apr_status_t cleanup_manager(void *param)
         apr_file_close(contexts_global_lock);
         contexts_global_lock = NULL;
     }
+    if (versionipc_shm) {
+        apr_shm_destroy(versionipc_shm);
+        versionipc_shm = NULL;
+    }
     return APR_SUCCESS;
 }
 static void mc_initialize_cleanup(apr_pool_t *p)
@@ -527,6 +551,8 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     char *balancer;
     char *sessionid;
     char *domain;
+    char *version;
+    version_data *base;
     void *data;
     const char *userdata_key = "mod_manager_init";
     apr_uuid_t uuid;
@@ -545,6 +571,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         balancer = apr_pstrcat(ptemp, mconf->basefilename, "/manager.balancer", NULL);
         sessionid = apr_pstrcat(ptemp, mconf->basefilename, "/manager.sessionid", NULL);
         domain = apr_pstrcat(ptemp, mconf->basefilename, "/manager.domain", NULL);
+        version = apr_pstrcat(ptemp, mconf->basefilename, "/manager.version", NULL);
     } else {
         node = ap_server_root_relative(ptemp, "logs/manager.node");
         context = ap_server_root_relative(ptemp, "logs/manager.context");
@@ -552,6 +579,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         balancer = ap_server_root_relative(ptemp, "logs/manager.balancer");
         sessionid = ap_server_root_relative(ptemp, "logs/manager.sessionid");
         domain = ap_server_root_relative(ptemp, "logs/manager.domain");
+        version = ap_server_root_relative(ptemp, "logs/manager.version");
     }
 
     /* Do some sanity checks */
@@ -610,6 +638,14 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_domain failed");
         return  !OK;
     }
+
+    if (apr_shm_create(&versionipc_shm, sizeof(version_data),
+                        (const char *) version, p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_share_version failed");
+        return  !OK;
+    }
+    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    base->counter = 0;
 
     /* Get a provider to ping/pong logics */
 
@@ -1028,6 +1064,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     }
 
     /* check for removed node */
+    loc_lock_nodes();
     node = read_node(nodestatsmem, &nodeinfo);
     if (node != NULL) {
         /* If the node is removed (or kill and restarted) and recreated unchanged that is ok: network problems */
@@ -1039,6 +1076,8 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             node->mess.remove = 1;
             insert_update_node(nodestatsmem, node, &id);
             loc_remove_host_context(node->mess.id, r->pool);
+            inc_version_node();
+            loc_unlock_nodes();
             *errtype = TYPEMEM;
             return apr_psprintf(r->pool, MNODERM, node->mess.JVMRoute);
         }
@@ -1046,22 +1085,31 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
 
     /* Insert or update node description */
     if (insert_update_node(nodestatsmem, &nodeinfo, &id) != APR_SUCCESS) {
+        loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
     }
+    inc_version_node();
 
     /* Insert the Alias and corresponding Context */
     phost = vhost;
-    if (phost->host == NULL && phost->context == NULL)
+    if (phost->host == NULL && phost->context == NULL) {
+        loc_unlock_nodes();
         return NULL; /* Alias and Context missing */
+    }
     while (phost) {
-        if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS)
+        if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
+            loc_unlock_nodes();
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
-        if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS)
+        }
+        if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
+            loc_unlock_nodes();
             return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
+        }
         phost = phost->next;
         vid++;
     }
+    loc_unlock_nodes();
     return NULL;
 }
 /*
@@ -1515,7 +1563,7 @@ static char * process_info(request_rec *r, int *errtype)
     return NULL;
 }
 
-/* Process a *-APP command that applies to the node */
+/* Process a *-APP command that applies to the node NOTE: the node is locked */
 static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo_t *node)
 {
     /* for read the hosts */
@@ -1639,8 +1687,10 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     }
 
     /* Read the node */
+    loc_lock_nodes();
     node = read_node(nodestatsmem, &nodeinfo);
     if (node == NULL) {
+        loc_unlock_nodes();
         if (status == REMOVE)
             return NULL; /* Already done */
         *errtype = TYPEMEM;
@@ -1649,6 +1699,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
 
     /* If the node is marked removed check what to do */
     if (node->mess.remove) {
+        loc_unlock_nodes();
         if (status == REMOVE)
             return NULL; /* Already done */
         else {
@@ -1657,10 +1708,14 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             return apr_psprintf(r->pool, MNODERD, node->mess.JVMRoute);
         }
     }
+    inc_version_node();
 
     /* Process the * APP commands */
     if (global) {
-        return (process_node_cmd(r, status, errtype, node));
+        char *ret;
+        ret = process_node_cmd(r, status, errtype, node);
+        loc_unlock_nodes();
+        return ret;
     }
 
     /* Read the ID of the virtual host corresponding to the first Alias */
@@ -1681,9 +1736,10 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     host = read_host(hoststatsmem, &hostinfo);
     if (host == NULL) {
         /* If REMOVE ignores it */
-        if (status == REMOVE)
+        if (status == REMOVE) {
+            loc_unlock_nodes();
             return NULL;
-        else {
+        } else {
             int vid, size, *id;
             /* Find the first available vhost id */
             vid = 0;
@@ -1704,6 +1760,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
 
             /* If the Host doesn't exist yet create it */
             if (insert_update_hosts(hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
+                loc_unlock_nodes();
                 *errtype = TYPEMEM;
                 return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
             }
@@ -1717,6 +1774,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             }
             host = read_host(hoststatsmem, &hostinfo);
             if (host == NULL) {
+                loc_unlock_nodes();
                 *errtype = TYPEMEM;
                 return apr_psprintf(r->pool, MHOSTRD, node->mess.JVMRoute);
             }
@@ -1749,6 +1807,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
 
     /* Now update each context from Context: part */
     if (insert_update_contexts(contextstatsmem, vhost->context, node->mess.id, host->vhost, status) != APR_SUCCESS) {
+        loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MCONTUI, node->mess.JVMRoute);
     }
@@ -1802,7 +1861,8 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP can't read_context");
         }
-    }
+    } 
+    loc_unlock_nodes();
     return NULL;
 }
 static char * process_enable(request_rec *r, char **ptr, int *errtype, int global)
