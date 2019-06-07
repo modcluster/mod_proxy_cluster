@@ -54,7 +54,7 @@ typedef struct mem mem_t;
 
 /* status of the context as read/store in httpd. */
 struct contextinfo {
-    char context[CONTEXTSZ]; /* Context where the application is mapped. */
+    char context[CONTEXTSZ+1]; /* Context where the application is mapped. */
     int vhost;        /* id of the correspond virtual host in hosts table */
     int node;         /* id of the correspond node in nodes table */
     int status;       /* status: ENABLED/DISABLED/STOPPED */
@@ -98,18 +98,6 @@ apr_status_t get_context(mem_t *s, contextinfo_t **context, int ids);
  * @return APR_SUCCESS if all went well
  */
 apr_status_t remove_context(mem_t *s, contextinfo_t *context);
-
-/*
- * lock the context table
- * @param pointer to the shared table.
- */
-void lock_contexts(mem_t *s);
-
-/*
- * unlock the context table
- * @param pointer to the shared table.
- */
-void unlock_contexts(mem_t *s);
 
 /*
  * get the ids for the used (not free) contexts in the table
@@ -168,11 +156,11 @@ int (*get_max_size_context)(void);
 /*
  * lock the context table
  */
-void (*lock_contexts)(void);
+apr_status_t (*lock_contexts)(void);
 /*
  * unlock the context table
  */
-void (*unlock_contexts)(void);
+apr_status_t (*unlock_contexts)(void);
 
 };
 #endif /*CONTEXT_H*/

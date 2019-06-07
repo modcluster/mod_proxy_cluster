@@ -141,15 +141,13 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route);
 
 /*
  *  * lock the nodes table
- *   * @param pointer to the shared table.
- *    */
-void lock_nodes(mem_t *s);
+ */
+apr_status_t lock_nodes(void);
 
 /*
  *  * unlock the nodes table
- *   * @param pointer to the shared table.
- *    */
-void unlock_nodes(mem_t *s);
+ */
+apr_status_t unlock_nodes(void);
 
 /*
  * get the ids for the used (not free) nodes in the table
@@ -237,12 +235,12 @@ void (*remove_host_context)(int node, apr_pool_t *pool);
 /*
  * lock the nodes table
  */
-void (*lock_nodes)(void);
+apr_status_t (*lock_nodes)(void);
 
 /*
  * unlock the nodes table
  */
-void (*unlock_nodes)(void);
+apr_status_t (*unlock_nodes)(void);
 
 };
 #endif /*NODE_H*/

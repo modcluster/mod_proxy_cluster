@@ -81,7 +81,7 @@ static struct ap_slotmem *globallistmem = NULL;
 static apr_pool_t *globalpool = NULL;
 static apr_thread_mutex_t *globalmutex_lock = NULL;
 
-apr_status_t unixd_set_shm_perms(const char *fname)
+static apr_status_t unixd_set_shm_perms(const char *fname)
 {
 #ifdef AP_NEED_SET_MUTEX_PERMS
 #if APR_USE_SHMEM_SHMGET || APR_USE_SHMEM_SHMGET_ANON
@@ -152,7 +152,7 @@ static void store_slotmem(ap_slotmem_t *slotmem)
     apr_file_write(fp, slotmem->ident, &nbytes);
     apr_file_close(fp);
 }
-void restore_slotmem(void *ptr, const char *name, apr_size_t item_size, int item_num, apr_pool_t *pool)
+static void restore_slotmem(void *ptr, const char *name, apr_size_t item_size, int item_num, apr_pool_t *pool)
 {
     const char *storename;
     apr_file_t *fp;
@@ -179,7 +179,7 @@ void restore_slotmem(void *ptr, const char *name, apr_size_t item_size, int item
     }
 }
 
-apr_status_t cleanup_slotmem(void *param)
+static apr_status_t cleanup_slotmem(void *param)
 {
     ap_slotmem_t **mem = param;
 
@@ -199,7 +199,7 @@ apr_status_t cleanup_slotmem(void *param)
     return APR_SUCCESS;
 }
 
-static apr_status_t ap_slotmem_do(ap_slotmem_t *mem, mc_slotmem_callback_fn_t *func, void *data, int new_version, apr_pool_t *pool)
+static apr_status_t ap_slotmem_do(ap_slotmem_t *mem, mc_slotmem_callback_fn_t *func, void *data, apr_pool_t *pool)
 {
     int i, j, isfree, *ident;
     char *ptr;
@@ -223,8 +223,6 @@ static apr_status_t ap_slotmem_do(ap_slotmem_t *mem, mc_slotmem_callback_fn_t *f
         if (!isfree) {
             rv = func((void *)ptr, data, i, pool);
             if (rv == APR_SUCCESS) {
-                if (new_version)
-                   (*mem->version)++;
                 return(rv);
             }
         }
@@ -566,12 +564,6 @@ static int ap_slotmem_get_max_size(ap_slotmem_t *score)
         return 0;
     return score->num;
 }
-static unsigned int ap_slotmem_get_version(ap_slotmem_t *score)
-{
-    if (score == NULL)
-        return 0;
-    return *score->version;
-}
 static const slotmem_storage_method storage = {
     &ap_slotmem_do,
     &ap_slotmem_create,
@@ -582,8 +574,7 @@ static const slotmem_storage_method storage = {
     &ap_slotmem_get_used,
     &ap_slotmem_get_max_size,
     &ap_slotmem_lock,
-    &ap_slotmem_unlock,
-    &ap_slotmem_get_version
+    &ap_slotmem_unlock
 };
 
 /* make the storage usuable from outside

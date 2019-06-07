@@ -48,7 +48,7 @@ typedef struct mem mem_t;
 
 /* status of the host as read/store in httpd. */
 struct hostinfo {
-    char host[HOSTALIASZ]; /* Alias element of the virtual host */
+    char host[HOSTALIASZ+1]; /* Alias element of the virtual host */
     int vhost;             /* id of the correspond virtual host */
     int node;              /* id of the node containing the virtual host */
 

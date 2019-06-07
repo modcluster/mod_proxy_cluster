@@ -114,6 +114,20 @@
 #define TEXT_PLAIN 1
 #define TEXT_XML 2
 
+/* Data structure for shared memory block */
+typedef struct version_data {
+    apr_uint64_t counter;
+} version_data;
+
+/* mutex and lock for tables/slotmen */
+static apr_thread_mutex_t *nodes_global_mutex = NULL;
+static apr_file_t *nodes_global_lock = NULL;
+static apr_thread_mutex_t *contexts_global_mutex = NULL;
+static apr_file_t *contexts_global_lock = NULL;
+
+/* counter for the version (nodes) */
+static apr_shm_t *versionipc_shm = NULL;
+
 /* shared memory */
 static mem_t *contextstatsmem = NULL;
 static mem_t *nodestatsmem = NULL;
@@ -197,6 +211,16 @@ static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
     return (find_node(nodestatsmem, node, route));
 }
 
+/*
+ * Increase the version of the nodes table
+ */
+static void inc_version_node(void)
+{
+    version_data *base;
+    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    base->counter++;
+}
+
 /* Check is the nodes (in shared memory) were modified since last
  * call to worker_nodes_are_updated().
  * return codes:
@@ -208,13 +232,15 @@ static unsigned int loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
     int size;
     server_rec *s = (server_rec *) data;
     unsigned int last = 0;
+    version_data *base;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
 
     size = loc_get_max_size_node();
     if (size == 0)
         return 0; /* broken */
 
-    last = get_version_node(nodestatsmem);
+    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    last = base->counter;
 
     if (last != mconf->tableversion)
         return last;
@@ -228,13 +254,29 @@ static int loc_worker_nodes_are_updated(void *data, unsigned int last)
     mconf->tableversion = last;
     return (0);
 }
-static void loc_lock_nodes(void)
+static apr_status_t lock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
 {
-    lock_nodes(nodestatsmem);
+    apr_status_t rv;
+    rv = apr_file_lock(file, APR_FLOCK_EXCLUSIVE);
+    if (rv != APR_SUCCESS)
+        return rv;
+    rv = apr_thread_mutex_lock(mutex);
+    if (rv != APR_SUCCESS)
+        apr_file_unlock(file);
+    return rv;
 }
-static void loc_unlock_nodes(void)
+static apr_status_t unlock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
 {
-    unlock_nodes(nodestatsmem);
+    apr_thread_mutex_unlock(mutex);
+    return(apr_file_unlock(file));
+}
+static apr_status_t loc_lock_nodes(void)
+{
+    return(lock_memory(nodes_global_lock, nodes_global_mutex));
+}
+static apr_status_t loc_unlock_nodes(void)
+{
+    return(unlock_memory(nodes_global_lock, nodes_global_mutex));
 }
 static int loc_get_max_size_context(void)
 {
@@ -308,13 +350,13 @@ static int loc_get_ids_used_context(int *ids)
 {
     return(get_ids_used_context(contextstatsmem, ids)); 
 }
-static void loc_lock_contexts(void)
+static apr_status_t loc_lock_contexts(void)
 {
-    lock_contexts(contextstatsmem);
+    return(lock_memory(contexts_global_lock, contexts_global_mutex));
 }
-static void loc_unlock_contexts(void)
+static apr_status_t loc_unlock_contexts(void)
 {
-    unlock_contexts(contextstatsmem);
+    return(unlock_memory(contexts_global_lock, contexts_global_mutex));
 }
 static const struct context_storage_method context_storage =
 {
@@ -461,6 +503,18 @@ static apr_status_t cleanup_manager(void *param)
     balancerstatsmem = NULL;
     sessionidstatsmem = NULL;
     domainstatsmem = NULL;
+    if (nodes_global_lock) {
+        apr_file_close(nodes_global_lock);
+        nodes_global_lock = NULL;
+    }
+    if (contexts_global_lock) {
+        apr_file_close(contexts_global_lock);
+        contexts_global_lock = NULL;
+    }
+    if (versionipc_shm) {
+        apr_shm_destroy(versionipc_shm);
+        versionipc_shm = NULL;
+    }
     return APR_SUCCESS;
 }
 static void mc_initialize_cleanup(apr_pool_t *p)
@@ -485,6 +539,19 @@ static void normalize_balancer_name(char* balancer_name, server_rec *s)
 }
 
 /*
+ * Whether the module is called from a MPM that re-enter main() and
+ * pre/post_config phases.
+ */
+static APR_INLINE int is_child_process(void)
+{
+#ifdef WIN32
+    return getenv("AP_PARENT_PID") != NULL;
+#else
+    return 0;
+#endif
+}
+
+/*
  * call after parser the configuration.
  * create the shared memory.
  */
@@ -497,10 +564,13 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     char *balancer;
     char *sessionid;
     char *domain;
+    char *version;
+    version_data *base;
     void *data;
     const char *userdata_key = "mod_manager_init";
     apr_uuid_t uuid;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
+    apr_status_t rv;
     apr_pool_userdata_get(&data, userdata_key, s->process->pool);
     if (!data) {
         /* first call do nothing */
@@ -515,6 +585,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         balancer = apr_pstrcat(ptemp, mconf->basefilename, "/manager.balancer", NULL);
         sessionid = apr_pstrcat(ptemp, mconf->basefilename, "/manager.sessionid", NULL);
         domain = apr_pstrcat(ptemp, mconf->basefilename, "/manager.domain", NULL);
+        version = apr_pstrcat(ptemp, mconf->basefilename, "/manager.version", NULL);
     } else {
         node = ap_server_root_relative(ptemp, "logs/manager.node");
         context = ap_server_root_relative(ptemp, "logs/manager.context");
@@ -522,6 +593,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         balancer = ap_server_root_relative(ptemp, "logs/manager.balancer");
         sessionid = ap_server_root_relative(ptemp, "logs/manager.sessionid");
         domain = ap_server_root_relative(ptemp, "logs/manager.domain");
+        version = ap_server_root_relative(ptemp, "logs/manager.version");
     }
 
     /* Do some sanity checks */
@@ -580,6 +652,18 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_domain failed");
         return  !OK;
     }
+
+    if (is_child_process()) {
+        rv = apr_shm_attach(&versionipc_shm, (const char *) version, p);
+    } else {
+        rv = apr_shm_create(&versionipc_shm, sizeof(version_data), (const char *) version, p);
+    }
+    if (rv != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_EMERG, rv, s, "create_share_version failed");
+        return  !OK;
+    }
+    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    base->counter = 0;
 
     /* Get a provider to ping/pong logics */
 
@@ -657,7 +741,7 @@ static apr_status_t  insert_update_hosts(mem_t *mem, char *str, int node, int vh
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            strncpy(info.host, previous, sizeof(info.host));
+            strncpy(info.host, previous, HOSTALIASZ);
             status = insert_update_host(mem, &info); 
             if (status != APR_SUCCESS)
                 return status;
@@ -998,6 +1082,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     }
 
     /* check for removed node */
+    loc_lock_nodes();
     node = read_node(nodestatsmem, &nodeinfo);
     if (node != NULL) {
         /* If the node is removed (or kill and restarted) and recreated unchanged that is ok: network problems */
@@ -1009,6 +1094,8 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             node->mess.remove = 1;
             insert_update_node(nodestatsmem, node, &id);
             loc_remove_host_context(node->mess.id, r->pool);
+            inc_version_node();
+            loc_unlock_nodes();
             *errtype = TYPEMEM;
             return apr_psprintf(r->pool, MNODERM, node->mess.JVMRoute);
         }
@@ -1016,22 +1103,31 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
 
     /* Insert or update node description */
     if (insert_update_node(nodestatsmem, &nodeinfo, &id) != APR_SUCCESS) {
+        loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
     }
+    inc_version_node();
 
     /* Insert the Alias and corresponding Context */
     phost = vhost;
-    if (phost->host == NULL && phost->context == NULL)
+    if (phost->host == NULL && phost->context == NULL) {
+        loc_unlock_nodes();
         return NULL; /* Alias and Context missing */
+    }
     while (phost) {
-        if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS)
+        if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
+            loc_unlock_nodes();
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
-        if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS)
+        }
+        if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
+            loc_unlock_nodes();
             return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
+        }
         phost = phost->next;
         vid++;
     }
+    loc_unlock_nodes();
     return NULL;
 }
 /*
@@ -1485,7 +1581,7 @@ static char * process_info(request_rec *r, int *errtype)
     return NULL;
 }
 
-/* Process a *-APP command that applies to the node */
+/* Process a *-APP command that applies to the node NOTE: the node is locked */
 static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo_t *node)
 {
     /* for read the hosts */
@@ -1609,8 +1705,10 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     }
 
     /* Read the node */
+    loc_lock_nodes();
     node = read_node(nodestatsmem, &nodeinfo);
     if (node == NULL) {
+        loc_unlock_nodes();
         if (status == REMOVE)
             return NULL; /* Already done */
         *errtype = TYPEMEM;
@@ -1619,6 +1717,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
 
     /* If the node is marked removed check what to do */
     if (node->mess.remove) {
+        loc_unlock_nodes();
         if (status == REMOVE)
             return NULL; /* Already done */
         else {
@@ -1627,10 +1726,14 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             return apr_psprintf(r->pool, MNODERD, node->mess.JVMRoute);
         }
     }
+    inc_version_node();
 
     /* Process the * APP commands */
     if (global) {
-        return (process_node_cmd(r, status, errtype, node));
+        char *ret;
+        ret = process_node_cmd(r, status, errtype, node);
+        loc_unlock_nodes();
+        return ret;
     }
 
     /* Read the ID of the virtual host corresponding to the first Alias */
@@ -1638,7 +1741,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     if (vhost->host != NULL) {
         char *s = hostinfo.host;
         int j = 1;
-        strncpy(hostinfo.host, vhost->host, sizeof(hostinfo.host));
+        strncpy(hostinfo.host, vhost->host, HOSTALIASZ);
         while (*s != ',' && j<sizeof(hostinfo.host)) {
            j++;
            s++;
@@ -1651,9 +1754,10 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     host = read_host(hoststatsmem, &hostinfo);
     if (host == NULL) {
         /* If REMOVE ignores it */
-        if (status == REMOVE)
+        if (status == REMOVE) {
+            loc_unlock_nodes();
             return NULL;
-        else {
+        } else {
             int vid, size, *id;
             /* Find the first available vhost id */
             vid = 0;
@@ -1674,6 +1778,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
 
             /* If the Host doesn't exist yet create it */
             if (insert_update_hosts(hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
+                loc_unlock_nodes();
                 *errtype = TYPEMEM;
                 return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
             }
@@ -1687,6 +1792,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             }
             host = read_host(hoststatsmem, &hostinfo);
             if (host == NULL) {
+                loc_unlock_nodes();
                 *errtype = TYPEMEM;
                 return apr_psprintf(r->pool, MHOSTRD, node->mess.JVMRoute);
             }
@@ -1719,6 +1825,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
 
     /* Now update each context from Context: part */
     if (insert_update_contexts(contextstatsmem, vhost->context, node->mess.id, host->vhost, status) != APR_SUCCESS) {
+        loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MCONTUI, node->mess.JVMRoute);
     }
@@ -1754,7 +1861,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         contextinfo_t in;
         contextinfo_t *ou;
         in.id = 0;
-        strncpy(in.context, vhost->context, sizeof(in.context));
+        strncpy(in.context, vhost->context, CONTEXTSZ);
         in.vhost = host->vhost;
         in.node = node->mess.id;
         ou = read_context(contextstatsmem, &in);
@@ -1772,7 +1879,8 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP can't read_context");
         }
-    }
+    } 
+    loc_unlock_nodes();
     return NULL;
 }
 static char * process_enable(request_rec *r, char **ptr, int *errtype, int global)
@@ -2155,10 +2263,9 @@ static int manager_trans(request_rec *r)
 /* Create the commands that are possible on the context */
 static char*context_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
 {
-    char context[sizeof(ou->context)+1];
+    char context[CONTEXTSZ+1];
     char *raw;
-    context[sizeof(ou->context)] = '\0';
-    strncpy(context, ou->context, sizeof(ou->context));
+    strncpy(context, ou->context, CONTEXTSZ+1);
     raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
     return raw;
 }
@@ -2902,11 +3009,22 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
     char *host;
     char *balancer;
     char *sessionid;
+    char *filename;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
 
     if (storage == NULL) {
         /* that happens when doing a gracefull restart for example after additing/changing the storage provider */
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "Fatal storage provider not initialized");
+        return;
+    }
+    if (apr_thread_mutex_create(&nodes_global_mutex, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                    "manager_child_init: apr_thread_mutex_create failed");
+        return;
+    }
+    if (apr_thread_mutex_create(&contexts_global_mutex, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                    "manager_child_init: apr_thread_mutex_create failed");
         return;
     }
 
@@ -2925,6 +3043,21 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
         balancer = ap_server_root_relative(p, "logs/manager.balancer");
         sessionid = ap_server_root_relative(p, "logs/manager.sessionid");
     }
+
+    /* create the global node file look */
+    filename = apr_pstrcat(p, node , ".lock", NULL);
+    if (apr_file_open(&nodes_global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                    "manager_child_init: apr_file_open for lock failed");
+        return;
+    }
+    filename = apr_pstrcat(p, context , ".lock", NULL);
+    if (apr_file_open(&contexts_global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                    "manager_child_init: apr_file_open for lock failed");
+        return;
+    }
+
 
     nodestatsmem = get_mem_node(node, &mconf->maxnode, p, storage);
     if (nodestatsmem == NULL) {

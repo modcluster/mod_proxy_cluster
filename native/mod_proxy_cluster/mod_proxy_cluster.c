@@ -414,7 +414,7 @@ static proxy_balancer *add_balancer_node(nodeinfo_t *node, proxy_server_conf *co
                           "add_balancer_node: Can't create lock for balancer");
         }
         balancer->workers = apr_array_make(conf->pool, 5, sizeof(proxy_worker *));
-        strncpy(balancer->s->name, name, PROXY_BALANCER_MAX_NAME_SIZE);
+        strncpy(balancer->s->name, name, PROXY_BALANCER_MAX_NAME_SIZE-1);
         balancer->lbmethod = ap_lookup_provider(PROXY_LBMETHOD, "byrequests", "0");
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG|APLOG_NOERRNO, 0, server,
@@ -843,12 +843,12 @@ static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn,
     APR_BRIGADE_INSERT_TAIL(header_brigade, e);
 
     status = ap_pass_brigade(p_conn->connection->output_filters, header_brigade);
+    apr_brigade_cleanup(header_brigade);
     if (status != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR, status, r->server,
                       "http_cping_cpong(): send failed");
         return status;
     }
-    apr_brigade_cleanup(header_brigade);
 
     status = apr_socket_timeout_get(p_conn->sock, &org);
     if (status != APR_SUCCESS) {
@@ -1775,11 +1775,15 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
             nodeinfo_t *node;
             proxy_cluster_helper *helper;
             proxy_worker **run = (proxy_worker **) ptr;
+            char *pptr;
 
             worker = *run;
             helper = (proxy_cluster_helper *) worker->context;
-            if (!worker->s)
+            if (!worker->s || !worker->context) {
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                             "proxy: byrequests balancer skipping BAD worker");
                 continue;
+            }
             if (helper->index == 0)
                 continue; /* marked removed */
             if (helper->index != worker->s->index) {
@@ -1794,7 +1798,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
              *            0 standby.
              *           >0 factor to use.
              */
-            if (worker->s == NULL || worker->s->lbfactor < 0 || (worker->s->lbfactor == 0 && !checking_standby))
+            if (worker->s->lbfactor < 0 || (worker->s->lbfactor == 0 && !checking_standby))
                 continue;
 
             /* If the worker is in error state the STATUS logic will retry it */
@@ -1808,6 +1812,10 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
              */
             if (read_node_worker(worker->s->index, &node, worker) != APR_SUCCESS)
                 continue; /* Can't read node */
+            pptr = (char *) node;
+            pptr = pptr + node->offset;
+            if (worker->s != (proxy_worker_shared *) pptr)
+                continue; /* wrong shared memory address */
 
             if (PROXY_WORKER_IS_USABLE(worker) && (nodecontext = context_host_ok(r, balancer, worker->s->index, vhost_table, context_table, node_table)) != NULL) {
                 if (!checked_domain) {
@@ -2244,7 +2252,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
     }
     if (SIZEOFSCORE <= sizeof(proxy_worker_shared)) {
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
-                     "SIZEOFSCORE too small for mod_proxy shared stat structure %d <= %d",
+                     "SIZEOFSCORE too small for mod_proxy shared stat structure %d <= %ld",
                      SIZEOFSCORE, sizeof(proxy_worker_shared));
         return HTTP_INTERNAL_SERVER_ERROR;
     }

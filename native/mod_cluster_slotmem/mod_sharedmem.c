@@ -40,7 +40,6 @@
 #include "ap_provider.h"
 
 #include  "slotmem.h"
-#include "sharedmem_util.h"
 
 /* make sure the shared memory is cleaned */
 static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
