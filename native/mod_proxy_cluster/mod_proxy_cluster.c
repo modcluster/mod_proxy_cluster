@@ -1748,12 +1748,13 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
     int checked_standby = 0;
     int checked_domain = 1;
     /* Create a separate array of available workers, to be sorted later */
-    proxy_worker *workers[balancer->workers->nelts];
+    proxy_worker **workers = NULL;
     int workers_length = 0;
     const char *session_id_with_route;
     char *tokenizer;
     const char *session_id;
 
+    workers = apr_pcalloc(r->pool, sizeof(proxy_worker *) * balancer->workers->nelts);
 #if HAVE_CLUSTER_EX_DEBUG
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                  "proxy: Entering byrequests for CLUSTER (%s) failoverdomain:%d",
