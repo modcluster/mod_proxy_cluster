@@ -248,8 +248,8 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                 /* the share memory may have been removed and recreated */
                 if (!worker->s->status) {
                     worker->s->status = PROXY_WORKER_INITIALIZED;
-                    strncpy(worker->s->route, node->mess.JVMRoute, PROXY_WORKER_MAX_ROUTE_SIZE-1);
-                    worker->s->route[PROXY_WORKER_MAX_ROUTE_SIZE-1] = '\0';
+                    strncpy(worker->s->route, node->mess.JVMRoute, sizeof( worker->s->route));
+                    worker->s->route[sizeof(worker->s->route)-1] = '\0';
                     /* XXX: We need that information from TC */
                     worker->s->redirect[0] = '\0';
                     worker->s->lbstatus = 0;
@@ -302,8 +302,8 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->hmax = shared->hmax;
         if (worker->s->hmax < node->mess.smax)
             worker->s->hmax = node->mess.smax + 1;
-        strncpy(worker->s->route, node->mess.JVMRoute, PROXY_WORKER_MAX_ROUTE_SIZE-1);
-        worker->s->route[PROXY_WORKER_MAX_ROUTE_SIZE-1] = '\0';
+        strncpy(worker->s->route, node->mess.JVMRoute, sizeof(worker->s->route));
+        worker->s->route[sizeof(worker->s->route)-1] = '\0';
         worker->s->redirect[0] = '\0';
         worker->s->smax = node->mess.smax;
         worker->s->ttl = node->mess.ttl;
