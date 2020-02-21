@@ -35,11 +35,11 @@
 
 /* For node.h */
 #define BALANCERSZ 40
-#define JVMROUTESZ 80
+#define JVMROUTESZ 64
 #define DOMAINNDSZ 20
 #define HOSTNODESZ 64
 #define PORTNODESZ 7
-#define SCHEMENDSZ 6
+#define SCHEMENDSZ 16
 
 /* For balancer.h */
 #define COOKNAMESZ 30

@@ -56,6 +56,7 @@ struct nodemess {
     char Host[HOSTNODESZ];
     char Port[PORTNODESZ];
     char Type[SCHEMENDSZ];
+    char Upgrade[SCHEMENDSZ];
     int  reversed; /* 1 : reversed... 0 : normal */
     int  remove;   /* 1 : removed     0 : normal */
 
