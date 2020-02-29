@@ -183,6 +183,8 @@ typedef struct mod_manager_config
     int enable_ws_tunnel;
     /* WebSocket upgrade header */
     char *ws_upgrade_header;
+    /* AJP secret */
+    char *ajp_secret;
 
 } mod_manager_config;
 
@@ -882,6 +884,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     strcpy(nodeinfo.mess.Port, "8009");
     strcpy(nodeinfo.mess.Type, "ajp");
     nodeinfo.mess.Upgrade[0] = '\0';
+    nodeinfo.mess.AJPSecret[0] = '\0';
     nodeinfo.mess.reversed = 0;
     nodeinfo.mess.remove = 0; /* not marked as removed */
     nodeinfo.mess.flushpackets = flush_off; /* FLUSH_OFF; See enum flush_packets in proxy.h flush_off */
@@ -1079,6 +1082,12 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             strcpy(nodeinfo.mess.Type, "wss");
         if (mconf->ws_upgrade_header)
             strcpy(nodeinfo.mess.Upgrade,mconf->ws_upgrade_header);
+    }
+
+    if (strcmp(nodeinfo.mess.Type, "ajp") == 0) {
+        if (mconf->ajp_secret) {
+            strcpy(nodeinfo.mess.AJPSecret,mconf->ajp_secret);
+        }
     }
     /* Insert or update balancer description */
     if (insert_update_balancer(balancerstatsmem, &balancerinfo) != APR_SUCCESS) {
@@ -3291,6 +3300,25 @@ static const char*cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, c
     }
 }
 
+static const char*cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const char *word)
+{
+    mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
+    const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+    if (err != NULL) {
+        return err;
+    }
+    if (strlen(word) >= PROXY_WORKER_MAX_SECRET_SIZE) {
+        return apr_psprintf(cmd->temp_pool, "AJP secret length must be < %d characters",
+                            PROXY_WORKER_MAX_SECRET_SIZE);
+    }
+    if (ap_find_linked_module("mod_proxy_ajp.c") != NULL) {
+        mconf->ajp_secret = apr_pstrdup(cmd->pool, word);
+        return NULL;
+    } else {
+        return "AJPsecret requires mod_proxy_ajp.c";
+    }
+}
+
 
 static const command_rec  manager_cmds[] =
 {
@@ -3399,6 +3427,13 @@ static const command_rec  manager_cmds[] =
          OR_ALL,
          "WSUpgradeHeader - Accepted upgrade headers, ONE bypass checks, ANY read it from request, other values: header value to check before using the WS tunnel."
     ),
+    AP_INIT_TAKE1(
+        "AJPSecret",
+         cmd_manager_ajp_secret,
+         NULL,
+         OR_ALL,
+         "AJPSecret - secret for all mod_cluster node, not configued no secret."
+    ),
     {NULL}
 };
 
@@ -3452,6 +3487,7 @@ static void *create_manager_config(apr_pool_t *p)
     mconf->enable_mcpm_receive = 0;
     mconf->enable_ws_tunnel = 0;
     mconf->ws_upgrade_header = NULL;
+    mconf->ajp_secret = NULL;
     return mconf;
 }
 
@@ -3546,6 +3582,11 @@ static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf,
         mconf->ws_upgrade_header = apr_pstrdup(p, mconf2->ws_upgrade_header);
     else if (mconf1->ws_upgrade_header)
         mconf->ws_upgrade_header = apr_pstrdup(p, mconf1->ws_upgrade_header);
+
+    if (mconf2->ajp_secret)
+        mconf->ajp_secret = apr_pstrdup(p, mconf2->ajp_secret);
+    else if (mconf1->ajp_secret)
+        mconf->ajp_secret = apr_pstrdup(p, mconf1->ajp_secret);
 
     return mconf;
 }
