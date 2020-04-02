@@ -1080,13 +1080,16 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             strcpy(nodeinfo.mess.Type, "ws");
         if (!strcmp(nodeinfo.mess.Type, "https"))
             strcpy(nodeinfo.mess.Type, "wss");
-        if (mconf->ws_upgrade_header)
-            strcpy(nodeinfo.mess.Upgrade,mconf->ws_upgrade_header);
+        if (mconf->ws_upgrade_header) {
+            strncpy(nodeinfo.mess.Upgrade,mconf->ws_upgrade_header, sizeof(nodeinfo.mess.Upgrade));
+            nodeinfo.mess.Upgrade[sizeof(nodeinfo.mess.Upgrade)-1] = '\0';
+        }
     }
 
     if (strcmp(nodeinfo.mess.Type, "ajp") == 0) {
         if (mconf->ajp_secret) {
-            strcpy(nodeinfo.mess.AJPSecret,mconf->ajp_secret);
+            strncpy(nodeinfo.mess.AJPSecret,mconf->ajp_secret, sizeof(nodeinfo.mess.AJPSecret));
+            nodeinfo.mess.AJPSecret[sizeof(nodeinfo.mess.AJPSecret)-1] = '\0';
         }
     }
     /* Insert or update balancer description */
