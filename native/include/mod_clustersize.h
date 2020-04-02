@@ -40,6 +40,7 @@
 #define HOSTNODESZ 64
 #define PORTNODESZ 7
 #define SCHEMENDSZ 16
+#define AJPSECRETSZ 64
 
 /* For balancer.h */
 #define COOKNAMESZ 30

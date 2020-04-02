@@ -250,7 +250,10 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                     worker->s->status = PROXY_WORKER_INITIALIZED;
                     strncpy(worker->s->route, node->mess.JVMRoute, sizeof( worker->s->route));
                     worker->s->route[sizeof(worker->s->route)-1] = '\0';
-                    strcpy(worker->s->upgrade, node->mess.Upgrade);
+                    strncpy(worker->s->upgrade, node->mess.Upgrade, sizeof(worker->s->upgrade));
+                    worker->s->upgrade[sizeof(worker->s->upgrade)-1] = '\0';
+                    strncpy(worker->s->secret, node->mess.AJPSecret, sizeof(worker->s->secret));
+                    worker->s->secret[sizeof(worker->s->secret)-1] = '\0';
                     /* XXX: We need that information from TC */
                     worker->s->redirect[0] = '\0';
                     worker->s->lbstatus = 0;
@@ -305,7 +308,10 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
             worker->s->hmax = node->mess.smax + 1;
         strncpy(worker->s->route, node->mess.JVMRoute, sizeof(worker->s->route));
         worker->s->route[sizeof(worker->s->route)-1] = '\0';
-        strcpy(worker->s->upgrade, node->mess.Upgrade);
+        strncpy(worker->s->upgrade, node->mess.Upgrade, sizeof(worker->s->upgrade));
+        worker->s->upgrade[sizeof(worker->s->upgrade)-1] = '\0';
+        strncpy(worker->s->secret, node->mess.AJPSecret, sizeof(worker->s->secret));
+        worker->s->secret[sizeof(worker->s->secret)-1] = '\0';
         worker->s->redirect[0] = '\0';
         worker->s->smax = node->mess.smax;
         worker->s->ttl = node->mess.ttl;
