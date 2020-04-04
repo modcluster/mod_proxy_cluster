@@ -148,6 +148,18 @@ static int proxy_worker_cmp(const void *a, const void *b)
     return strcmp(route1, route2);
 }
 
+/* compare proxy host with node host */
+static int compare_hostname(char *proxyhostname, char *nodehostname)
+{
+    if (nodehostname[0] == '[') {
+       char *ptr = nodehostname;
+       ptr++;
+       return strncasecmp(ptr, proxyhostname, strlen(ptr)-1);
+    } else {
+       return strcasecmp(proxyhostname, nodehostname);
+    }
+}
+
 static char * normalize_hostname(apr_pool_t *p, char *hostname)
 {
     char *ret = apr_palloc(p, strlen(hostname) + 1);
@@ -591,7 +603,7 @@ static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, pr
                 char sport[7];
                 apr_snprintf(sport, sizeof(sport), "%d", (*worker)->s->port);
                 if (strcmp((*worker)->s->scheme, node->mess.Type) ||
-                    strcasecmp((*worker)->s->hostname, node->mess.Host) ||
+                    compare_hostname((*worker)->s->hostname, node->mess.Host) ||
                     strcmp(sport, node->mess.Port)) {
                     (*worker)->s->index = 0;
                     /* XXX: broken  ap_my_generation--; mark old generation that will recreate the process */
@@ -1028,7 +1040,7 @@ static apr_status_t read_node_worker(int id, nodeinfo_t **node, proxy_worker *wo
         return status;
     apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
     if (strcmp(worker->s->scheme, (* node)->mess.Type) ||
-        strcasecmp(worker->s->hostname, (* node)->mess.Host) ||
+        compare_hostname(worker->s->hostname, (* node)->mess.Host) ||
         strcmp(sport, (* node)->mess.Port)) {
         /* for some reasons it is not the right node */
         return APR_NOTFOUND;
@@ -1091,7 +1103,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
 
                 if (strcmp(worker->s->scheme, ou->mess.Type) ||
-                    strcasecmp(worker->s->hostname, ou->mess.Host) ||
+                    compare_hostname(worker->s->hostname, ou->mess.Host) ||
                     strcmp(sport, ou->mess.Port)) {
                     /* the worker doesn't correspond to the node */
                     worker->s->index = 0;
