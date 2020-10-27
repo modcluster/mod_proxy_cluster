@@ -208,6 +208,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
     proxy_worker_shared *shared;
     proxy_cluster_helper *helper;
     apr_uri_t uri;
+    int created = 0;
 
     /* build the name (scheme and port) when needed */
     url = apr_pstrcat(pool, node->mess.Type, "://", normalize_hostname(pool,node->mess.Host), ":", node->mess.Port, NULL);
@@ -245,6 +246,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         helper->shared = worker->s;
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                      "Created: worker for %s", url);
+        created = -1;
     } else {
         if (!worker->context) {
             /* That is BalancerMember */
@@ -352,6 +354,70 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->is_address_reusable = 1;
         worker->s->acquire = apr_time_make(0, 2 * 1000); /* 2 ms */
         worker->s->retry = apr_time_from_sec(PROXY_WORKER_DEFAULT_RETRY);
+    }
+
+    if (created && worker->s->upgrade[0] != '\0') {
+       /* for ws and wss we create an additional worker for the http/https */
+       proxy_worker *ws_worker;
+       char *ws_url;
+       char *ws_ptr;
+       char ws_sheme[6];
+       apr_uri_t ws_uri;
+       /* build the name (scheme and port) when needed */
+       if (!strcmp(node->mess.Type, "ws"))
+           strcpy(ws_sheme, "http");
+       if (!strcmp(node->mess.Type, "wss"))
+           strcpy(ws_sheme, "https");
+
+       ws_url = apr_pstrcat(pool, ws_sheme, "://", normalize_hostname(pool,node->mess.Host), ":", node->mess.Port, NULL);
+       if (apr_uri_parse(pool, ws_url, &ws_uri) != APR_SUCCESS) {
+           ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, server,
+                        "Created: worker for %s failed: Unable to parse URL", ws_url);
+           node_storage->unlock_nodes();
+           return APR_EGENERAL;
+       }
+       if (!ws_uri.scheme) {
+           ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, server,
+                        "Created: worker for %s failed: URL must be absolute!", ws_url);
+           node_storage->unlock_nodes();
+           return APR_EGENERAL;
+       }
+       if (ws_uri.port && ws_uri.port == ap_proxy_port_of_scheme(ws_uri.scheme)) {
+           ws_uri.port = 0;
+       }
+       ws_ptr = apr_uri_unparse(pool, &ws_uri, APR_URI_UNP_REVEALPASSWORD);
+       ws_worker = ap_proxy_get_worker(pool, balancer, conf, ws_ptr);
+       if (ws_worker == NULL) {
+            /* creates it note the ap_proxy_get_worker and ap_proxy_define_worker aren't symetrical, and this leaks via the conf->pool */
+            const char *err = ap_proxy_define_worker(conf->pool, &ws_worker, balancer, conf, ws_url, 0);
+            if (err) {
+                ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, server,
+                             "Created: worker for %s failed: %s", ws_url, err);
+                node_storage->unlock_nodes();
+                return APR_EGENERAL;
+            }
+
+            ws_worker->context = (proxy_cluster_helper *) apr_pcalloc(conf->pool,  sizeof(proxy_cluster_helper));
+            if (!ws_worker->context) {
+                node_storage->unlock_nodes();
+                return APR_EGENERAL;
+            }
+            helper = (proxy_cluster_helper *) ws_worker->context;
+            helper->count_active = 0;
+            helper->shared = ws_worker->s;
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                         "Created: worker for %s", ws_url);
+
+       }
+       /* ws and http use the same shared memory */
+       ws_worker->s = (proxy_worker_shared *) ptr;
+       helper->index = node->mess.id;
+       if ((rv = ap_proxy_initialize_worker(ws_worker, server, conf->pool)) != APR_SUCCESS) {
+            ap_log_error(APLOG_MARK, APLOG_ERR, rv, server,
+                         "ap_proxy_initialize_worker failed %d for %s", rv, ws_url);
+            node_storage->unlock_nodes();
+            return rv;
+       }
     }
 
     if ((rv = ap_proxy_initialize_worker(worker, server, conf->pool)) != APR_SUCCESS) {
