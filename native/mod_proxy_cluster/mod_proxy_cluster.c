@@ -405,12 +405,36 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
             helper = (proxy_cluster_helper *) ws_worker->context;
             helper->count_active = 0;
             helper->shared = ws_worker->s;
+            ws_worker->s->hmax = shared->hmax;
+            strncpy(ws_worker->s->route, node->mess.JVMRoute, sizeof(ws_worker->s->route));
+            ws_worker->s->route[sizeof(ws_worker->s->route)-1] = '\0';
+            strncpy(ws_worker->s->upgrade, node->mess.Upgrade, sizeof(ws_worker->s->upgrade));
+            ws_worker->s->upgrade[sizeof(ws_worker->s->upgrade)-1] = '\0';
+            ws_worker->s->redirect[0] = '\0';
+            ws_worker->s->smax = node->mess.smax;
+            ws_worker->s->ttl = node->mess.ttl;
+            if (node->mess.timeout) {
+                ws_worker->s->timeout_set = 1;
+                ws_worker->s->timeout = node->mess.timeout;
+            }
+            ws_worker->s->flush_packets = node->mess.flushpackets;
+            ws_worker->s->flush_wait = node->mess.flushwait;
+            ws_worker->s->ping_timeout = node->mess.ping;
+            ws_worker->s->ping_timeout_set = 1;
+            ws_worker->s->acquire_set = 1;
+            ws_worker->s->conn_timeout_set = 1;
+            ws_worker->s->conn_timeout = node->mess.ping;
+            ws_worker->s->keepalive = 1;
+            ws_worker->s->keepalive_set = 1;
+            ws_worker->s->is_address_reusable = 1;
+            ws_worker->s->acquire = apr_time_make(0, 2 * 1000); /* 2 ms */
+            ws_worker->s->retry = apr_time_from_sec(PROXY_WORKER_DEFAULT_RETRY);
+
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                          "Created: worker for %s", ws_url);
 
        }
-       /* ws and http use the same shared memory */
-       ws_worker->s = (proxy_worker_shared *) ptr;
+       /* ws and http can't use the same shared memory but the use the same nodes */
        helper->index = node->mess.id;
        if ((rv = ap_proxy_initialize_worker(ws_worker, server, conf->pool)) != APR_SUCCESS) {
             ap_log_error(APLOG_MARK, APLOG_ERR, rv, server,
@@ -1839,6 +1863,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
     const char *session_id_with_route;
     char *tokenizer;
     const char *session_id;
+    int rc; /* for trans */
 
     workers = apr_pcalloc(r->pool, sizeof(proxy_worker *) * balancer->workers->nelts);
 #if HAVE_CLUSTER_EX_DEBUG
@@ -1976,6 +2001,25 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
         apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", "");
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                              "proxy: byrequests balancer FAILED");
+    }
+    rc = proxy_run_check_trans(r, mycandidate->s->name);
+    if (rc != OK) {
+        char *ptr = balancer->workers->elts;
+        int sizew = balancer->workers->elt_size;
+        for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
+            proxy_worker **run = (proxy_worker **) ptr;
+            proxy_worker *httpworker = *run;
+            if (!strcmp(httpworker->s->hostname, mycandidate->s->hostname)) {
+                /* They don't the shared memory another test is needed... */
+                if (!memcmp(httpworker->s->scheme, "http", 4) &&
+                    httpworker->s->port == mycandidate->s->port &&
+                    !strcmp(httpworker->s->route, mycandidate->s->route)) {
+                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                                 "proxy: byrequests balancer Using %s instead %s", httpworker->s->name, mycandidate->s->name);
+                    return httpworker;
+                }
+            }
+        }
     }
     return mycandidate;
 }
