@@ -140,6 +140,7 @@ static mem_t *domainstatsmem = NULL;
 static slotmem_storage_method *storage = NULL;
 static balancer_method *balancerhandler = NULL;
 static void (*advertise_info)(request_rec *) = NULL;
+static apr_status_t (*manage_worker)(request_rec *, apr_table_t *params) = NULL;
 
 module AP_MODULE_DECLARE_DATA manager_module;
 
@@ -701,6 +702,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     }
 
     advertise_info = ap_lookup_provider("advertise", "info", "0");
+    manage_worker = ap_lookup_provider("balancer", "manager", "0");
 
     /*
      * Retrieve a UUID and store the nonce.
@@ -877,6 +879,33 @@ static int  is_same_worker_existing(request_rec *r, nodeinfo_t *node) {
         }
     }
     return 0;
+}
+
+/*
+ * Builds the parameter for mod_balancer
+ */
+static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, balancerinfo_t *bal) {
+    apr_table_t *params;
+    params = apr_table_make(r->pool, 10);
+    /* balancer */
+    apr_table_set(params, "b" , node->mess.balancer);
+    apr_table_set(params, "b_lbm", "cluster");
+    apr_table_set(params, "b_tmo", apr_psprintf(r->pool, "%d", bal->Timeout));
+    apr_table_set(params, "b_max", apr_psprintf(r->pool, "%d", bal->Maxattempts));
+    apr_table_set(params, "b_ss", apr_pstrcat(r->pool, bal->StickySessionCookie, "|", bal->StickySessionPath, NULL));
+
+    /* and new worker */
+    apr_table_set(params, "b_wyes" , "1");
+    apr_table_set(params, "b_nwrkr" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
+    manage_worker(r, params);
+    apr_table_clear(params);
+
+    /* now process the worker */
+    apr_table_set(params, "b" , node->mess.balancer);
+    apr_table_set(params, "w" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
+    apr_table_set(params, "w_wr", node->mess.JVMRoute);
+    apr_table_set(params, "w_status_D", "0"); /* Not Dissabled */
+    return manage_worker(r, params);
 }
 
 /*
@@ -1190,6 +1219,15 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     phost = vhost;
     if (phost->host == NULL && phost->context == NULL) {
         loc_unlock_nodes();
+        /* if using mod_balancer create or update the worker */
+        if (manage_worker) {
+            apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: balancer-manager returned %d", rv);
+        } else {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: NO balancer-manager");
+        }
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
@@ -1205,6 +1243,18 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         vid++;
     }
     loc_unlock_nodes();
+
+    /* if using mod_balancer create or update the worker */
+    if (manage_worker) {
+        apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: balancer-manager returned %d", rv);
+
+    } else {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: NO balancer-manager");
+    }
+
     return NULL;
 }
 /*
