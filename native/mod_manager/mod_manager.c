@@ -41,8 +41,6 @@
 #include "mod_proxy.h"
 #include "ap_mpm.h"
 
-#include "mod_proxy_cluster.h"
-
 #include "slotmem.h"
 
 #include "node.h"
@@ -51,6 +49,8 @@
 #include "balancer.h"
 #include "sessionid.h"
 #include "domain.h"
+
+#include "mod_proxy_cluster.h"
 
 #define DEFMAXCONTEXT   100
 #define DEFMAXNODE      20
@@ -140,7 +140,8 @@ static mem_t *domainstatsmem = NULL;
 static slotmem_storage_method *storage = NULL;
 static balancer_method *balancerhandler = NULL;
 static void (*advertise_info)(request_rec *) = NULL;
-static apr_status_t (*manage_worker)(request_rec *, apr_table_t *params) = NULL;
+
+static APR_OPTIONAL_FN_TYPE(balancer_manage) *balancer_manage = NULL;
 
 module AP_MODULE_DECLARE_DATA manager_module;
 
@@ -702,7 +703,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     }
 
     advertise_info = ap_lookup_provider("advertise", "info", "0");
-    manage_worker = ap_lookup_provider("balancer", "manager", "0");
+    balancer_manage = APR_RETRIEVE_OPTIONAL_FN(balancer_manage);
 
     /*
      * Retrieve a UUID and store the nonce.
@@ -897,7 +898,7 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
     /* and new worker */
     apr_table_set(params, "b_wyes" , "1");
     apr_table_set(params, "b_nwrkr" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
-    manage_worker(r, params);
+    balancer_manage(r, params);
     apr_table_clear(params);
 
     /* now process the worker */
@@ -905,7 +906,7 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
     apr_table_set(params, "w" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
     apr_table_set(params, "w_wr", node->mess.JVMRoute);
     apr_table_set(params, "w_status_D", "0"); /* Not Dissabled */
-    return manage_worker(r, params);
+    return balancer_manage(r, params);
 }
 
 /*
@@ -1220,7 +1221,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     if (phost->host == NULL && phost->context == NULL) {
         loc_unlock_nodes();
         /* if using mod_balancer create or update the worker */
-        if (manage_worker) {
+        if (balancer_manage) {
             apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: balancer-manager returned %d", rv);
@@ -1245,7 +1246,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     loc_unlock_nodes();
 
     /* if using mod_balancer create or update the worker */
-    if (manage_worker) {
+    if (balancer_manage) {
         apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "process_config: balancer-manager returned %d", rv);
