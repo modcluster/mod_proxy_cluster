@@ -906,6 +906,15 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
     apr_table_set(params, "w" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
     apr_table_set(params, "w_wr", node->mess.JVMRoute);
     apr_table_set(params, "w_status_D", "0"); /* Not Dissabled */
+
+    /* set the health check (requires mod_proxy_hcheck) */
+    /* CPING for AJP and OPTIONS for HTTP/1.1 */
+    if (strcmp(node->mess.Type, "ajp"))
+        apr_table_set(params, "w_hm", "OPTIONS");
+    else
+        apr_table_set(params, "w_hm", "CPING");
+    /* Use 10 sec for the moment, the idea is to adjust it with the STATUS frequency */
+    apr_table_set(params, "w_hi", "10000");
     return balancer_manage(r, params);
 }
 
