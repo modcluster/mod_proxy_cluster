@@ -15,6 +15,7 @@
  */
 
 #include "mod_proxy.h"
+#include "mod_watchdog.h"
 #include "scoreboard.h"
 #include "ap_mpm.h"
 #include "apr_version.h"
@@ -29,6 +30,9 @@
 
 #include "mod_proxy_cluster.h"
 
+#define LB_CLUSTER_WATHCHDOG_NAME ("_lb_cluster_")
+static ap_watchdog_t *watchdog;
+
 static struct node_storage_method *node_storage = NULL;
 static struct host_storage_method *host_storage = NULL;
 static struct context_storage_method *context_storage = NULL;
@@ -36,6 +40,7 @@ static struct balancer_storage_method *balancer_storage = NULL;
 static struct domain_storage_method *domain_storage = NULL;
 
 static int use_alias = 0; /* 1 : Compare Alias with server_name */
+static apr_time_t lbstatus_recalc_time = apr_time_from_sec(5); /* recalcul the lbstatus based on number of request in the time interval */
 
 module AP_MODULE_DECLARE_DATA lbmethod_cluster_module;
 
@@ -94,10 +99,10 @@ static int lbmethod_cluster_trans(request_rec *r)
                 "lbmethod_cluster_trans for %d", conf->balancers->nelts);
 #endif
 
-    proxy_vhost_table *vhost_table = read_vhost_table(r, host_storage);
-    proxy_context_table *context_table = read_context_table(r, context_storage);
-    proxy_balancer_table *balancer_table = read_balancer_table(r, balancer_storage);
-    proxy_node_table *node_table = read_node_table(r, node_storage);
+    proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage);
+    proxy_context_table *context_table = read_context_table(r->pool, context_storage);
+    proxy_balancer_table *balancer_table = read_balancer_table(r->pool, balancer_storage);
+    proxy_node_table *node_table = read_node_table(r->pool, node_storage);
 
     apr_table_setn(r->notes, "vhost-table",  (char *) vhost_table);
     apr_table_setn(r->notes, "context-table",  (char *) context_table);
@@ -135,9 +140,96 @@ static int lbmethod_cluster_trans(request_rec *r)
     return DECLINED;
 }
 
+static apr_status_t mc_watchdog_callback(int state, void *data,
+                                         apr_pool_t *pool)
+{
+    apr_status_t rv = APR_SUCCESS;
+    server_rec *s = (server_rec *)data;
+    proxy_node_table *node_table;
+    apr_time_t now;
+    switch (state) {
+        case AP_WATCHDOG_STATE_STARTING:
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "lbmethod_cluster_watchdog_callback STARTING");
+            break;
+
+        case AP_WATCHDOG_STATE_RUNNING:
+            /* loop thru all workers */
+            node_table = read_node_table(pool, node_storage);
+            now = apr_time_now();
+            if (s) {
+                int i;
+                void *sconf = s->module_config;
+                proxy_server_conf *conf = (proxy_server_conf *) ap_get_module_config(sconf, &proxy_module);
+                proxy_balancer *balancer = (proxy_balancer *)conf->balancers->elts;
+
+                for (i = 0; i < conf->balancers->nelts; i++, balancer++) {
+                    int n;
+                    proxy_worker **workers;
+                    proxy_worker *worker;
+                    /* Have any new balancers or workers been added dynamically? */
+                    ap_proxy_sync_balancer(balancer, s, conf);
+                    workers = (proxy_worker **)balancer->workers->elts;
+                    for (n = 0; n < balancer->workers->nelts; n++) {
+                        nodeinfo_t* node;
+                        int id;
+                        worker = *workers;
+                        node = table_get_node_route(node_table, worker->s->route, &id);
+                        if (node != NULL) {
+                            if (node->mess.updatetimelb < (now - lbstatus_recalc_time)) {
+                                /* The lbstatus needs to be updated */
+                                nodeinfo_t *ou; 
+                                int elected, oldelected;
+                                elected = worker->s->elected;
+                                oldelected = node->mess.oldelected;
+                                node_storage->lock_nodes();
+                                if (node_storage->read_node(id, &ou) != APR_SUCCESS) {
+                                    node_storage->unlock_nodes();
+                                    workers++;
+                                    continue;
+                                }
+                                ou->mess.updatetimelb = now;
+                                node->mess.updatetimelb = now;
+                                node->mess.oldelected = elected;
+                                ou->mess.oldelected = elected;
+                                if (worker->s->lbfactor > 0)
+                                    worker->s->lbstatus = ((elected - oldelected) * 1000) / worker->s->lbfactor;
+                                if (elected == oldelected) {
+                                    /* lbstatus_recalc_time without changes: test for broken nodes */
+                                    if (PROXY_WORKER_IS(worker, PROXY_WORKER_HC_FAIL)) {
+                                        ou->mess.num_failure_idle++;
+                                        if (ou->mess.num_failure_idle > 60) {
+                                            /* Failing for 5 minutes: time to mark it removed */
+                                            ou->mess.remove = 1;
+                                            ou->updatetime = now;
+                                        }
+                                    } else {
+                                        ou->mess.num_failure_idle = 0;
+                                    }
+                                } else {
+                                    ou->mess.num_failure_idle = 0;
+                                }
+                                node_storage->unlock_nodes();
+                            }
+                        }
+                        workers++;
+                    }
+                }
+            }
+            break;
+
+        case AP_WATCHDOG_STATE_STOPPING:
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "lbmethod_cluster_watchdog_callback STOPPING");
+            break;
+    }
+    return rv;
+}
+
 static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
                                      apr_pool_t *ptemp, server_rec *s)
 {
+   APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
+   APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
+
    node_storage = ap_lookup_provider("manager" , "shared", "0");
     if (node_storage == NULL) {
         ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
@@ -171,6 +263,39 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
 
     /* Add version information */
     ap_add_version_component(p, MOD_CLUSTER_EXPOSED_VERSION);
+
+    if (ap_state_query(AP_SQ_MAIN_STATE) == AP_SQ_MS_CREATE_PRE_CONFIG) {
+        return OK;
+    }
+
+    /* add our watchdog callback */
+    mc_watchdog_get_instance = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_get_instance);
+    mc_watchdog_register_callback = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_register_callback);
+    if (!mc_watchdog_get_instance || !mc_watchdog_register_callback) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03262)
+                     "mod_watchdog is required");
+        return !OK;
+    }
+    if (mc_watchdog_get_instance(&watchdog,
+                                  LB_CLUSTER_WATHCHDOG_NAME,
+                                  0, 1, p)) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263)
+                     "Failed to create watchdog instance (%s)",
+                     LB_CLUSTER_WATHCHDOG_NAME);
+        return !OK;
+    }
+    while (s) {
+        if (mc_watchdog_register_callback(watchdog,
+                AP_WD_TM_SLICE,
+                s,
+                mc_watchdog_callback)) {
+            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03264)
+                         "Failed to register watchdog callback (%s)",
+                         LB_CLUSTER_WATHCHDOG_NAME);
+            return !OK;
+        }
+        s = s->next;
+    }
     return OK;
 }
 
