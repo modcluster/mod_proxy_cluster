@@ -41,20 +41,92 @@ static struct domain_storage_method *domain_storage = NULL;
 
 static int use_alias = 0; /* 1 : Compare Alias with server_name */
 static apr_time_t lbstatus_recalc_time = apr_time_from_sec(5); /* recalcul the lbstatus based on number of request in the time interval */
+static apr_time_t wait_for_remove =  apr_time_from_sec(10); /* wait until that before removing a removed node */
 
 module AP_MODULE_DECLARE_DATA lbmethod_cluster_module;
+
+static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balancer *balancer,
+                                         proxy_vhost_table *vhost_table,
+                                         proxy_context_table *context_table, proxy_node_table *node_table)
+{
+    char *ptr = balancer->workers->elts;
+    int sizew = balancer->workers->elt_size;
+    proxy_worker *mycandidate = NULL;
+    int i;
+
+    for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
+        nodeinfo_t* node;
+        int id;
+        proxy_worker **run = (proxy_worker **) ptr;
+        proxy_worker *worker = *run;
+        
+        if (!PROXY_WORKER_IS_USABLE(worker))
+            continue;
+        /* read the node and check context */
+        node = table_get_node_route(node_table, worker->s->route, &id);
+        if (!node)
+            continue;
+        if (!context_host_ok(r, balancer, id, use_alias, vhost_table, context_table, node_table))
+            continue;
+        if (!mycandidate) {
+            mycandidate = worker;
+        } else {
+            nodeinfo_t* node1;
+            int id1;
+            node1 = table_get_node_route(node_table, mycandidate->s->route, &id1);
+            if (node1) {
+                int lbstatus, lbstatus1;
+                lbstatus1 = ((mycandidate->s->elected - node1->mess.oldelected) * 1000)/mycandidate->s->lbfactor;
+                lbstatus  = ((worker->s->elected - node->mess.oldelected) * 1000)/worker->s->lbfactor;
+                if (lbstatus1> lbstatus) {
+                    mycandidate = worker;
+                }
+            }
+        }
+    }
+    if (mycandidate) {
+        if (proxy_run_check_trans(r, mycandidate->s->name) != OK) {
+            char *ptr = balancer->workers->elts;
+            int sizew = balancer->workers->elt_size;
+            for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
+                proxy_worker **run = (proxy_worker **) ptr;
+                proxy_worker *httpworker = *run;
+                if (!strcmp(httpworker->s->hostname, mycandidate->s->hostname)) {
+                    /* They don't the shared memory another test is needed... */
+                    if (!memcmp(httpworker->s->scheme, "http", 4) &&
+                        httpworker->s->port == mycandidate->s->port &&
+                        !strcmp(httpworker->s->route, mycandidate->s->route)) {
+                        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                                     "proxy: byrequests balancer Using %s instead %s", httpworker->s->name, mycandidate->s->name);
+                        return httpworker;
+                    }
+                }
+            }
+        }
+    }
+    return mycandidate;
+}
 
 static proxy_worker *find_best(proxy_balancer *balancer,
                                   request_rec *r)
 {
-    proxy_worker **worker = NULL;
     proxy_worker *mycandidate = NULL;
-    int i;
-    for (i = 0; i < balancer->workers->nelts; i++) {
-        worker = &APR_ARRAY_IDX(balancer->workers, i, proxy_worker *);
-    }
-    if (worker != NULL)
-        mycandidate = *worker;
+
+    proxy_vhost_table *vhost_table = (proxy_vhost_table *) apr_table_get(r->notes, "vhost-table");
+    proxy_context_table *context_table  = (proxy_context_table *) apr_table_get(r->notes, "context-table");
+    proxy_node_table *node_table  = (proxy_node_table *) apr_table_get(r->notes, "node-table");
+
+    if (!vhost_table)
+        vhost_table = read_vhost_table(r->pool, host_storage);
+
+    if (!context_table)
+        context_table = read_context_table(r->pool, context_storage);
+
+    if (!node_table)
+        node_table = read_node_table(r->pool, node_storage);
+
+    mycandidate = internal_find_best_byrequests(r, balancer, vhost_table, context_table, node_table);
+
     return mycandidate;
 }
 
@@ -68,6 +140,11 @@ static apr_status_t age(proxy_balancer *balancer, server_rec *s)
     return APR_SUCCESS;
 }
 
+static apr_status_t updatelbstatus(proxy_balancer *balancer, proxy_worker *elected, server_rec *s)
+{
+    return APR_SUCCESS;
+}
+
 static const proxy_balancer_method cluster = 
 {
     "cluster",
@@ -75,7 +152,7 @@ static const proxy_balancer_method cluster =
     NULL,
     &reset,
     &age,
-    NULL
+    &updatelbstatus
 };
 
 /*
@@ -140,6 +217,26 @@ static int lbmethod_cluster_trans(request_rec *r)
     return DECLINED;
 }
 
+/*
+ * Remove node that have beeen marked removed for more than 10 seconds.
+ */
+static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now, proxy_node_table *node_table)
+{
+    int i;
+
+    for (i=0; i<node_table->sizenode; i++) {
+        nodeinfo_t *ou;
+        if (node_storage->read_node(node_table->nodes[i], &ou) != APR_SUCCESS)
+            continue;
+        if (ou->mess.remove && (now - ou->updatetime) >= wait_for_remove &&
+            (now - ou->mess.lastcleantry) >= wait_for_remove) {
+            /* remove the node from the shared memory */
+            node_storage->remove_host_context(ou->mess.id, pool);
+            node_storage->remove_node(ou);
+        }
+    }
+}
+
 static apr_status_t mc_watchdog_callback(int state, void *data,
                                          apr_pool_t *pool)
 {
@@ -175,6 +272,11 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
                         worker = *workers;
                         node = table_get_node_route(node_table, worker->s->route, &id);
                         if (node != NULL) {
+                            if (node->mess.remove) {
+                                /* Already marked for removal */
+                                workers++;
+                               continue;
+                            }
                             if (node->mess.updatetimelb < (now - lbstatus_recalc_time)) {
                                 /* The lbstatus needs to be updated */
                                 nodeinfo_t *ou; 
@@ -186,6 +288,12 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
                                     node_storage->unlock_nodes();
                                     workers++;
                                     continue;
+                                }
+                                if (ou->mess.remove) {
+                                    /* the stored node is already marked for removal */
+                                    node_storage->unlock_nodes();
+                                    workers++;
+                                   continue;
                                 }
                                 ou->mess.updatetimelb = now;
                                 node->mess.updatetimelb = now;
@@ -214,6 +322,9 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
                         workers++;
                     }
                 }
+
+                /* cleanup removed node in shared memory */
+                remove_removed_node(s, pool, now, node_table);
             }
             break;
 
