@@ -97,10 +97,10 @@ struct node_context
 typedef struct node_context node_context;
 
 /* common routines */
-proxy_vhost_table *read_vhost_table(request_rec *r, struct host_storage_method *host_storage);
-proxy_context_table *read_context_table(request_rec *r, struct context_storage_method *context_storage);
-proxy_balancer_table *read_balancer_table(request_rec *r, struct balancer_storage_method *balancer_storage);
-proxy_node_table *read_node_table(request_rec *r, struct node_storage_method *node_storage);
+proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage);
+proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage);
+proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage);
+proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *node_storage);
 
 const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
                                       proxy_vhost_table *vhost_table,
@@ -123,5 +123,11 @@ char *get_path_param(apr_pool_t *pool, char *url,
 node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, const char *route, int use_alias,
                                      proxy_vhost_table* vhost_table, proxy_context_table* context_table, proxy_node_table *node_table);
 int hassession_byname(request_rec *r, int nodeid, const char *route, proxy_node_table *node_table);
+
+nodeinfo_t* table_get_node_route(proxy_node_table *node_table, char *route, int *id);
+
+node_context *context_host_ok(request_rec *r, proxy_balancer *balancer, int node, int use_alias,
+                             proxy_vhost_table *vhost_table, proxy_context_table *context_table, proxy_node_table *node_table);
+
 
 #endif /*MOD_PROXY_CLUSTER_H*/

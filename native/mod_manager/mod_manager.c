@@ -2970,6 +2970,7 @@ static int manager_info(request_rec *r)
                    (int) sizeof(ou->mess.Port), ou->mess.Port);
         pptr = pptr + ou->offset;
         if (mconf->reduce_display) {
+            /* XXX: The logic depend on the proxy and should use shared memory directly */
             printproxy_stat(r, mconf->reduce_display, (proxy_worker_shared *) pptr);
         }
 

@@ -20,11 +20,11 @@
 #include "mod_proxy_cluster.h"
 
 /* Read the virtual host table from shared memory */
-proxy_vhost_table *read_vhost_table(request_rec *r, struct host_storage_method *host_storage)
+proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage)
 {
     int i;
     int size;
-    proxy_vhost_table *vhost_table = apr_palloc(r->pool, sizeof(proxy_vhost_table));
+    proxy_vhost_table *vhost_table = apr_palloc(pool, sizeof(proxy_vhost_table));
     size = host_storage->get_max_size_host();
     if (size == 0) {
         vhost_table->sizevhost = 0;
@@ -33,9 +33,9 @@ proxy_vhost_table *read_vhost_table(request_rec *r, struct host_storage_method *
         return vhost_table;
     }
 
-    vhost_table->vhosts =  apr_palloc(r->pool, sizeof(int) * host_storage->get_max_size_host());
+    vhost_table->vhosts =  apr_palloc(pool, sizeof(int) * host_storage->get_max_size_host());
     vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
-    vhost_table->vhost_info = apr_palloc(r->pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
+    vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
     for (i = 0; i < vhost_table->sizevhost; i++) {
         hostinfo_t* h;
         int host_index = vhost_table->vhosts[i];
@@ -46,11 +46,11 @@ proxy_vhost_table *read_vhost_table(request_rec *r, struct host_storage_method *
 }
 
 /* Read the context table from shared memory */
-proxy_context_table *read_context_table(request_rec *r, struct context_storage_method *context_storage)
+proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage)
 {
     int i;
     int size;
-    proxy_context_table *context_table = apr_palloc(r->pool, sizeof(proxy_context_table));
+    proxy_context_table *context_table = apr_palloc(pool, sizeof(proxy_context_table));
     size = context_storage->get_max_size_context();
     if (size == 0) { 
         context_table->sizecontext = 0;
@@ -58,9 +58,9 @@ proxy_context_table *read_context_table(request_rec *r, struct context_storage_m
         context_table->context_info = NULL;
         return context_table;
     }
-    context_table->contexts =  apr_palloc(r->pool, sizeof(int) * size);
+    context_table->contexts =  apr_palloc(pool, sizeof(int) * size);
     context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
-    context_table->context_info = apr_palloc(r->pool, sizeof(contextinfo_t) * context_table->sizecontext);
+    context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * context_table->sizecontext);
     for (i = 0; i < context_table->sizecontext; i++) {
         contextinfo_t* h;
         int context_index = context_table->contexts[i];
@@ -71,11 +71,11 @@ proxy_context_table *read_context_table(request_rec *r, struct context_storage_m
 }
 
 /* Read the balancer table from shared memory */
-proxy_balancer_table *read_balancer_table(request_rec *r, struct balancer_storage_method *balancer_storage)
+proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage)
 {
     int i;
     int size;
-    proxy_balancer_table *balancer_table = apr_palloc(r->pool, sizeof(proxy_balancer_table));
+    proxy_balancer_table *balancer_table = apr_palloc(pool, sizeof(proxy_balancer_table));
     size = balancer_storage->get_max_size_balancer();
     if (size == 0) { 
         balancer_table->sizebalancer = 0;
@@ -83,9 +83,9 @@ proxy_balancer_table *read_balancer_table(request_rec *r, struct balancer_storag
         balancer_table->balancer_info = NULL;
         return balancer_table;
     }
-    balancer_table->balancers =  apr_palloc(r->pool, sizeof(int) * size);
+    balancer_table->balancers =  apr_palloc(pool, sizeof(int) * size);
     balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
-    balancer_table->balancer_info = apr_palloc(r->pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
+    balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
     for (i = 0; i < balancer_table->sizebalancer; i++) {
         balancerinfo_t* h;
         int balancer_index = balancer_table->balancers[i];
@@ -96,11 +96,11 @@ proxy_balancer_table *read_balancer_table(request_rec *r, struct balancer_storag
 }
 
 /* Read the node table from shared memory */
-proxy_node_table *read_node_table(request_rec *r, struct node_storage_method *node_storage)
+proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *node_storage)
 {
     int i;
     int size;
-    proxy_node_table *node_table =  apr_palloc(r->pool, sizeof(proxy_node_table));
+    proxy_node_table *node_table =  apr_palloc(pool, sizeof(proxy_node_table));
     size = node_storage->get_max_size_node();
     if (size == 0) { 
         node_table->sizenode = 0;
@@ -108,9 +108,9 @@ proxy_node_table *read_node_table(request_rec *r, struct node_storage_method *no
         node_table->node_info = NULL;
         return node_table;
     }
-    node_table->nodes =  apr_palloc(r->pool, sizeof(int) * size);
+    node_table->nodes =  apr_palloc(pool, sizeof(int) * size);
     node_table->sizenode = node_storage->get_ids_used_node(node_table->nodes);
-    node_table->node_info = apr_palloc(r->pool, sizeof(nodeinfo_t) * node_table->sizenode);
+    node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * node_table->sizenode);
     for (i = 0; i < node_table->sizenode; i++) {
         nodeinfo_t* h;
         int node_index = node_table->nodes[i];
@@ -575,6 +575,18 @@ nodeinfo_t* table_get_node(proxy_node_table *node_table, int id)
     }
     return NULL;
 }
+/* Read a node from the table using the route */
+nodeinfo_t* table_get_node_route(proxy_node_table *node_table, char *route, int *id)
+{
+    int i;
+    for (i = 0; i < node_table->sizenode; i++) {
+        if (!strcmp(node_table->node_info[i].mess.JVMRoute, route)) {
+            *id = node_table->nodes[i];
+            return &node_table->node_info[i];
+        }
+    }
+    return NULL;
+}
 
 /**
  * Search the balancer that corresponds to the pair context/host
@@ -611,4 +623,30 @@ const char *get_context_host_balancer(request_rec *r,
         nodes++;
     }
     return NULL;
+}
+
+
+/*
+ * Return the node cotenxt Check that the worker will handle the host/context.
+ * de
+ * The id of the worker is used to find the (slot) node in the shared
+ * memory.
+ * (See get_context_host_balancer too).
+ */ 
+node_context *context_host_ok(request_rec *r, proxy_balancer *balancer, int node, int use_alias,
+                             proxy_vhost_table *vhost_table, proxy_context_table *context_table, proxy_node_table *node_table)
+{
+    const char *route;
+    node_context *best;
+    route = apr_table_get(r->notes, "session-route");
+    best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
+    if (best == NULL)
+        return NULL;
+    while ((*best).node != -1) {
+        if ((*best).node == node) break;
+        best++;
+    }
+    if ((*best).node == -1)
+        return NULL; /* not found */
+    return best;
 }
