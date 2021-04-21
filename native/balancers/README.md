@@ -1,7 +1,7 @@
 # extension for mod_balancer
 The module requires mod_balancer
 
-# to use it
+# to use it (example)
 ```
 LoadModule cluster_slotmem_module modules/mod_cluster_slotmem.so
 LoadModule manager_module modules/mod_manager.so
