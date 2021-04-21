@@ -41,8 +41,6 @@
 #include "mod_proxy.h"
 #include "ap_mpm.h"
 
-#include "mod_proxy_cluster.h"
-
 #include "slotmem.h"
 
 #include "node.h"
@@ -51,6 +49,8 @@
 #include "balancer.h"
 #include "sessionid.h"
 #include "domain.h"
+
+#include "mod_proxy_cluster.h"
 
 #define DEFMAXCONTEXT   100
 #define DEFMAXNODE      20
@@ -140,6 +140,8 @@ static mem_t *domainstatsmem = NULL;
 static slotmem_storage_method *storage = NULL;
 static balancer_method *balancerhandler = NULL;
 static void (*advertise_info)(request_rec *) = NULL;
+
+static APR_OPTIONAL_FN_TYPE(balancer_manage) *balancer_manage = NULL;
 
 module AP_MODULE_DECLARE_DATA manager_module;
 
@@ -701,6 +703,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     }
 
     advertise_info = ap_lookup_provider("advertise", "info", "0");
+    balancer_manage = APR_RETRIEVE_OPTIONAL_FN(balancer_manage);
 
     /*
      * Retrieve a UUID and store the nonce.
@@ -877,6 +880,42 @@ static int  is_same_worker_existing(request_rec *r, nodeinfo_t *node) {
         }
     }
     return 0;
+}
+
+/*
+ * Builds the parameter for mod_balancer
+ */
+static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, balancerinfo_t *bal) {
+    apr_table_t *params;
+    params = apr_table_make(r->pool, 10);
+    /* balancer */
+    apr_table_set(params, "b" , node->mess.balancer);
+    apr_table_set(params, "b_lbm", "cluster");
+    apr_table_set(params, "b_tmo", apr_psprintf(r->pool, "%d", bal->Timeout));
+    apr_table_set(params, "b_max", apr_psprintf(r->pool, "%d", bal->Maxattempts));
+    apr_table_set(params, "b_ss", apr_pstrcat(r->pool, bal->StickySessionCookie, "|", bal->StickySessionPath, NULL));
+
+    /* and new worker */
+    apr_table_set(params, "b_wyes" , "1");
+    apr_table_set(params, "b_nwrkr" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
+    balancer_manage(r, params);
+    apr_table_clear(params);
+
+    /* now process the worker */
+    apr_table_set(params, "b" , node->mess.balancer);
+    apr_table_set(params, "w" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
+    apr_table_set(params, "w_wr", node->mess.JVMRoute);
+    apr_table_set(params, "w_status_D", "0"); /* Not Dissabled */
+
+    /* set the health check (requires mod_proxy_hcheck) */
+    /* CPING for AJP and OPTIONS for HTTP/1.1 */
+    if (strcmp(node->mess.Type, "ajp"))
+        apr_table_set(params, "w_hm", "OPTIONS");
+    else
+        apr_table_set(params, "w_hm", "CPING");
+    /* Use 10 sec for the moment, the idea is to adjust it with the STATUS frequency */
+    apr_table_set(params, "w_hi", "10000");
+    return balancer_manage(r, params);
 }
 
 /*
@@ -1190,6 +1229,15 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     phost = vhost;
     if (phost->host == NULL && phost->context == NULL) {
         loc_unlock_nodes();
+        /* if using mod_balancer create or update the worker */
+        if (balancer_manage) {
+            apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: balancer-manager returned %d", rv);
+        } else {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: NO balancer-manager");
+        }
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
@@ -1205,6 +1253,18 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         vid++;
     }
     loc_unlock_nodes();
+
+    /* if using mod_balancer create or update the worker */
+    if (balancer_manage) {
+        apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: balancer-manager returned %d", rv);
+
+    } else {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: NO balancer-manager");
+    }
+
     return NULL;
 }
 /*
