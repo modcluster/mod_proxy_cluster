@@ -25,8 +25,6 @@
  * @version $Revision$
  */
 
-#include "apr_strings.h"
-#include "apr_version.h"
 #include "apr_thread_cond.h"
 
 #include "httpd.h"
