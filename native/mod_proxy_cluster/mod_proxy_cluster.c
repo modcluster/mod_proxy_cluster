@@ -279,6 +279,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->index = node->mess.id;
         strncpy(worker->s->name, shared->name, sizeof(worker->s->name));
         strncpy(worker->s->hostname, shared->hostname, sizeof(worker->s->hostname));
+        strncpy(worker->s->hostname_ex, shared->hostname_ex, sizeof(worker->s->hostname_ex));
         strncpy(worker->s->scheme, shared->scheme, sizeof(worker->s->scheme));
         worker->s->port = shared->port;
         worker->s->hmax = shared->hmax;
@@ -1133,19 +1134,28 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
         if (ou->mess.updatetimelb < (now - lbstatus_recalc_time)) {
             /* The lbstatus needs to be updated */
             int elected, oldelected;
+            apr_off_t read, oldread;
             proxy_worker_shared *stat;
             char *ptr = (char *) ou;
+
             ptr = ptr + ou->offset;
             stat = (proxy_worker_shared *) ptr;
             elected = stat->elected;
+            read = stat->read;
             oldelected = ou->mess.oldelected;
+            oldread = ou->mess.oldread;
             ou->mess.updatetimelb = now;
             ou->mess.oldelected = elected;
+            ou->mess.oldread = read;
             if (stat->lbfactor > 0)
                 stat->lbstatus = ((elected - oldelected) * 1000) / stat->lbfactor;
-            if (elected == oldelected) {
-                /* lbstatus_recalc_time without changes: test for broken nodes */
-                /* first get the worker, create a dummy request and do a ping  */
+            if (read == oldread) {
+                /* lbstatus_recalc_time without changes: test for broken nodes   */
+                /* first get the worker, create a dummy request and do a ping    */
+                /* worker->s->retries is the number of retries that have occured */
+                /* it is set to zero when the back-end is back to normal.        */
+                /* worker->s->retries is also set to zero is a connection is     */
+                /* establish so we use read to check for changes                 */ 
                 char sport[7];
                 char *url;
                 apr_status_t rv;
@@ -1196,7 +1206,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                     continue;
 
                 if (rv != APR_SUCCESS) {
-                    /* We can't reach the node */
+                    /* We can't reach the node: XXX changing ou->mess.updatetimelb here ??? */
                     worker->s->status |= PROXY_WORKER_IN_ERROR;
                     ou->mess.num_failure_idle++;
                     if (ou->mess.num_failure_idle > 60) {
@@ -1225,6 +1235,8 @@ static void remove_timeout_sessionid(proxy_server_conf *conf, apr_pool_t *pool, 
     /* read the ident of the sessionid */
     size = sessionid_storage->get_max_size_sessionid();
     if (size == 0)
+        return;
+    else
         return;
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = sessionid_storage->get_ids_used_sessionid(id);
@@ -1617,16 +1629,15 @@ static const struct balancer_method balancerhandler =
 /*
  * Remove node that have beeen marked removed for more than 10 seconds.
  */
-static void remove_removed_node(apr_pool_t *pool)
+static void remove_removed_node(apr_pool_t *pool, server_rec *server)
 {
     int *id, size, i;
     apr_time_t now = apr_time_now();
 
     /* read the ident of the nodes */
     size = node_storage->get_max_size_node();
-    if (size == 0) {
+    if (size == 0)
         return;
-    }
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = node_storage->get_ids_used_node(id);
     for (i=0; i<size; i++) {
@@ -1702,7 +1713,7 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
     if (sessionid_storage)
         remove_timeout_sessionid(conf, pool, s);
     /* cleanup removed node in shared memory */
-    remove_removed_node(pool);
+    remove_removed_node(pool, s);
     if (last) {
         node_storage->worker_nodes_are_updated(s, last);
     }
