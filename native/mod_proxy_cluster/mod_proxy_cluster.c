@@ -25,10 +25,6 @@
  * @version $Revision$
  */
 
-#include "apr_strings.h"
-#include "apr_version.h"
-#include "apr_thread_cond.h"
-
 #include "httpd.h"
 #include "http_config.h"
 #include "http_log.h"
@@ -39,6 +35,7 @@
 #include "scoreboard.h"
 #include "ap_mpm.h"
 #include "mod_proxy.h"
+#include "mod_watchdog.h"
 
 #include "slotmem.h"
 
@@ -84,10 +81,11 @@ static struct balancer_storage_method *balancer_storage = NULL;
 static struct sessionid_storage_method *sessionid_storage = NULL; 
 static struct domain_storage_method *domain_storage = NULL; 
 
-static apr_thread_t *watchdog_thread = NULL;
+#define LB_CLUSTER_WATHCHDOG_NAME ("_mod_cluster_")
+static APR_OPTIONAL_FN_TYPE(ap_watchdog_set_callback_interval) *mc_watchdog_set_interval;
+static ap_watchdog_t *watchdog;
+
 static apr_thread_mutex_t *lock = NULL;
-static apr_thread_cond_t *exit_cond = NULL;
-static int watchdog_must_terminate = 0;
 
 static server_rec *main_server = NULL;
 #define CREAT_ALL  0 /* create balancers/workers in all VirtualHost */
@@ -281,6 +279,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->index = node->mess.id;
         strncpy(worker->s->name, shared->name, sizeof(worker->s->name));
         strncpy(worker->s->hostname, shared->hostname, sizeof(worker->s->hostname));
+        strncpy(worker->s->hostname_ex, shared->hostname_ex, sizeof(worker->s->hostname_ex));
         strncpy(worker->s->scheme, shared->scheme, sizeof(worker->s->scheme));
         worker->s->port = shared->port;
         worker->s->hmax = shared->hmax;
@@ -1135,19 +1134,28 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
         if (ou->mess.updatetimelb < (now - lbstatus_recalc_time)) {
             /* The lbstatus needs to be updated */
             int elected, oldelected;
+            apr_off_t read, oldread;
             proxy_worker_shared *stat;
             char *ptr = (char *) ou;
+
             ptr = ptr + ou->offset;
             stat = (proxy_worker_shared *) ptr;
             elected = stat->elected;
+            read = stat->read;
             oldelected = ou->mess.oldelected;
+            oldread = ou->mess.oldread;
             ou->mess.updatetimelb = now;
             ou->mess.oldelected = elected;
+            ou->mess.oldread = read;
             if (stat->lbfactor > 0)
                 stat->lbstatus = ((elected - oldelected) * 1000) / stat->lbfactor;
-            if (elected == oldelected) {
-                /* lbstatus_recalc_time without changes: test for broken nodes */
-                /* first get the worker, create a dummy request and do a ping  */
+            if (read == oldread) {
+                /* lbstatus_recalc_time without changes: test for broken nodes   */
+                /* first get the worker, create a dummy request and do a ping    */
+                /* worker->s->retries is the number of retries that have occured */
+                /* it is set to zero when the back-end is back to normal.        */
+                /* worker->s->retries is also set to zero is a connection is     */
+                /* establish so we use read to check for changes                 */ 
                 char sport[7];
                 char *url;
                 apr_status_t rv;
@@ -1198,7 +1206,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                     continue;
 
                 if (rv != APR_SUCCESS) {
-                    /* We can't reach the node */
+                    /* We can't reach the node: XXX changing ou->mess.updatetimelb here ??? */
                     worker->s->status |= PROXY_WORKER_IN_ERROR;
                     ou->mess.num_failure_idle++;
                     if (ou->mess.num_failure_idle > 60) {
@@ -1227,6 +1235,8 @@ static void remove_timeout_sessionid(proxy_server_conf *conf, apr_pool_t *pool, 
     /* read the ident of the sessionid */
     size = sessionid_storage->get_max_size_sessionid();
     if (size == 0)
+        return;
+    else
         return;
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = sessionid_storage->get_ids_used_sessionid(id);
@@ -1619,16 +1629,15 @@ static const struct balancer_method balancerhandler =
 /*
  * Remove node that have beeen marked removed for more than 10 seconds.
  */
-static void remove_removed_node(apr_pool_t *pool)
+static void remove_removed_node(apr_pool_t *pool, server_rec *server)
 {
     int *id, size, i;
     apr_time_t now = apr_time_now();
 
     /* read the ident of the nodes */
     size = node_storage->get_max_size_node();
-    if (size == 0) {
+    if (size == 0)
         return;
-    }
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = node_storage->get_ids_used_node(id);
     for (i=0; i<size; i++) {
@@ -1680,91 +1689,59 @@ static void remove_workers_nodes(proxy_server_conf *conf, apr_pool_t *pool, serv
     }
     apr_thread_mutex_unlock(lock);
 }
-static void * APR_THREAD_FUNC proxy_cluster_watchdog_func(apr_thread_t *thd, void *data)
+/* Called by mc_watchdog_callback every seconds and for each server and from one child only */
+static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
 {
-    apr_status_t rv;
-    apr_pool_t *pool;
-    apr_sleep(apr_time_make(1, 0)); /* wait before starting */
-    for (;;) {
-        server_rec *s = main_server;
-        void *sconf = s->module_config;
-        proxy_server_conf *conf = (proxy_server_conf *)
-            ap_get_module_config(sconf, &proxy_module);
-        unsigned int last;
+    void *sconf = s->module_config;
+    proxy_server_conf *conf = (proxy_server_conf *)
+        ap_get_module_config(sconf, &proxy_module);
+    unsigned int last;
 
-        if (!conf)
-           break;
+    if (!conf)
+       return;
 
-        apr_thread_mutex_lock(lock);
-        if (watchdog_must_terminate) {
-            apr_thread_mutex_unlock(lock);
-            break;
-        }
-        rv = apr_thread_cond_timedwait(exit_cond, lock, apr_time_make(1, 0));
-        apr_thread_mutex_unlock(lock);
-        if (rv == APR_SUCCESS)
-            break; /* If condition variable was signaled, terminate. */
-        if (rv != APR_TIMEUP) {
-            ap_log_error(APLOG_MARK, APLOG_ERR, rv, main_server, "cluster: apr_thread_cond_timedwait() failed");
-        }
+    last = node_storage->worker_nodes_need_update(s, pool);
 
-        apr_pool_create(&pool, conf->pool);
-        last = node_storage->worker_nodes_need_update(main_server, pool);
-        while (s) {
-            sconf = s->module_config;
-            conf = (proxy_server_conf *)
-                ap_get_module_config(sconf, &proxy_module);
-
-            /* Create new workers if the shared memory changes */
-            if (last)
-                update_workers_node(conf, pool, s, 0);
-            /* removed nodes: check for workers */
-            remove_workers_nodes(conf, pool, s);
-            /* Calculate the lbstatus for each node */
-            update_workers_lbstatus(conf, pool, s);
-            /* Free sessionid slots */
-            if (sessionid_storage)
-                remove_timeout_sessionid(conf, pool, s);
-            s = s->next;
-        }
-        /* cleanup removed node in shared memory */
-        remove_removed_node(pool);
-        apr_pool_destroy(pool);
-        if (last)
-            node_storage->worker_nodes_are_updated(main_server, last);
+    /* Create new workers if the shared memory changes */
+    if (last)
+        update_workers_node(conf, pool, s, 0);
+    /* removed nodes: check for workers */
+    remove_workers_nodes(conf, pool, s);
+    /* Calculate the lbstatus for each node */
+    update_workers_lbstatus(conf, pool, s);
+    /* Free sessionid slots */
+    if (sessionid_storage)
+        remove_timeout_sessionid(conf, pool, s);
+    /* cleanup removed node in shared memory */
+    remove_removed_node(pool, s);
+    if (last) {
+        node_storage->worker_nodes_are_updated(s, last);
     }
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, main_server, "cluster: Watchdog thread exiting cleanly.");
-    apr_thread_exit(thd, 0);
-    return NULL;
 }
 
-/*
- * Tell the watchdog thread to exit and wait for it to
- * complete.
- */
-static int terminate_watchdog(void *data)
+
+static apr_status_t mc_watchdog_callback(int state, void *data,
+                                         apr_pool_t *pool)
 {
-    apr_status_t rv, trv;
+    server_rec *s = (server_rec *)data;
+    switch (state) {
+        case AP_WATCHDOG_STATE_STARTING:
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "cluster_watchdog_callback STARTING");
+            break;
 
-    if (watchdog_thread == NULL)
-        return APR_SUCCESS;
+        case AP_WATCHDOG_STATE_RUNNING:
+            if (s) {
+               /* It is called for every server defined in httpd */
+               proxy_cluster_watchdog_func(s, pool);
+               /* set the next call back XXX = 1 s can't it be better? */
+               mc_watchdog_set_interval(watchdog, apr_time_make(1, 0), s, mc_watchdog_callback);
+            }
+            break;
 
-    apr_thread_mutex_lock(lock);
-    watchdog_must_terminate = 1;
-    rv = apr_thread_cond_signal(exit_cond);
-    apr_thread_mutex_unlock(lock);
-    if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, rv, main_server,
-                    "terminate_watchdog: apr_thread_cond_signal failed");
-        return APR_SUCCESS; /* There isn't a lot we can do about this. */
+        case AP_WATCHDOG_STATE_STOPPING:
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "cluster_watchdog_callback STOPPING");
+            break;
     }
-
-    rv = apr_thread_join(&trv, watchdog_thread);
-    if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, rv, main_server,
-                    "terminate_watchdog: apr_thread_join failed");
-    }
-
     return APR_SUCCESS;
 }
 
@@ -1786,12 +1763,6 @@ static void  proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
                     "proxy_cluster_child_init: apr_thread_mutex_create failed");
     }
 
-    rv = apr_thread_cond_create(&exit_cond, p);
-    if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
-                    "proxy_cluster_child_init: apr_thread_cond_create failed");
-    }
-
     if (conf) {
         apr_pool_t *pool;
         apr_pool_create(&pool, conf->pool);
@@ -1806,19 +1777,14 @@ static void  proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
         }
         apr_pool_destroy(pool);
     }
-
-    rv = apr_thread_create(&watchdog_thread, NULL, proxy_cluster_watchdog_func, main_server, p);
-    if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, main_server,
-                    "proxy_cluster_child_init: apr_thread_create failed");
-    }
-
-    apr_pool_pre_cleanup_register(p, NULL, terminate_watchdog);
 }
 
 static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
                                      apr_pool_t *ptemp, server_rec *s)
 {
+    APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
+    APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
+
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
     int sizew = conf->workers->elt_size;
@@ -1900,6 +1866,40 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
 
     /* Add version information */
     ap_add_version_component(p, MOD_CLUSTER_EXPOSED_VERSION);
+
+    if (ap_state_query(AP_SQ_MAIN_STATE) == AP_SQ_MS_CREATE_PRE_CONFIG) {
+        return OK;
+    }
+
+    /* add our watchdog callback */
+    mc_watchdog_get_instance = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_get_instance);
+    mc_watchdog_register_callback = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_register_callback);
+    mc_watchdog_set_interval = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_set_callback_interval);
+    if (!mc_watchdog_get_instance || !mc_watchdog_register_callback || !mc_watchdog_set_interval) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03262)
+                     "mod_watchdog is required");
+        return !OK;
+    }
+    if (mc_watchdog_get_instance(&watchdog,
+                                  LB_CLUSTER_WATHCHDOG_NAME,
+                                  0, 1, p)) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263)
+                     "Failed to create watchdog instance (%s)",
+                     LB_CLUSTER_WATHCHDOG_NAME);
+        return !OK;
+    }
+    while (s) {
+        if (mc_watchdog_register_callback(watchdog,
+                AP_WD_TM_SLICE,
+                s,
+                mc_watchdog_callback)) {
+            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03264)
+                         "Failed to register watchdog callback (%s)",
+                         LB_CLUSTER_WATHCHDOG_NAME);
+            return !OK;
+        }
+        s = s->next;
+    }
     return OK;
 }
 
