@@ -79,7 +79,7 @@ struct nodemess {
 };
 typedef struct nodemess nodemess_t; 
 
-#define SIZEOFSCORE 1600 /* at least size of the proxy_worker_stat structure */
+#define SIZEOFSCORE 1700 /* at least size of the proxy_worker_stat structure */
 
 /* status of the node as read/store in httpd. */
 struct nodeinfo {
