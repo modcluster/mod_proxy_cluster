@@ -38,19 +38,6 @@ To build the native component from the sources you need a C compiler and the fol
 * patch
 * python
 
-Of course the make and the patch must be GNU ones. For example on Solaris you need:
-* SMCm4 (requires libsigsegv and libgcc34)
-* SMCperl
-* SMCautoc
-* SMCautom
-* SMClibt
-* SMCmake
-* SMCpatch
-* SMCpython
-
-All can be downloaded from [http://www.sunfreeware.com/](http://www.sunfreeware.com/).
-
-
 License
 -------
 
