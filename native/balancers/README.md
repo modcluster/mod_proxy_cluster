@@ -14,6 +14,7 @@ LoadModule lbmethod_cluster_module modules/mod_lbmethod_cluster.so
 
 <Proxy "balancer://xqacluster">
    ProxySet growth=10
+   ProxySet lbmethod=cluster
 </Proxy>
 
 <IfModule manager_module>
