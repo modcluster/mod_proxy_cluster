@@ -15,7 +15,7 @@ make docker-push
 
 ## Run the image with:  
 ```
-docker run [image]
+docker run --network host [image]
 ```
 
 ## Start test
