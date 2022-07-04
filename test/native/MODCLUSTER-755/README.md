@@ -19,6 +19,15 @@ docker run --network host [image]
 ```
 
 ## Start test
+
+Make sure mod_proxy_cluster has enough context, alias and nodes:
+```
+  Maxnode 505
+  Maxhost 1010
+  Maxcontext 1010
+```
+
+Start the script:
 ```
 bash mcmps.sh
 ```
