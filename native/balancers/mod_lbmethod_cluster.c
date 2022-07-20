@@ -85,7 +85,11 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
         }
     }
     if (mycandidate) {
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+        if (proxy_run_check_trans(r, mycandidate->s->name_ex) != OK) {
+#else
         if (proxy_run_check_trans(r, mycandidate->s->name) != OK) {
+#endif
             char *ptr = balancer->workers->elts;
             int sizew = balancer->workers->elt_size;
             for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
@@ -97,7 +101,11 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
                         httpworker->s->port == mycandidate->s->port &&
                         !strcmp(httpworker->s->route, mycandidate->s->route)) {
                         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                                     "proxy: byrequests balancer Using %s instead %s", httpworker->s->name_ex, mycandidate->s->name_ex);
+#else
                                      "proxy: byrequests balancer Using %s instead %s", httpworker->s->name, mycandidate->s->name);
+#endif
                         return httpworker;
                     }
                 }
