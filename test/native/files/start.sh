@@ -32,7 +32,7 @@ fi
 
 if [ -z ${tomcat_port} ]; then
   if [ ! -z ${tomcat_ajp_port} ]; then
-    sed -i "s/s/changeMe/${tomcat_ajp_port}/" ./conf/server.xml
+    sed -i "s/changeMe/${tomcat_ajp_port}/" ./conf/server.xml
   else
     sed -i "s/changeMe/8009/" ./conf/server.xml
   fi
