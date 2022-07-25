@@ -1,0 +1,98 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.jboss.mod_cluster</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0</version>
+  <packaging>jar</packaging>
+  <name>mod_cluster tests</name>
+
+  <properties>
+    <slf4j.version>1.7.30</slf4j.version>
+  </properties>
+
+  <build>
+    <plugins>
+
+      <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-shade-plugin</artifactId>
+          <version>3.2.0</version>
+          <executions>
+            <execution>
+              <phase>package</phase>
+              <goals>
+                  <goal>shade</goal>
+              </goals>
+              <configuration>
+                  <transformers>
+                      <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                          <manifestEntries>
+                              <Main-Class>org.jboss.modcluster.Main</Main-Class>
+                              <Build-Number>1.0</Build-Number>
+                          </manifestEntries>
+                      </transformer>
+                  </transformers>
+              </configuration>
+            </execution>
+          </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.codehaus.gmavenplus</groupId>
+        <artifactId>gmavenplus-plugin</artifactId>
+        <version>1.12.1</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>addSources</goal>
+              <goal>addTestSources</goal>
+              <goal>compile</goal>
+              <goal>compileTests</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <sources>
+            <source>
+              <directory>${project.basedir}/src/main/gvy</directory>
+              <includes>
+                <include>**/*.gvy</include>
+              </includes>
+            </source>
+           </sources>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  <dependencies>
+    <dependency>
+      <groupId>net.sourceforge.htmlunit</groupId>
+      <artifactId>htmlunit</artifactId>
+      <version>2.50.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.ning</groupId>
+      <artifactId>async-http-client</artifactId>
+      <version>1.9.38</version>
+    </dependency>
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-simple</artifactId>
+        <version>${slf4j.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.groovy</groupId>
+      <artifactId>groovy-all</artifactId>
+      <!-- any version of Groovy \>= 1.5.0 should work here -->
+      <version>3.0.7</version>
+      <type>pom</type>
+    </dependency>
+  </dependencies>
+</project>
