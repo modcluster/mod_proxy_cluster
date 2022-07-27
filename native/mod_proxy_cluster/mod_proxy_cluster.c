@@ -2453,9 +2453,19 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
     proxy_cluster_helper *helper;
     const char *context_id;
 
-    proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage);
-    proxy_context_table *context_table = read_context_table(r->pool, context_storage);
-    proxy_node_table *node_table = read_node_table(r->pool, node_storage);
+    /* the node should be filled in trans(). */
+    proxy_vhost_table *vhost_table = (proxy_vhost_table *) apr_table_get(r->notes, "vhost-table");
+    proxy_context_table *context_table  = (proxy_context_table *) apr_table_get(r->notes, "context-table");
+    proxy_node_table *node_table  = (proxy_node_table *) apr_table_get(r->notes, "node-table");
+
+    if (!vhost_table)
+        vhost_table = read_vhost_table(r->pool, host_storage);
+
+    if (!context_table)
+        context_table = read_context_table(r->pool, context_storage);
+
+    if (!node_table)
+        node_table = read_node_table(r->pool, node_storage);
 
     *worker = NULL;
 #if HAVE_CLUSTER_EX_DEBUG
