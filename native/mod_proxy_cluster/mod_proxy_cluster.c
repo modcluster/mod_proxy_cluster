@@ -2740,16 +2740,15 @@ static int proxy_cluster_post_request(proxy_worker *worker,
     }
 
     /*  20051115.25 (2.2.17) Add errstatuses member to proxy_balancer */
-    if ((rv = PROXY_THREAD_LOCK(balancer)) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, rv, r->server,
-            "proxy: BALANCER: (%s). Lock failed for post_request",
-            balancer->s->name
-            );
-        return HTTP_INTERNAL_SERVER_ERROR;
-    }
-
     if (!apr_is_empty_array(balancer->errstatuses)) {
         int i;
+        if ((rv = PROXY_THREAD_LOCK(balancer)) != APR_SUCCESS) {
+            ap_log_error(APLOG_MARK, APLOG_ERR, rv, r->server,
+                "proxy: BALANCER: (%s). Lock failed for post_request",
+                balancer->s->name
+                );
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
         for (i = 0; i < balancer->errstatuses->nelts; i++) {
             int val = ((int *)balancer->errstatuses->elts)[i];
             if (r->status == val) {
@@ -2765,13 +2764,12 @@ static int proxy_cluster_post_request(proxy_worker *worker,
                 break;
             }
         }
-    }
-
-    if ((rv = PROXY_THREAD_UNLOCK(balancer)) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, rv, r->server,
-            "proxy: BALANCER: (%s). Unlock failed for post_request",
-            balancer->s->name
-            );
+        if ((rv = PROXY_THREAD_UNLOCK(balancer)) != APR_SUCCESS) {
+            ap_log_error(APLOG_MARK, APLOG_ERR, rv, r->server,
+                "proxy: BALANCER: (%s). Unlock failed for post_request",
+                balancer->s->name
+                );
+        }
     }
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
