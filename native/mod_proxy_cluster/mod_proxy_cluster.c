@@ -1593,7 +1593,7 @@ static void remove_workers_nodes(proxy_server_conf *conf, apr_pool_t *pool, serv
     }
     apr_thread_mutex_unlock(lock);
 }
-/* Called by mc_watchdog_callback every seconds and for each server and from one child only */
+/* Called by mc_watchdog_callback every seconds and for each server */
 static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
 {
     void *sconf = s->module_config;
@@ -1786,7 +1786,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
     }
     if (mc_watchdog_get_instance(&watchdog,
                                   LB_CLUSTER_WATHCHDOG_NAME,
-                                  0, 1, p)) {
+                                  0, 0, p)) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263)
                      "Failed to create watchdog instance (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
