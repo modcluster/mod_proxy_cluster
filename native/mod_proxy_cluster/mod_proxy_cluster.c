@@ -1641,6 +1641,7 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
                     ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
                                  "cached_pool: should have been created in proxy_cluster_child_init!");
                 }
+                apr_thread_mutex_unlock(lock);
             }
             node_table = cached_node_table;
         } else {
