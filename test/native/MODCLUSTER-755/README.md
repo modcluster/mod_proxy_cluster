@@ -31,3 +31,5 @@ Start the script:
 ```
 bash mcmps.sh
 ```
+
+The script enable 2 webapps (webapp0 webapp1)
