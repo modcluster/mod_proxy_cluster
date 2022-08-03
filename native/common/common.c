@@ -20,7 +20,7 @@
 #include "mod_proxy_cluster.h"
 
 /* Read the virtual host table from shared memory */
-proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage, int for_cache)
+proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage)
 {
     int i;
     int size;
@@ -35,32 +35,7 @@ proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method
 
     vhost_table->vhosts =  apr_palloc(pool, sizeof(int) * host_storage->get_max_size_host());
     vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
-    if (for_cache)
-        vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * size);
-    else
-        vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
-    for (i = 0; i < vhost_table->sizevhost; i++) {
-        hostinfo_t* h;
-        int host_index = vhost_table->vhosts[i];
-        host_storage->read_host(host_index, &h);
-        vhost_table->vhost_info[i] = *h;
-    }
-    return vhost_table;
-}
-/* Update the virtual host table from shared memory to populate a cached table */
-proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *vhost_table, struct host_storage_method *host_storage)
-{
-    int i;
-    int size;
-    size = host_storage->get_max_size_host();
-    if (size == 0) {
-        vhost_table->sizevhost = 0;
-        vhost_table->vhosts = NULL;
-        vhost_table->vhost_info = NULL;
-        return vhost_table;
-    }
-
-    vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
+    vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
     for (i = 0; i < vhost_table->sizevhost; i++) {
         hostinfo_t* h;
         int host_index = vhost_table->vhosts[i];
@@ -71,7 +46,7 @@ proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *vhost_table, str
 }
 
 /* Read the context table from shared memory */
-proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage, int for_cache)
+proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage)
 {
     int i;
     int size;
@@ -85,32 +60,7 @@ proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage
     }
     context_table->contexts =  apr_palloc(pool, sizeof(int) * size);
     context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
-    if (for_cache)
-        context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * size);
-    else
-        context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * context_table->sizecontext);
-    for (i = 0; i < context_table->sizecontext; i++) {
-        contextinfo_t* h;
-        int context_index = context_table->contexts[i];
-        context_storage->read_context(context_index, &h);
-        context_table->context_info[i] = *h;
-    }
-    return context_table;
-}
-
-/* Update the context table from shared memory to populate a cached table */
-proxy_context_table *update_context_table_cached(proxy_context_table *context_table, struct context_storage_method *context_storage)
-{
-    int i;
-    int size;
-    size = context_storage->get_max_size_context();
-    if (size == 0) {
-        context_table->sizecontext = 0;
-        context_table->contexts = NULL;
-        context_table->context_info = NULL;
-        return context_table;
-    }
-    context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
+    context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * context_table->sizecontext);
     for (i = 0; i < context_table->sizecontext; i++) {
         contextinfo_t* h;
         int context_index = context_table->contexts[i];
@@ -121,7 +71,7 @@ proxy_context_table *update_context_table_cached(proxy_context_table *context_ta
 }
 
 /* Read the balancer table from shared memory */
-proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage, int for_cache)
+proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage)
 {
     int i;
     int size;
@@ -135,32 +85,7 @@ proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_stor
     }
     balancer_table->balancers =  apr_palloc(pool, sizeof(int) * size);
     balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
-    if (for_cache)
-        balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * size);
-    else
-        balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
-    for (i = 0; i < balancer_table->sizebalancer; i++) {
-        balancerinfo_t* h;
-        int balancer_index = balancer_table->balancers[i];
-        balancer_storage->read_balancer(balancer_index, &h);
-        balancer_table->balancer_info[i] = *h;
-    }
-    return balancer_table;
-}
-
-/* Update the balancer table from shared memory to populate a cached table */
-proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table, struct balancer_storage_method *balancer_storage)
-{
-    int i;
-    int size;
-    size = balancer_storage->get_max_size_balancer();
-    if (size == 0) {
-        balancer_table->sizebalancer = 0;
-        balancer_table->balancers = NULL;
-        balancer_table->balancer_info = NULL;
-        return balancer_table;
-    }
-    balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
+    balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
     for (i = 0; i < balancer_table->sizebalancer; i++) {
         balancerinfo_t* h;
         int balancer_index = balancer_table->balancers[i];
@@ -171,7 +96,7 @@ proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balance
 }
 
 /* Read the node table from shared memory */
-proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *node_storage, int for_cache)
+proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *node_storage)
 {
     int i;
     int size;
@@ -185,54 +110,12 @@ proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *
     }
     node_table->nodes =  apr_palloc(pool, sizeof(int) * size);
     node_table->sizenode = node_storage->get_ids_used_node(node_table->nodes);
-    if (for_cache) {
-        node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * size);
-        node_table->ptr_node = apr_palloc(pool, sizeof(char *) * size);
-    } else {
-        node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * node_table->sizenode);
-        node_table->ptr_node = apr_palloc(pool, sizeof(char *) * node_table->sizenode);
-    }
+    node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * node_table->sizenode);
     for (i = 0; i < node_table->sizenode; i++) {
         nodeinfo_t* h;
         int node_index = node_table->nodes[i];
-        apr_status_t rv = node_storage->read_node(node_index, &h);
-        if (rv == APR_SUCCESS) {
-            node_table->node_info[i] = *h;
-            node_table->ptr_node[i] = (char *) h;
-        } else {
-            /* we can't read the node! */
-            node_table->ptr_node[i] = NULL;
-            memset(&node_table->node_info[i], 0, sizeof(nodeinfo_t));
-        }
-    }
-    return node_table;
-}
-
-/* Update the node table from shared memory to populate a cached table*/
-proxy_node_table *update_node_table_cached(proxy_node_table *node_table, struct node_storage_method *node_storage)
-{
-    int i;
-    int size;
-    size = node_storage->get_max_size_node();
-    if (size == 0) {
-        node_table->sizenode = 0;
-        node_table->nodes = NULL;
-        node_table->node_info = NULL;
-        return node_table;
-    }
-    node_table->sizenode = node_storage->get_ids_used_node(node_table->nodes);
-    for (i = 0; i < node_table->sizenode; i++) {
-        nodeinfo_t* h;
-        int node_index = node_table->nodes[i];
-        apr_status_t rv = node_storage->read_node(node_index, &h);
-        if (rv == APR_SUCCESS) {
-            node_table->node_info[i] = *h;
-            node_table->ptr_node[i] = (char *) h;
-        } else {
-            /* we can't read the node! */
-            node_table->ptr_node[i] = NULL;
-            memset(&node_table->node_info[i], 0, sizeof(nodeinfo_t));
-        }
+        node_storage->read_node(node_index, &h);
+        node_table->node_info[i] = *h;
     }
     return node_table;
 }
