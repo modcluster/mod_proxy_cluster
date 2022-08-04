@@ -319,6 +319,11 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
     const char *uri = NULL;
     const char *luri = NULL;
 
+    best  = (node_context *) apr_table_get(r->notes, "best");
+    if (best) {
+        return best;
+    }
+
     /* use r->uri (trans) or r->filename (after canon or rewrite) */
     if (r->filename) {
         const char *scheme = strstr(r->filename, "://");
@@ -449,6 +454,7 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
     if (nbest == 0)
         return NULL;
     best[nbest].node = -1;
+    apr_table_setn(r->notes, "best",  (char *) best);
     return best; 
 }
 
