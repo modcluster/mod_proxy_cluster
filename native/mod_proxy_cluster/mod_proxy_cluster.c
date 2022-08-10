@@ -105,6 +105,16 @@ static int enable_options = -1; /* Use OPTIONS * for CPING/CPONG */
 #define TIMESESSIONID 300                    /* after 5 minutes the sessionid have probably timeout */
 #define TIMEDOMAIN    300                    /* after 5 minutes the sessionid have probably timeout */
 
+
+/* Create static table references we can look back to instead of fetching each request */
+static apr_time_t cache_share_for =  apr_time_from_sec(0); /* cache the shared memory in the process for n seconds */
+static apr_time_t last_cached = 0;
+static apr_pool_t *cached_pool = NULL;
+static proxy_vhost_table *cached_vhost_table = NULL;
+static proxy_context_table *cached_context_table = NULL;
+static proxy_balancer_table *cached_balancer_table = NULL;
+static proxy_node_table *cached_node_table = NULL;
+
 static int proxy_worker_cmp(const void *a, const void *b)
 {
     const char *route1 = (*(proxy_worker **) a)->s->route;
@@ -144,6 +154,7 @@ static int (*ap_proxy_retry_worker_fn)(const char *proxy_function,
  * XXX: If something goes wrong the worker can't be used and we leak memory... in a pool
  * NOTE: pool is the request pool or any temporary pool. Use conf->pool for any data that live longer.
  * @param node the pointer to the node structure
+ * @param ptr_node the address of the node in shared memory.
  * @param conf a proxy_server_conf.
  * @param balancer the balancer to update.
  * @param pool a temporary pool.
@@ -152,7 +163,7 @@ static int (*ap_proxy_retry_worker_fn)(const char *proxy_function,
  */
 static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balancer,
                           server_rec *server,
-                          nodeinfo_t *node, apr_pool_t *pool)
+                          nodeinfo_t *node, char *ptr_node, apr_pool_t *pool)
 {
     char *url;
     char *ptr;
@@ -216,7 +227,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                          "Created: reusing removed worker for %s", url);
         } else {
             /* Check if the shared memory goes to the right place */
-            char *pptr = (char *) node;
+            char *pptr = ptr_node;
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                          "Created: reusing worker for %s", url);
             pptr = pptr + node->offset;
@@ -245,7 +256,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
             } else {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                              "Created: can't reuse worker as it for %s cleaning...", url);
-                ptr = (char *) node;
+                ptr = ptr_node;
                 ptr = ptr + node->offset;
                 shared = worker->s;
                 worker->s = (proxy_worker_shared *) ptr;
@@ -270,18 +281,26 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
      * 3 - we are reusing a removed worker.
      */
     node_storage->lock_nodes();
-    ptr = (char *) node;
+    ptr = ptr_node;
     ptr = ptr + node->offset;
     shared = worker->s;
     worker->s = (proxy_worker_shared *) ptr;
     helper->index = node->mess.id;
 
     /* Changing the shared memory requires looking it... */
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+    if (strncmp(worker->s->name_ex, shared->name_ex, sizeof(worker->s->name_ex))) {
+#else
     if (strncmp(worker->s->name, shared->name, sizeof(worker->s->name))) {
+#endif
         /* We will modify it only is the name has changed to minimize access */
         worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
         worker->s->index = node->mess.id;
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+        strncpy(worker->s->name_ex, shared->name_ex, sizeof(worker->s->name_ex));
+#else
         strncpy(worker->s->name, shared->name, sizeof(worker->s->name));
+#endif
         strncpy(worker->s->hostname, shared->hostname, sizeof(worker->s->hostname));
         strncpy(worker->s->hostname_ex, shared->hostname_ex, sizeof(worker->s->hostname_ex));
         strncpy(worker->s->scheme, shared->scheme, sizeof(worker->s->scheme));
@@ -503,9 +522,10 @@ static void reuse_balancer(proxy_balancer *balancer, char *name, apr_pool_t *poo
  * Adds the balancers and the workers to the VirtualHosts corresponding to node
  * Note that the calling routine should lock before calling us.
  * @param node the node information to add.
+ * @param ptr_node address of the node in shared memory.
  * @param pool  temporary pool to use for temporary buffer.
  */
-static void add_balancers_workers(nodeinfo_t *node, apr_pool_t *pool)
+static void add_balancers_workers(nodeinfo_t *node, char *ptr_node, apr_pool_t *pool)
 {
     server_rec *s = main_server;
     char *name = apr_pstrcat(pool, "balancer://", node->mess.balancer, NULL);
@@ -527,7 +547,7 @@ static void add_balancers_workers(nodeinfo_t *node, apr_pool_t *pool)
             reuse_balancer(balancer, &balancer->s->name[11], pool, s);
         }
         if (balancer)
-            create_worker(conf, balancer, s, node, pool);
+            create_worker(conf, balancer, s, node, ptr_node, pool);
         s = s->next;
     }
 }
@@ -536,10 +556,11 @@ static void add_balancers_workers(nodeinfo_t *node, apr_pool_t *pool)
  * Adds the balancers and the workers to the VirtualHosts corresponding to node
  * Note that the calling routine should lock before calling us.
  * @param node the node information to add.
+ * @param ptr_node the addr of the node in shared memory
  * @param pool  temporary pool to use for temporary buffer.
  * @param server the server to use
  */
-static void add_balancers_workers_for_server(nodeinfo_t *node, apr_pool_t *pool, server_rec *s)
+static void add_balancers_workers_for_server(nodeinfo_t *node, char *ptr_node, apr_pool_t *pool, server_rec *s)
 {
     char *name = apr_pstrcat(pool, "balancer://", node->mess.balancer, NULL);
             
@@ -558,7 +579,7 @@ static void add_balancers_workers_for_server(nodeinfo_t *node, apr_pool_t *pool,
         reuse_balancer(balancer, &balancer->s->name[11], pool, s);
     }
     if (balancer)
-        create_worker(conf, balancer, s, node, pool);
+        create_worker(conf, balancer, s, node, ptr_node, pool);
 }
 
 
@@ -650,10 +671,13 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
  * NOTE: It is called from proxy_cluster_watchdog_func and other locations
  *       It shouldn't call worker_nodes_are_updated() because there may be several VirtualHosts.
  */
-static void update_workers_node(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server, int check)
+static void update_workers_node(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server, int check, proxy_node_table *node_table)
 {
-    int *id, size, i;
+    int i;
     unsigned int last;
+
+    if (node_table == NULL)
+        return;
 
     /* Check if we have to do something */
     apr_thread_mutex_lock(lock);
@@ -666,28 +690,19 @@ static void update_workers_node(proxy_server_conf *conf, apr_pool_t *pool, serve
         }
     }
 
-    /* read the ident of the nodes */
-    size = node_storage->get_max_size_node();
-    if (size == 0) {
-        apr_thread_mutex_unlock(lock);
-        return;
-    }
-    id = apr_pcalloc(pool, sizeof(int) * size);
-    size = node_storage->get_ids_used_node(id);
-
     /* XXX: How to skip the balancer that aren't controled by mod_manager */
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
              "update_workers_node starting");
 
     /* Only process the nodes that have been updated since our last update */
-    for (i=0; i<size; i++) {
-        nodeinfo_t *ou;
-        if (node_storage->read_node(id[i], &ou) != APR_SUCCESS)
-            continue;
+    for (i = 0; i < node_table->sizenode; i++) {
+        nodeinfo_t *ou = &node_table->node_info[i];
         if (ou->mess.remove) 
             continue;
-        add_balancers_workers_for_server(ou, pool, server);
+        if (node_table->ptr_node[i] == NULL)
+            continue;
+        add_balancers_workers_for_server(ou, node_table->ptr_node[i], pool, server);
     } 
 
     apr_thread_mutex_unlock(lock);
@@ -1260,7 +1275,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
 #endif
 
     /* create workers for new nodes */
-    update_workers_node(conf, r->pool, r->server, 1);
+    update_workers_node(conf, r->pool, r->server, 1, node_table);
 
     // do this once now to avoid repeating find_node_context_host through loop iterations
     route = apr_table_get(r->notes, "session-route");
@@ -1283,7 +1298,11 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
             helper = (proxy_cluster_helper *) worker->context;
             if (!worker->s || !worker->context) {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                             "proxy: byrequests balancer %s skipping BAD worker %s", balancer->s->name, worker->s ? worker->s->name_ex : "NULL");
+#else
                              "proxy: byrequests balancer %s skipping BAD worker %s", balancer->s->name, worker->s ? worker->s->name : "NULL");
+#endif
                 continue;
             }
             if (helper->index == 0)
@@ -1413,7 +1432,11 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
         apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", apr_psprintf(r->pool, "%d", (*mynodecontext).context));
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                              "proxy: byrequests balancer DONE (%s)",
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                             mycandidate->s->name_ex);
+#else
                              mycandidate->s->name);
+#endif
     } else {
         apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", "");
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
@@ -1450,10 +1473,11 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     ptr = (char *) node;
     ptr = ptr + node->offset;
     stat = (proxy_worker_shared *) ptr;
+    ptr = (char *) node;
 
     /* create the balancers and workers (that could be the first time) */
     apr_thread_mutex_lock(lock);
-    add_balancers_workers(node, r->pool);
+    add_balancers_workers(node, ptr, r->pool);
     apr_thread_mutex_unlock(lock);
 
     /* search for the worker in the VirtualHosts */ 
@@ -1626,33 +1650,73 @@ static void remove_workers_nodes(proxy_server_conf *conf, apr_pool_t *pool, serv
     }
     apr_thread_mutex_unlock(lock);
 }
-/* Called by mc_watchdog_callback every seconds and for each server and from one child only */
+/* Called by mc_watchdog_callback every n seconds */
+/* it is called for the main server, we need to loop on all servers */
 static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
 {
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)
         ap_get_module_config(sconf, &proxy_module);
     unsigned int last;
+    server_rec *smain = s;
+    proxy_node_table *node_table = NULL;
 
     if (!conf)
        return;
 
+    /* check if we need to update. */
     last = node_storage->worker_nodes_need_update(s, pool);
 
-    /* Create new workers if the shared memory changes */
-    if (last)
-        update_workers_node(conf, pool, s, 0);
-    /* removed nodes: check for workers */
-    remove_workers_nodes(conf, pool, s);
-    /* Calculate the lbstatus for each node */
-    update_workers_lbstatus(conf, pool, s);
-    /* Free sessionid slots */
-    if (sessionid_storage)
-        remove_timeout_sessionid(conf, pool, s);
-    /* cleanup removed node in shared memory */
-    remove_removed_node(pool, s);
+    /* if we need to update, let's check the cache */
     if (last) {
-        node_storage->worker_nodes_are_updated(s, last);
+        if (cache_share_for) {
+            /* time to refresh or create */
+            apr_time_t now = apr_time_now();
+            if (now >= last_cached+cache_share_for) {
+                apr_thread_mutex_lock(lock);
+                last_cached = now;
+                if (cached_pool) {
+                    /* we need to update the cache */
+                    update_vhost_table_cached(cached_vhost_table, host_storage);
+                    update_context_table_cached(cached_context_table, context_storage);
+                    update_balancer_table_cached(cached_balancer_table, balancer_storage);
+                    update_node_table_cached(cached_node_table, node_storage);
+                } else {
+                    apr_pool_create(&cached_pool, conf->pool);
+                    cached_vhost_table = read_vhost_table(cached_pool, host_storage, 1);
+                    cached_context_table = read_context_table(cached_pool, context_storage, 1);
+                    cached_balancer_table = read_balancer_table(cached_pool, balancer_storage, 1);
+                    cached_node_table = read_node_table(cached_pool, node_storage, 1);
+                    ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                                 "cached_pool: should have been created in proxy_cluster_child_init!");
+                }
+                apr_thread_mutex_unlock(lock);
+            }
+            node_table = cached_node_table;
+        } else {
+            node_table = read_node_table(pool, node_storage, 0);
+        }
+    }
+
+    while (s) {
+        sconf = s->module_config;
+        conf = (proxy_server_conf *) ap_get_module_config(sconf, &proxy_module);
+        /* Create new workers if the shared memory has changed */
+        if (last)
+            update_workers_node(conf, pool, s, 0, node_table);
+        /* removed nodes: check for workers */
+        remove_workers_nodes(conf, pool, s);
+        /* Calculate the lbstatus for each node */
+        update_workers_lbstatus(conf, pool, s);
+        /* Free sessionid slots */
+        if (sessionid_storage)
+            remove_timeout_sessionid(conf, pool, s);
+        /* cleanup removed node in shared memory */
+        remove_removed_node(pool, s);
+        s = s->next;
+    }
+    if (last) {
+        node_storage->worker_nodes_are_updated(smain, last);
     }
 }
 
@@ -1668,10 +1732,13 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
 
         case AP_WATCHDOG_STATE_RUNNING:
             if (s) {
+               apr_time_t wait = cache_share_for;
                /* It is called for every server defined in httpd */
                proxy_cluster_watchdog_func(s, pool);
-               /* set the next call back XXX = 1 s can't it be better? */
-               mc_watchdog_set_interval(watchdog, apr_time_make(1, 0), s, mc_watchdog_callback);
+               /* set the next call back to cache_share_for or 1 if zero */
+               if (!wait)
+                   wait = apr_time_from_sec(1);
+               mc_watchdog_set_interval(watchdog, wait, s, mc_watchdog_callback);
             }
             break;
 
@@ -1700,15 +1767,28 @@ static void  proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
                     "proxy_cluster_child_init: apr_thread_mutex_create failed");
     }
 
-    if (conf) {
+    if (conf && node_storage && node_storage->get_max_size_node()) {
+        /* fill the cache and create pool */
         apr_pool_t *pool;
+        proxy_node_table *node_table = NULL;
         apr_pool_create(&pool, conf->pool);
+        if (cache_share_for) {
+            apr_pool_create(&cached_pool, conf->pool);
+            cached_vhost_table = read_vhost_table(cached_pool, host_storage, 1);
+            cached_context_table = read_context_table(cached_pool, context_storage, 1);
+            cached_balancer_table = read_balancer_table(cached_pool, balancer_storage, 1);
+            cached_node_table = read_node_table(cached_pool, node_storage, 1);
+            node_table = cached_node_table;
+        } else {
+            node_table = read_node_table(pool, node_storage, 0);
+        }
+        
         while (s) {
             sconf = s->module_config;
             conf = (proxy_server_conf *)
                 ap_get_module_config(sconf, &proxy_module);
 
-            update_workers_node(conf, pool, s, 0);
+            update_workers_node(conf, pool, s, 0, node_table);
 
             s = s->next;
         }
@@ -1819,23 +1899,20 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
     }
     if (mc_watchdog_get_instance(&watchdog,
                                   LB_CLUSTER_WATHCHDOG_NAME,
-                                  0, 1, p)) {
+                                  0, 0, p)) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263)
                      "Failed to create watchdog instance (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
     }
-    while (s) {
-        if (mc_watchdog_register_callback(watchdog,
-                AP_WD_TM_SLICE,
-                s,
-                mc_watchdog_callback)) {
-            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03264)
-                         "Failed to register watchdog callback (%s)",
-                         LB_CLUSTER_WATHCHDOG_NAME);
-            return !OK;
-        }
-        s = s->next;
+    if (mc_watchdog_register_callback(watchdog,
+            AP_WD_TM_SLICE,
+            s,
+            mc_watchdog_callback)) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03264)
+                     "Failed to register watchdog callback (%s)",
+                     LB_CLUSTER_WATHCHDOG_NAME);
+        return !OK;
     }
     return OK;
 }
@@ -1943,10 +2020,22 @@ static int proxy_cluster_trans(request_rec *r)
     proxy_server_conf *conf = (proxy_server_conf *)
         ap_get_module_config(sconf, &proxy_module);
 
-    proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage);
-    proxy_context_table *context_table = read_context_table(r->pool, context_storage);
-    proxy_balancer_table *balancer_table = read_balancer_table(r->pool, balancer_storage);
-    proxy_node_table *node_table = read_node_table(r->pool, node_storage);
+    proxy_vhost_table *vhost_table = NULL;
+    proxy_context_table *context_table = NULL;
+    proxy_balancer_table *balancer_table = NULL;
+    proxy_node_table *node_table = NULL;
+
+    if (cache_share_for) {
+        vhost_table = cached_vhost_table;
+        context_table = cached_context_table;
+        balancer_table = cached_balancer_table;
+        node_table = cached_node_table;
+    } else {
+        vhost_table = read_vhost_table(r->pool, host_storage, 0);
+        context_table = read_context_table(r->pool, context_storage, 0);
+        balancer_table = read_balancer_table(r->pool, balancer_storage, 0);
+        node_table = read_node_table(r->pool, node_storage, 0);
+    }
 
     apr_table_setn(r->notes, "vhost-table",  (char *) vhost_table);
     apr_table_setn(r->notes, "context-table",  (char *) context_table);
@@ -1959,13 +2048,12 @@ static int proxy_cluster_trans(request_rec *r)
                  r->proxyreq, r->filename, r->handler, r->uri, r->args, r->unparsed_uri);
 #endif
 
-    /* make sure we have a up to date workers and balancers in our process */
-    update_workers_node(conf, r->pool, r->server, 1);
+    /* make sure we have up to date workers and balancers in our process */
+    update_workers_node(conf, r->pool, r->server, 1, node_table);
     balancer = get_route_balancer(r, conf, vhost_table, context_table, balancer_table, node_table, use_alias);
     if (!balancer) {
         balancer = get_context_host_balancer(r, vhost_table, context_table, node_table, use_alias);
     }
-    
 
     if (balancer) {
         int i;
@@ -2099,16 +2187,16 @@ static int proxy_cluster_canon(request_rec *r, char *url)
         proxy_node_table *node_table  = (proxy_node_table *) apr_table_get(r->notes, "node-table");
 
         if (!vhost_table)
-            vhost_table = read_vhost_table(r->pool, host_storage);
+            vhost_table = read_vhost_table(r->pool, host_storage, 0);
 
         if (!context_table)
-            context_table = read_context_table(r->pool, context_storage);
+            context_table = read_context_table(r->pool, context_storage, 0);
 
         if (!balancer_table)
-            balancer_table = read_balancer_table(r->pool, balancer_storage);
+            balancer_table = read_balancer_table(r->pool, balancer_storage, 0);
 
         if (!node_table)
-            node_table = read_node_table(r->pool, node_storage);
+            node_table = read_node_table(r->pool, node_storage, 0);
 
         get_route_balancer(r, conf, vhost_table, context_table, balancer_table, node_table, use_alias);
     }
@@ -2367,7 +2455,11 @@ static int rewrite_url(request_rec *r, proxy_worker *worker,
                              NULL));
     }
 
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+    *url = apr_pstrcat(r->pool, worker->s->name_ex, path, NULL);
+#else
     *url = apr_pstrcat(r->pool, worker->s->name, path, NULL);
+#endif
 
     return OK;
 }
@@ -2492,13 +2584,13 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
     proxy_node_table *node_table  = (proxy_node_table *) apr_table_get(r->notes, "node-table");
 
     if (!vhost_table)
-        vhost_table = read_vhost_table(r->pool, host_storage);
+        vhost_table = read_vhost_table(r->pool, host_storage, 0);
 
     if (!context_table)
-        context_table = read_context_table(r->pool, context_storage);
+        context_table = read_context_table(r->pool, context_storage, 0);
 
     if (!node_table)
-        node_table = read_node_table(r->pool, node_storage);
+        node_table = read_node_table(r->pool, node_storage, 0);
 
     *worker = NULL;
 #if HAVE_CLUSTER_EX_DEBUG
@@ -2555,7 +2647,7 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
         !(*balancer = ap_proxy_get_balancer(r->pool, conf, *url, 0))) {
         apr_thread_mutex_unlock(lock);
         /* May be the node has not been created yet */
-        update_workers_node(conf, r->pool, r->server, 1);
+        update_workers_node(conf, r->pool, r->server, 1, node_table);
         apr_thread_mutex_lock(lock);
         if (!(*balancer = ap_proxy_get_balancer(r->pool, conf, *url, 0))) {
             apr_thread_mutex_unlock(lock);
@@ -2680,7 +2772,11 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
      */
     /* Add balancer/worker info to env. */
     apr_table_setn(r->subprocess_env, "BALANCER_NAME", (*balancer)->s->name);
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+    apr_table_setn(r->subprocess_env, "BALANCER_WORKER_NAME", (*worker)->s->name_ex);
+#else
     apr_table_setn(r->subprocess_env, "BALANCER_WORKER_NAME", (*worker)->s->name);
+#endif
     apr_table_setn(r->subprocess_env, "BALANCER_WORKER_ROUTE", (*worker)->s->route);
 
     /* Rewrite the url from 'balancer://url'
@@ -2693,7 +2789,11 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
 #if HAVE_CLUSTER_EX_DEBUG
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                  "proxy_cluster_pre_request: balancer (%s) worker (%s) rewritten to %s",
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                 (*balancer)->s->name, (*worker)->s->name_ex,
+#else
                  (*balancer)->s->name, (*worker)->s->name,
+#endif
                  *url);
 #endif
 
@@ -2790,7 +2890,11 @@ static int proxy_cluster_post_request(proxy_worker *worker,
                               "due to status code %d matching 'failonstatus' "
                               "balancer parameter",
                               balancer->s->name,
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                              worker->s->name_ex,
+#else
                               worker->s->name,
+#endif
                               val);
                 worker->s->status |= PROXY_WORKER_IN_ERROR;
                 worker->s->error_time = apr_time_now();
@@ -2925,6 +3029,17 @@ static const char *cmd_proxy_cluster_deterministic_failover(cmd_parms *parms, vo
     return NULL;
 }
 
+static const char*cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dummy, const char *arg)
+{
+    int val = atoi(arg);
+    if (val<0) {
+        return "CacheShareFor must be greater than 0";
+    } else {
+        cache_share_for = apr_time_from_sec(val);
+    }
+    return NULL;
+}
+
 static const command_rec  proxy_cluster_cmds[] =
 {
     AP_INIT_TAKE1(
@@ -2969,6 +3084,13 @@ static const command_rec  proxy_cluster_cmds[] =
         NULL,
         OR_ALL,
         "DeterministicFailover - controls whether a node upon failover is chosen deterministically (Default: Off)"
+    ),
+    AP_INIT_TAKE1(
+        "CacheShareFor",
+        cmd_proxy_cluster_cache_shared_for,
+        NULL,
+        OR_ALL,
+        "CacheShareFor - Time in seconds for how long the shared information is cached by httpd: (Default: 0 seconds, no-caching)"
     ),
     {NULL}
 };
