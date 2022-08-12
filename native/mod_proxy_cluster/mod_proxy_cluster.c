@@ -1375,6 +1375,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
                     if (!mycandidate) {
                         mycandidate = worker;
                         mynodecontext = nodecontext;
+                        node1 = node;
                     } else {
                         int lbstatus, lbstatus1;
 
@@ -1393,7 +1394,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
                         if (lbstatus1> lbstatus) {
                             mycandidate = worker;
                             mynodecontext = nodecontext;
-                            node1 = NULL;
+                            node1 = node;
                         }
                     }
                 }
