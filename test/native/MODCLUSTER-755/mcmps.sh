@@ -5,9 +5,13 @@
 # HTTPD - destination to connect to for httpd/mod_cluster
 #
 
-NODE_COUNT=500
-APP_COUNT=2
-HTTPD=127.0.0.1:6666/
+NODE_COUNT="${NODE_COUNT:-500}"
+APP_COUNT="${APP_COUNT:-2}"
+HTTPD="${HTTPD:-127.0.0.1:6666/}"
+
+echo "NODE_COUNT: ${NODE_COUNT}"
+echo "APP_COUNT: ${APP_COUNT}"
+echo "Apache HTTPD MCMP URL: ${HTTPD}"
 
 for ((i=9000; i < `expr 9000+$NODE_COUNT`; i++))
 do

@@ -32,4 +32,10 @@ Start the script:
 bash mcmps.sh
 ```
 
-The script enable 2 webapps (webapp0 webapp1)
+
+Note: The variables for the script, NODE_COUNT, APP_COUNT and HTTPD, defaulting to 500 2 and "127.0.0.1:6666/"
+```
+NODE_COUNT=250 APP_COUNT=4 HTTPD=127.0.0.1:8888/ bash mcmps.sh
+```
+
+Note: The script enable 2 webapps (webapp0 webapp1)
