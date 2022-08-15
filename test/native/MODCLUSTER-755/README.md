@@ -15,7 +15,7 @@ make docker-push
 
 ## Run the image with:  
 ```
-docker run --network host [image]
+docker run --network host --cgroups=disabled [image]
 ```
 
 ## Start test
