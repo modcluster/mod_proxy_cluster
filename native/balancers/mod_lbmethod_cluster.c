@@ -125,13 +125,13 @@ static proxy_worker *find_best(proxy_balancer *balancer,
     proxy_node_table *node_table  = (proxy_node_table *) apr_table_get(r->notes, "node-table");
 
     if (!vhost_table)
-        vhost_table = read_vhost_table(r->pool, host_storage);
+        vhost_table = read_vhost_table(r->pool, host_storage, 0);
 
     if (!context_table)
-        context_table = read_context_table(r->pool, context_storage);
+        context_table = read_context_table(r->pool, context_storage, 0);
 
     if (!node_table)
-        node_table = read_node_table(r->pool, node_storage);
+        node_table = read_node_table(r->pool, node_storage, 0);
 
     mycandidate = internal_find_best_byrequests(r, balancer, vhost_table, context_table, node_table);
 
@@ -184,10 +184,10 @@ static int lbmethod_cluster_trans(request_rec *r)
                 "lbmethod_cluster_trans for %d", conf->balancers->nelts);
 #endif
 
-    proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage);
-    proxy_context_table *context_table = read_context_table(r->pool, context_storage);
-    proxy_balancer_table *balancer_table = read_balancer_table(r->pool, balancer_storage);
-    proxy_node_table *node_table = read_node_table(r->pool, node_storage);
+    proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage, 0);
+    proxy_context_table *context_table = read_context_table(r->pool, context_storage, 0);
+    proxy_balancer_table *balancer_table = read_balancer_table(r->pool, balancer_storage, 0);
+    proxy_node_table *node_table = read_node_table(r->pool, node_storage, 0);
 
     apr_table_setn(r->notes, "vhost-table",  (char *) vhost_table);
     apr_table_setn(r->notes, "context-table",  (char *) context_table);
@@ -259,7 +259,7 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
 
         case AP_WATCHDOG_STATE_RUNNING:
             /* loop thru all workers */
-            node_table = read_node_table(pool, node_storage);
+            node_table = read_node_table(pool, node_storage, 0);
             now = apr_time_now();
             if (s) {
                 int i;
