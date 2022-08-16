@@ -30,6 +30,8 @@
 
 #define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"
 
+APR_DECLARE_OPTIONAL_FN(apr_status_t, balancer_manage, (request_rec *r, apr_table_t *params));
+
 struct balancer_method {
 /**
  * Check that the node is responding
@@ -79,12 +81,13 @@ struct proxy_balancer_table
 };
 typedef struct proxy_balancer_table proxy_balancer_table;
 
-/* Node table copy for local use */
+/* Node table copy for local use, the ptr_node is the shared memory address (slotmem address) */
 struct proxy_node_table
 {
 	int sizenode;
 	int* nodes;
 	nodeinfo_t*  node_info;
+        char **ptr_node;
 };
 typedef struct proxy_node_table proxy_node_table;
 
@@ -97,10 +100,14 @@ struct node_context
 typedef struct node_context node_context;
 
 /* common routines */
-proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage);
-proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage);
-proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage);
-proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *node_storage);
+proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage, int for_cache);
+proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage, int for_cache);
+proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage, int for_cache);
+proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *node_storage, int for_cache);
+proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *proxy_vhost_table, struct host_storage_method *host_storage);
+proxy_context_table *update_context_table_cached(proxy_context_table *context_table, struct context_storage_method *context_storage);
+proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table, struct balancer_storage_method *balancer_storage);
+proxy_node_table *update_node_table_cached(proxy_node_table *node_table, struct node_storage_method *node_storage);
 
 const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
                                       proxy_vhost_table *vhost_table,

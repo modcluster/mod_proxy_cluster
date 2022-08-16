@@ -33,7 +33,7 @@ Tests using docker/podman to test mod_cluster
 
 The docker image should be build and you might push it before, make sure you have exported the IMG variable.
 ```
-export IMG=export IMG=quay.io/${USER}/tomcat_mod_cluster
+export IMG=quay.io/${USER}/tomcat_mod_cluster
 ```
 # testing websocket
 Using com.ning.http.client.ws.WebSocketTextListener
