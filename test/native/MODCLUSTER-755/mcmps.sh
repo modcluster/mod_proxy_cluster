@@ -3,15 +3,21 @@
 # NODE_COUNT - number of nodes to generate
 # APP_COUNT - number of apps to generate
 # HTTPD - destination to connect to for httpd/mod_cluster
+# USE_MULTI_APP - if true different webapps are created for each node.
 #
 
 NODE_COUNT="${NODE_COUNT:-500}"
 APP_COUNT="${APP_COUNT:-2}"
 HTTPD="${HTTPD:-127.0.0.1:6666/}"
+USE_MULTI_APP="${USE_MULTI_APP:-false}"
 
 echo "NODE_COUNT: ${NODE_COUNT}"
 echo "APP_COUNT: ${APP_COUNT}"
 echo "Apache HTTPD MCMP URL: ${HTTPD}"
+echo "USE_MULTI_APP: $USE_MULTI_APP"
+if [ "x$USE_MULTI_APP" = "xtrue" ]; then
+  echo "The webapp are going to be 1-9000/2-9000 until count (1-9499/2-9499)"
+fi
 
 for ((i=9000; i < `expr 9000+$NODE_COUNT`; i++))
 do
@@ -20,7 +26,11 @@ do
 
    for ((j=1; j <= $APP_COUNT; j++))
    do
-      curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X ENABLE-APP --data "JVMRoute=appserver$i&Alias=default-host%2Clocalhost&Context=%2Fwebapp$j"
+      if [ "x$USE_MULTI_APP" = "xtrue" ]; then
+         curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X ENABLE-APP --data "JVMRoute=appserver$i&Alias=default-host%2Clocalhost&Context=%2Fwebapp$j-$i"
+      else
+         curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X ENABLE-APP --data "JVMRoute=appserver$i&Alias=default-host%2Clocalhost&Context=%2Fwebapp$j"
+      fi
    done
 done
 
