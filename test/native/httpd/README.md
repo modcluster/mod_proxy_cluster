@@ -4,11 +4,15 @@ podman build -t quay.io/${USER}/mod_cluster_httpd .
 ```
 
 # run it
-*** Note the ENV ***
+**Note the ENV variables:**
+
 HTTPD: URL to a released httpd tar.gz
+
 SOURCES: The mod_proxy_sources, url (github)
-BRANCH: The branch or the tag
-CONF: The mod_proxy_cluster configuration file to include in httpd.conf (the files are added to image at build time)
+
+BRANCH: A branch, or a tag or a commitid
+
+CONF: The mod_proxy_cluster configuration file to include in httpd.conf (The *conf files are added to image at build time)
 
 For example (the default)
 ```bash
