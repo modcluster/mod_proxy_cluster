@@ -16,6 +16,7 @@ cd $DIRNAME
             --enable-proxy-ajp \
             --enable-proxy-wstunnel \
             --enable-proxy-hcheck \
+            --with-port=8000 \
 
 make
 make install
