@@ -1278,7 +1278,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
     if (!cache_share_for)
         update_workers_node(conf, r->pool, r->server, 1, node_table);
 
-    // do this once now to avoid repeating find_node_context_host through loop iterations
+    /* do this once now to avoid repeating find_node_context_host through loop iterations */
     route = apr_table_get(r->notes, "session-route");
     best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
 
@@ -1334,13 +1334,13 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
              */
 
             if (PROXY_WORKER_IS_USABLE(worker)) {
+                node_context *best1;
                 if (best == NULL) {
                     apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", "");
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                                          "proxy: byrequests balancer FAILED");
                     return NULL;
                 }
-                node_context *best1;
                 best1 = best;
 
                 while ((*best1).node != -1) {
@@ -1352,7 +1352,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
 
                 nodecontext = best1;
 
-                // Let's do the table read only now after we know the worker is usable and matches
+                /* Let's do the table read only now after we know the worker is usable and matches */
                 if (read_node_worker(worker->s->index, &node, worker) != APR_SUCCESS)
                     continue; /* Can't read node */
                 pptr = (char *) node;
@@ -1380,7 +1380,7 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
                     } else {
                         int lbstatus, lbstatus1;
 
-                        // Let's avoid repeat reads of mycandidate through our loop iterations
+                        /* Let's avoid repeat reads of mycandidate through our loop iterations */
                         if (!node1) {
                             if (node_storage->read_node(mycandidate->s->index, &node1) != APR_SUCCESS) {
                                 mycandidate = NULL;
