@@ -115,6 +115,10 @@ static proxy_context_table *cached_context_table = NULL;
 static proxy_balancer_table *cached_balancer_table = NULL;
 static proxy_node_table *cached_node_table = NULL;
 
+/* for the hctemplate stuff */
+static char *proxyhctemplate = NULL;
+static APR_OPTIONAL_FN_TYPE(set_worker_hc_param) *set_worker_hc_param_f = NULL;
+
 static int proxy_worker_cmp(const void *a, const void *b)
 {
     const char *route1 = (*(proxy_worker **) a)->s->route;
@@ -143,6 +147,41 @@ static char * normalize_hostname(apr_pool_t *p, char *hostname)
        *ptr = apr_tolower(*ptr);
     }
     return ret;
+}
+
+/* Add health to the worker */
+static void add_hcheck(server_rec *s, proxy_server_conf *conf, proxy_worker *worker)
+{
+    if (set_worker_hc_param_f) {
+        const char *arg = apr_pstrdup(conf->pool, proxyhctemplate);
+        while (*arg) {
+            char *key, *val;
+            const char *err;
+            key = ap_getword_conf(conf->pool, &arg);
+            val = strchr(key, '=');
+            if (!val) {
+                ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                              "Invalid ProxyHCTemplate parameter. Parameter must be "
+                                      "in the form 'key=value'");
+                return;
+             }
+             else
+                 *val++ = '\0';
+             err =  set_worker_hc_param_f(conf->pool, s, worker, key, val, NULL);
+             if (err != NULL) {
+                ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
+                             "%s key: %s=%s", err, key, val);
+             }
+             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, s,
+                             "hcheck %s=%s add to worker %s", key, val,
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 12
+                               worker->s->name_ex
+#else
+                               worker->s->name
+#endif
+                              );
+        }
+    }
 }
 
 static int (*ap_proxy_retry_worker_fn)(const char *proxy_function,
@@ -251,6 +290,12 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                     worker->s->redirect[0] = '\0';
                     worker->s->lbstatus = 0;
                     worker->s->lbfactor = -1; /* prevent using the node using status message */
+
+                    /* add health check */
+                    worker->s->updated = apr_time_now();
+                    if (proxyhctemplate != NULL) {
+                        add_hcheck(server, conf, worker);
+                    }
                 }
                 return APR_SUCCESS; /* Done Already existing */
             } else {
@@ -267,6 +312,12 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                     ap_log_error(APLOG_MARK, APLOG_ERR, rv, server,
                                  "ap_proxy_initialize_worker failed %d for %s", rv, url);
                     return rv;
+                }
+
+                /* add health check */
+                worker->s->updated = apr_time_now();
+                if (proxyhctemplate != NULL) {
+                    add_hcheck(server, conf, worker);
                 }
                 return APR_SUCCESS;
             }
@@ -287,7 +338,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
     worker->s = (proxy_worker_shared *) ptr;
     helper->index = node->mess.id;
 
-    /* Changing the shared memory requires looking it... */
+    /* Changing the shared memory requires locking it... */
 #if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
     if (strncmp(worker->s->name_ex, shared->name_ex, sizeof(worker->s->name_ex))) {
 #else
@@ -337,6 +388,12 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->is_address_reusable = 1;
         worker->s->acquire = apr_time_make(0, 2 * 1000); /* 2 ms */
         worker->s->retry = apr_time_from_sec(PROXY_WORKER_DEFAULT_RETRY);
+
+        /* check add health check */
+        worker->s->updated = apr_time_now();
+        if (proxyhctemplate != NULL) {
+            add_hcheck(server, conf, worker);
+        }
     }
 
     if ((rv = ap_proxy_initialize_worker(worker, server, conf->pool)) != APR_SUCCESS) {
@@ -1834,6 +1891,21 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 
+    /* if we have a proxyhctemplate check for the template or failed */
+    if (proxyhctemplate != NULL) {
+       if (ap_find_linked_module("mod_proxy_hcheck.c") == NULL) {
+          ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
+                       "UseProxyHCTemplate requires mod_proxy_hcheck");
+           return HTTP_INTERNAL_SERVER_ERROR;
+       }
+       if (set_worker_hc_param_f  == NULL) {
+          ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
+                       "UseProxyHCTemplate can't be validated");
+           return HTTP_INTERNAL_SERVER_ERROR;
+       }
+       /* get mod_proxy_hcheck.c validating the string... */
+    }
+
     /* check for static workers and warn if that is the case */
     for (idx = 0; s; ++idx) {
         int i;
@@ -1945,6 +2017,15 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
     }
     return OK;
 }
+
+/* pre_config for the health check part */
+static int proxy_cluster_pre_config(apr_pool_t *pconf, apr_pool_t *plog,
+                               apr_pool_t *ptemp)
+{
+    set_worker_hc_param_f = APR_RETRIEVE_OPTIONAL_FN(set_worker_hc_param);
+    return OK;
+}
+
 
 /* Copied from httpd mod_proxy */
 static const char *proxy_interpolate(request_rec *r, const char *str)
@@ -2957,6 +3038,7 @@ static void proxy_cluster_hooks(apr_pool_t *p)
     static const char * const aszSucc[]={ "mod_proxy.c", NULL };
 
     ap_hook_post_config(proxy_cluster_post_config, NULL, NULL, APR_HOOK_MIDDLE);
+    ap_hook_pre_config(proxy_cluster_pre_config, NULL, NULL, APR_HOOK_MIDDLE);
 
     /* create the "maintenance" thread */
     ap_hook_child_init(proxy_cluster_child_init, NULL, NULL, APR_HOOK_LAST);
@@ -3070,6 +3152,39 @@ static const char*cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dummy
     }
     return NULL;
 }
+static const char*cmd_proxy_cluster_proxyhctemplate(cmd_parms *cmd, void *dummy, const char *arg)
+{
+    proxyhctemplate = apr_pstrdup(cmd->pool, arg);
+    while (*arg) {
+       char *key, *val;
+       key = ap_getword_conf(cmd->pool, &arg);
+       val = strchr(key, '=');
+       if (!val) {
+            return "Invalid ProxyHCTemplate parameter. Parameter must be "
+                   "in the form 'key=value'";
+        }
+        else
+            *val++ = '\0';
+        /* are we able to check more stuff? err= test() */
+        if (set_worker_hc_param_f == NULL) {
+            return "Can't check ProxyHCTemplate parameter, is proxy_hcheck_module loaded?";
+        } else {
+           proxy_worker worker;
+           proxy_worker_shared shared;
+           const char *err;
+           apr_pool_t *pool;
+           server_rec *s = cmd->server;
+           worker.s = &shared;
+           apr_pool_create(&pool, cmd->pool);
+           err =  set_worker_hc_param_f(pool, s, &worker, key, val, NULL);
+           apr_pool_destroy(pool);
+           if (err != NULL) {
+              return apr_psprintf(cmd->pool, "%s key: %s=%s", err, key, val);
+           }
+        }
+    }
+    return NULL;
+}
 
 static const command_rec  proxy_cluster_cmds[] =
 {
@@ -3122,6 +3237,13 @@ static const command_rec  proxy_cluster_cmds[] =
         NULL,
         OR_ALL,
         "CacheShareFor - Time in seconds for how long the shared information is cached by httpd: (Default: 0 seconds, no-caching)"
+    ),
+    AP_INIT_RAW_ARGS(
+        "ModProxyClusterHCTemplate",
+        cmd_proxy_cluster_proxyhctemplate,
+        NULL,
+        OR_ALL,
+        "ModProxyClusterHCTemplate - Set of health check parameters to use with mod_proxy_cluster workers."
     ),
     {NULL}
 };
