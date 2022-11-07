@@ -717,6 +717,13 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
         worker->s = helper->shared;
         memcpy(worker->s, stat, sizeof(proxy_worker_shared));
 
+        /* If we use hcheck, we need to stop it for the worker */
+        if (proxyhctemplate != NULL) {
+            worker->s->method = NONE;
+            worker->s->updated = 0;
+            worker->s->status |= PROXY_WORKER_STOPPED;
+        }
+
         return (0);
     } else {
         node->mess.lastcleantry = apr_time_now();
@@ -1175,6 +1182,27 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                     continue; /* skip it */
                 }
 
+                /* Here we should decide about using hcheck result or a request that pings the node */
+                if (proxyhctemplate != NULL) {
+                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                                 "update_workers_lbstatus Usinng hcheck!");
+                    if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
+                        /* marked errored by hcheck */
+                        ou->mess.num_failure_idle++;
+                        if (ou->mess.num_failure_idle > 60) {
+                            /* Failing for 5 minutes: time to mark it removed */
+                            ou->mess.remove = 1;
+                            ou->updatetime = now;
+                        }
+                    } else {
+                        ou->mess.num_failure_idle = 0;
+                    }
+                    continue; /* Done in this case */
+                } else {
+                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                                 "update_workers_lbstatus Using old logic!");
+                }
+
                 if (strchr(worker->s->hostname, ':') != NULL)
                     url = apr_pstrcat(pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
                 else
@@ -1558,20 +1586,33 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     /* Try a  ping/pong to check the node */
     if (load >= 0 || load == -2) {
         /* Only try usuable nodes */
-        char sport[7];
-        char *url;
-        apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
-        if (strchr(worker->s->hostname, ':') != NULL)
-            url = apr_pstrcat(r->pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
-        else
-            url = apr_pstrcat(r->pool, worker->s->scheme, "://", worker->s->hostname,  ":" , sport, "/", NULL);
-        worker->s->error_time = 0; /* Force retry now */
-        rv = proxy_cluster_try_pingpong(r, worker, url, conf, node->mess.ping, node->mess.timeout);
-        if (rv != APR_SUCCESS) {
-            worker->s->status |= PROXY_WORKER_IN_ERROR;
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "proxy_cluster_isup: pingpong %s failed", url);
-            return 500;
+        if (proxyhctemplate != NULL) {
+            /* Don't ping the hcheck is doing it for us */
+            /* TODO : worker->s->error_time = 0; Force retry now do we need something? */
+            if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                             "proxy_cluster_isup: health check says PROXY_WORKER_IN_ERROR");
+                return  500;
+            } else {
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                             "proxy_cluster_isup: health check says OK");
+            }
+        } else {
+            char sport[7];
+            char *url;
+            apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
+            if (strchr(worker->s->hostname, ':') != NULL)
+                url = apr_pstrcat(r->pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
+            else
+                url = apr_pstrcat(r->pool, worker->s->scheme, "://", worker->s->hostname,  ":" , sport, "/", NULL);
+            worker->s->error_time = 0; /* Force retry now */
+            rv = proxy_cluster_try_pingpong(r, worker, url, conf, node->mess.ping, node->mess.timeout);
+            if (rv != APR_SUCCESS) {
+                worker->s->status |= PROXY_WORKER_IN_ERROR;
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                             "proxy_cluster_isup: pingpong %s failed", url);
+                return 500;
+            }
         }
     }
     if (load == -2) {
@@ -1856,11 +1897,12 @@ static void  proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
 }
 
 static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
-                                     apr_pool_t *ptemp, server_rec *s)
+                                     apr_pool_t *ptemp, server_rec *main_s)
 {
     APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
     APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
 
+    server_rec *s = main_s;
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
     int sizew = conf->workers->elt_size;
@@ -1926,6 +1968,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
         }
 	s = s->next;
     }
+    s = main_s;
     if (has_static_workers) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "Worker defined as BalancerMember are NOT supported");
         return !OK;
@@ -2000,12 +2043,13 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
     }
     if (mc_watchdog_get_instance(&watchdog,
                                   LB_CLUSTER_WATHCHDOG_NAME,
-                                  0, 0, p)) {
+                                  0, 1, p)) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263)
                      "Failed to create watchdog instance (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
     }
+
     if (mc_watchdog_register_callback(watchdog,
             AP_WD_TM_SLICE,
             s,
@@ -2014,7 +2058,10 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
                      "Failed to register watchdog callback (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
-    }
+        }
+
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, APLOGNO(03265)
+                 "watchdog callback registered (%s for %s)", LB_CLUSTER_WATHCHDOG_NAME, s->server_hostname);
     return OK;
 }
 
