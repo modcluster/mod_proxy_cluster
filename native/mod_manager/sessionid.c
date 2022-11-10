@@ -75,7 +75,7 @@ static mem_t * create_attach_mem_sessionid(char *string, int *num, int type, apr
  * @return APR_SUCCESS if all went well
  *
  */
-static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t * /* pool */)
 {
     sessionidinfo_t *in = (sessionidinfo_t *)*data;
     sessionidinfo_t *ou = (sessionidinfo_t *)mem;
@@ -122,7 +122,7 @@ apr_status_t insert_update_sessionid(mem_t *s, sessionidinfo_t *sessionid)
  * @param sessionid sessionid to read from the shared table.
  * @return address of the read sessionid or NULL if error.
  */
-static apr_status_t loc_read_sessionid(void* mem, void **data, int id, apr_pool_t *pool) {
+static apr_status_t loc_read_sessionid(void* mem, void **data, int /* id */, apr_pool_t * /* pool */) {
     sessionidinfo_t *in = (sessionidinfo_t *)*data;
     sessionidinfo_t *ou = (sessionidinfo_t *)mem;
 

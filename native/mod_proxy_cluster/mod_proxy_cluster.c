@@ -622,7 +622,7 @@ static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, pr
 /*
  * Remove a node from the worker conf
  */
-static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
+static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_pool_t * /* pool */, server_rec *server)
 {
     int i;
     char *pptr = (char *) node;
@@ -671,7 +671,7 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
  * NOTE: It is called from proxy_cluster_watchdog_func and other locations
  *       It shouldn't call worker_nodes_are_updated() because there may be several VirtualHosts.
  */
-static void update_workers_node(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server, int check, proxy_node_table *node_table)
+static void update_workers_node(proxy_server_conf * /* conf */, apr_pool_t *pool, server_rec *server, int check, proxy_node_table *node_table)
 {
     int i;
     unsigned int last;
@@ -909,7 +909,7 @@ static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn,
 
 static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *worker,
                                                char *url, proxy_server_conf *conf,
-                                               apr_interval_time_t ping, apr_interval_time_t workertimeout)
+                                               apr_interval_time_t /* ping */, apr_interval_time_t /* workertimeout */)
 {
     apr_status_t status;
     apr_interval_time_t timeout;
@@ -1164,7 +1164,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
 /*
  * remove the sessionids that have timeout
  */
-static void remove_timeout_sessionid(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
+static void remove_timeout_sessionid(proxy_server_conf * /* conf */, apr_pool_t *pool, server_rec * /* server */)
 {
     int *id, size, i;
     apr_time_t now;
@@ -1223,7 +1223,7 @@ static void remove_timeout_domain(apr_pool_t *pool)
 /*
  * Check that the worker corresponds to a node that belongs to the same domain according to the JVMRoute.
  */ 
-static int isnode_domain_ok(request_rec *r, nodeinfo_t *node,
+static int isnode_domain_ok(request_rec * /* r */, nodeinfo_t *node,
                              const char *domain)
 {
 #if HAVE_CLUSTER_EX_DEBUG
@@ -1592,7 +1592,7 @@ static const struct balancer_method balancerhandler =
 /*
  * Remove node that have beeen marked removed for more than 10 seconds.
  */
-static void remove_removed_node(apr_pool_t *pool, server_rec *server)
+static void remove_removed_node(apr_pool_t *pool, server_rec * /* server */)
 {
     int *id, size, i;
     apr_time_t now = apr_time_now();
@@ -1798,8 +1798,8 @@ static void  proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
     }
 }
 
-static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
-                                     apr_pool_t *ptemp, server_rec *s)
+static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t * /* plog */,
+                                     apr_pool_t * /* ptemp */, server_rec *s)
 {
     APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
     APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
@@ -2357,7 +2357,7 @@ static proxy_worker *find_session_route(proxy_balancer *balancer,
                                         request_rec *r,
                                         const char **route,
                                         const char **sticky_used,
-                                        char **url,
+                                        char ** /* url */,
                                         const char **domain,
                                         proxy_vhost_table *vhost_table,
                                         proxy_context_table *context_table,
@@ -2569,7 +2569,7 @@ static void remove_session_route(request_rec *r, const char *name)
  * Update the context active request counter
  * Note: it need to lock the whole context table
  */
-static void upd_context_count(const char *id, int val, server_rec *s)
+static void upd_context_count(const char *id, int val, server_rec * /* s */)
 {
     int ident = atoi(id);
     contextinfo_t *context;
@@ -2834,7 +2834,7 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
 static int proxy_cluster_post_request(proxy_worker *worker,
                                        proxy_balancer *balancer,
                                        request_rec *r,
-                                       proxy_server_conf *conf)
+                                       proxy_server_conf * /* conf */)
 {
 
     proxy_cluster_helper *helper;
@@ -2982,12 +2982,12 @@ static void *create_proxy_cluster_dir_config(apr_pool_t *p, char *dir)
 }
  */
 
-static void *create_proxy_cluster_server_config(apr_pool_t *p, server_rec *s)
+static void *create_proxy_cluster_server_config(apr_pool_t * /* p */, server_rec * /* s */)
 {
     return NULL;
 }
 
-static const char*cmd_proxy_cluster_creatbal(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_proxy_cluster_creatbal(cmd_parms * /* cmd */, void * /* dummy */, const char *arg)
 {
     int val = atoi(arg);
     if (val<0 || val>2) {
@@ -2998,7 +2998,7 @@ static const char*cmd_proxy_cluster_creatbal(cmd_parms *cmd, void *dummy, const 
     return NULL;
 }
 
-static const char*cmd_proxy_cluster_use_alias(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_proxy_cluster_use_alias(cmd_parms * /* cmd */, void * /* dummy */, const char *arg)
 {
 
    /* Cannot use AP_INIT_FLAG, to keep compatibility with versions <= 1.3.0.Final which accepted
@@ -3014,7 +3014,7 @@ static const char*cmd_proxy_cluster_use_alias(cmd_parms *cmd, void *dummy, const
    return NULL;
 }
 
-static const char*cmd_proxy_cluster_lbstatus_recalc_time(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_proxy_cluster_lbstatus_recalc_time(cmd_parms * /* cmd */, void * /* dummy */, const char *arg)
 {
     int val = atoi(arg);
     if (val<0) {
@@ -3025,7 +3025,7 @@ static const char*cmd_proxy_cluster_lbstatus_recalc_time(cmd_parms *cmd, void *d
     return NULL;
 }
 
-static const char*cmd_proxy_cluster_wait_for_remove(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_proxy_cluster_wait_for_remove(cmd_parms * /* cmd */, void * /* dummy */, const char *arg)
 {
     int val = atoi(arg);
     if (val<10) {
@@ -3036,7 +3036,7 @@ static const char*cmd_proxy_cluster_wait_for_remove(cmd_parms *cmd, void *dummy,
     return NULL;
 }
 
-static const char*cmd_proxy_cluster_enable_options(cmd_parms *cmd, void *dummy, const char *args)
+static const char*cmd_proxy_cluster_enable_options(cmd_parms * cmd, void * /* dummy */, const char *args)
 {
     char *val = ap_getword_conf(cmd->pool, &args);
 
@@ -3053,14 +3053,14 @@ static const char*cmd_proxy_cluster_enable_options(cmd_parms *cmd, void *dummy, 
     return NULL;
 }
 
-static const char *cmd_proxy_cluster_deterministic_failover(cmd_parms *parms, void *mconfig, int on)
+static const char *cmd_proxy_cluster_deterministic_failover(cmd_parms * /* parms */, void * /* mconfig */, int on)
 {
     deterministic_failover = on;
 
     return NULL;
 }
 
-static const char*cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_proxy_cluster_cache_shared_for(cmd_parms * /* cmd */, void * /* dummy */, const char *arg)
 {
     int val = atoi(arg);
     if (val<0) {

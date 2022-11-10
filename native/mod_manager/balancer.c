@@ -75,7 +75,7 @@ static mem_t * create_attach_mem_balancer(char *string, int *num, int type, apr_
  * @return APR_SUCCESS if all went well
  *
  */
-static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t * /* pool */)
 {
     balancerinfo_t *in = (balancerinfo_t *)*data;
     balancerinfo_t *ou = (balancerinfo_t *)mem;
@@ -122,7 +122,7 @@ apr_status_t insert_update_balancer(mem_t *s, balancerinfo_t *balancer)
  * @param balancer balancer to read from the shared table.
  * @return address of the read balancer or NULL if error.
  */
-static apr_status_t loc_read_balancer(void* mem, void **data, int id, apr_pool_t *pool) {
+static apr_status_t loc_read_balancer(void* mem, void **data, int /* id */, apr_pool_t * /* pool */) {
     balancerinfo_t *in = (balancerinfo_t *)*data;
     balancerinfo_t *ou = (balancerinfo_t *)mem;
 

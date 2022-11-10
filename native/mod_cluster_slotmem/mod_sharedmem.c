@@ -42,7 +42,7 @@
 #include  "slotmem.h"
 
 /* make sure the shared memory is cleaned */
-static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
+static int initialize_cleanup(apr_pool_t *p, apr_pool_t * /* plog */, apr_pool_t * /* ptemp */, server_rec *s)
 {
     void *data;
     const char *userdata_key = "mod_sharedmem_init";
@@ -62,8 +62,8 @@ static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp
  * that is to allow the resize the shared memory area using a graceful start
  * No sure that is a very good idea...
  */
-static int pre_config(apr_pool_t *p, apr_pool_t *plog,
-                             apr_pool_t *ptemp)
+static int pre_config(apr_pool_t * /* p */, apr_pool_t * /* plog */,
+                             apr_pool_t * /* ptemp */)
 {
     apr_pool_t *global_pool;
     apr_status_t rv;
@@ -81,7 +81,7 @@ static int pre_config(apr_pool_t *p, apr_pool_t *plog,
 /*
  * Create the mutex of the insert/remove logic
  */
-static void child_init(apr_pool_t *p, server_rec *s)
+static void child_init(apr_pool_t *p, server_rec * /* s */)
 {
     sharedmem_initialize_child(p);
 }

@@ -570,7 +570,7 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
 }
 
 /* Given the route find the corresponding domain (if there is a domain) */
-static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, const char *balancer, proxy_node_table *node_table)
+static apr_status_t find_nodedomain(request_rec * /* r */, char **domain, char *route, const char *balancer, proxy_node_table *node_table)
 {
     int i;
     /* XXX JFCLERE!!!! domaininfo_t *dom; */
@@ -610,7 +610,7 @@ static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, 
 const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
                                       proxy_vhost_table *vhost_table,
                                       proxy_context_table *context_table,
-                                      proxy_balancer_table *balancer_table,
+                                      proxy_balancer_table * /* balancer_table */,
                                       proxy_node_table *node_table,
                                       int use_alias)
 {

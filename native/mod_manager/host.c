@@ -75,7 +75,7 @@ static mem_t * create_attach_mem_host(char *string, int *num, int type, apr_pool
  * @return APR_SUCCESS if all went well
  *
  */
-static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t * /* pool */)
 {
     hostinfo_t *in = (hostinfo_t *)*data;
     hostinfo_t *ou = (hostinfo_t *)mem;
@@ -122,7 +122,7 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
  * @param host host to read from the shared table.
  * @return address of the read host or NULL if error.
  */
-static apr_status_t loc_read_host(void* mem, void **data, int id, apr_pool_t *pool) {
+static apr_status_t loc_read_host(void* mem, void **data, int /* id */, apr_pool_t * /* pool */) {
     hostinfo_t *in = (hostinfo_t *)*data;
     hostinfo_t *ou = (hostinfo_t *)mem;
 

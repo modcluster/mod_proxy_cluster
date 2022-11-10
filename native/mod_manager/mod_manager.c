@@ -236,7 +236,7 @@ static void inc_version_node(void)
  *   0 : No update of the nodes since last time.
  *   x: The version has changed the local table need to be updated.
  */
-static unsigned int loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
+static unsigned int loc_worker_nodes_need_update(void *data, apr_pool_t * /* pool */)
 {
     int size;
     server_rec *s = (server_rec *) data;
@@ -503,7 +503,7 @@ struct cluster_host {
 /*
  * cleanup logic
  */
-static apr_status_t cleanup_manager(void *param)
+static apr_status_t cleanup_manager(void * /* param */)
 {
     /* shared memory */
     contextstatsmem = NULL;
@@ -564,7 +564,7 @@ static APR_INLINE int is_child_process(void)
  * call after parser the configuration.
  * create the shared memory.
  */
-static int manager_init(apr_pool_t *p, apr_pool_t *plog,
+static int manager_init(apr_pool_t *p, apr_pool_t * /* plog */,
                           apr_pool_t *ptemp, server_rec *s)
 {
     char *node;
@@ -1276,7 +1276,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
 /*
  * Process a DUMP command.
  */
-static char * process_dump(request_rec *r, int *errtype)
+static char * process_dump(request_rec *r, int * /* errtype */)
 {
     int size, i;
     int *id;
@@ -1495,7 +1495,7 @@ static char * process_dump(request_rec *r, int *errtype)
  * Process a INFO command.
  * Statics informations ;-)
  */
-static char * process_info(request_rec *r, int *errtype)
+static char * process_info(request_rec *r, int * /* errtype */)
 {
     int size, i;
     int *id;
@@ -1725,7 +1725,7 @@ static char * process_info(request_rec *r, int *errtype)
 }
 
 /* Process a *-APP command that applies to the node NOTE: the node is locked */
-static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo_t *node)
+static char * process_node_cmd(request_rec *r, int status, int * /* errtype */, nodeinfo_t *node)
 {
     /* for read the hosts */
     int i,j;
@@ -2127,7 +2127,7 @@ static char * process_status(request_rec *r, char **ptr, int *errtype)
 /*
  * Process the VERSION command
  */
-static char * process_version(request_rec *r, char **ptr, int *errtype)
+static char * process_version(request_rec *r, char ** /* ptr */, int * /* errtype */)
 {
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
 
@@ -3253,7 +3253,7 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
 /*
  * Supported directives.
  */
-static const char *cmd_manager_maxcontext(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_maxcontext(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3263,7 +3263,7 @@ static const char *cmd_manager_maxcontext(cmd_parms *cmd, void *mconfig, const c
     mconf->maxcontext = atoi(word);
     return NULL;
 }
-static const char *cmd_manager_maxnode(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_maxnode(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3273,7 +3273,7 @@ static const char *cmd_manager_maxnode(cmd_parms *cmd, void *mconfig, const char
     mconf->maxnode = atoi(word);
     return NULL;
 }
-static const char *cmd_manager_maxhost(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_maxhost(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3283,7 +3283,7 @@ static const char *cmd_manager_maxhost(cmd_parms *cmd, void *mconfig, const char
     mconf->maxhost = atoi(word);
     return NULL;
 }
-static const char *cmd_manager_maxsessionid(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_maxsessionid(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3293,7 +3293,7 @@ static const char *cmd_manager_maxsessionid(cmd_parms *cmd, void *mconfig, const
     mconf->maxsessionid = atoi(word);
     return NULL;
 }
-static const char *cmd_manager_memmanagerfile(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_memmanagerfile(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3305,14 +3305,14 @@ static const char *cmd_manager_memmanagerfile(cmd_parms *cmd, void *mconfig, con
         return  "Can't create directory corresponding to MemManagerFile";
     return NULL;
 }
-static const char *cmd_manager_balancername(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_balancername(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     mconf->balancername = apr_pstrdup(cmd->pool, word);
     normalize_balancer_name(mconf->balancername, cmd->server);
     return NULL;
 }
-static const char*cmd_manager_pers(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_manager_pers(cmd_parms *cmd, void * /* dummy */, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3330,7 +3330,7 @@ static const char*cmd_manager_pers(cmd_parms *cmd, void *dummy, const char *arg)
     return NULL;
 }
 
-static const char*cmd_manager_nonce(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_manager_nonce(cmd_parms *cmd, void * /* dummy */, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     if (strcasecmp(arg, "Off") == 0)
@@ -3343,7 +3343,7 @@ static const char*cmd_manager_nonce(cmd_parms *cmd, void *dummy, const char *arg
     }
     return NULL;
 }
-static const char*cmd_manager_allow_display(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_manager_allow_display(cmd_parms *cmd, void * /* dummy */, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     if (strcasecmp(arg, "Off") == 0)
@@ -3356,7 +3356,7 @@ static const char*cmd_manager_allow_display(cmd_parms *cmd, void *dummy, const c
     }
     return NULL;
 }
-static const char*cmd_manager_allow_cmd(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_manager_allow_cmd(cmd_parms *cmd, void * /* dummy */, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     if (strcasecmp(arg, "Off") == 0)
@@ -3369,7 +3369,7 @@ static const char*cmd_manager_allow_cmd(cmd_parms *cmd, void *dummy, const char 
     }
     return NULL;
 }
-static const char*cmd_manager_reduce_display(cmd_parms *cmd, void *dummy, const char *arg)
+static const char*cmd_manager_reduce_display(cmd_parms *cmd, void * /* dummy */, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     if (strcasecmp(arg, "Off") == 0)
@@ -3382,7 +3382,7 @@ static const char*cmd_manager_reduce_display(cmd_parms *cmd, void *dummy, const 
     }
     return NULL;
 }
-static const char*cmd_manager_maxmesssize(cmd_parms *cmd, void *mconfig, const char *word)
+static const char*cmd_manager_maxmesssize(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3394,7 +3394,7 @@ static const char*cmd_manager_maxmesssize(cmd_parms *cmd, void *mconfig, const c
        return "MaxMCMPMessSize must bigger than 1024";
     return NULL;
 }
-static const char*cmd_manager_enable_mcpm_receive(cmd_parms *cmd, void *dummy)
+static const char*cmd_manager_enable_mcpm_receive(cmd_parms *cmd, void * /* dummy */)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     if (!cmd->server->is_virtual)
@@ -3402,7 +3402,7 @@ static const char*cmd_manager_enable_mcpm_receive(cmd_parms *cmd, void *dummy)
     mconf->enable_mcpm_receive = -1;
     return NULL;
 }
-static const char*cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
+static const char*cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void * /* dummy */)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3417,7 +3417,7 @@ static const char*cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
     }
 }
 
-static const char*cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, const char *word)
+static const char*cmd_manager_ws_upgrade_header(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3437,7 +3437,7 @@ static const char*cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, c
     }
 }
 
-static const char*cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const char *word)
+static const char*cmd_manager_ajp_secret(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3456,7 +3456,7 @@ static const char*cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const ch
     }
 }
 
-static const char*cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, const char *word)
+static const char*cmd_manager_responsefieldsize(cmd_parms *cmd, void * /* mconfig */, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -3658,7 +3658,7 @@ static void *create_manager_config(apr_pool_t *p)
     return mconf;
 }
 
-static void *create_manager_server_config(apr_pool_t *p, server_rec *s)
+static void *create_manager_server_config(apr_pool_t *p, server_rec * /* s */)
 {
     return(create_manager_config(p));
 }

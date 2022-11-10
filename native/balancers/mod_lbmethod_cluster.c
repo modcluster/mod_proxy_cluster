@@ -138,17 +138,17 @@ static proxy_worker *find_best(proxy_balancer *balancer,
     return mycandidate;
 }
 
-static apr_status_t reset(proxy_balancer *balancer, server_rec *s)
+static apr_status_t reset(proxy_balancer * /* balancer */, server_rec * /* s */)
 {
     return APR_SUCCESS;
 }
 
-static apr_status_t age(proxy_balancer *balancer, server_rec *s)
+static apr_status_t age(proxy_balancer * /* balancer */, server_rec * /* s */)
 {
     return APR_SUCCESS;
 }
 
-static apr_status_t updatelbstatus(proxy_balancer *balancer, proxy_worker *elected, server_rec *s)
+static apr_status_t updatelbstatus(proxy_balancer * /* balancer */, proxy_worker * /* elected */, server_rec * /* s */)
 {
     return APR_SUCCESS;
 }
@@ -228,7 +228,7 @@ static int lbmethod_cluster_trans(request_rec *r)
 /*
  * Remove node that have beeen marked removed for more than 10 seconds.
  */
-static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now, proxy_node_table *node_table)
+static void remove_removed_node(server_rec * /* s */, apr_pool_t *pool, apr_time_t now, proxy_node_table *node_table)
 {
     int i;
 
@@ -343,8 +343,8 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
     return rv;
 }
 
-static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
-                                     apr_pool_t *ptemp, server_rec *s)
+static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t * /* plog */,
+                                     apr_pool_t * /* ptemp */, server_rec *s)
 {
    APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
    APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
