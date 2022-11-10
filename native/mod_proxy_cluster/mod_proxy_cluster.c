@@ -2647,8 +2647,8 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
             int i;
             int sizew = (*balancer)->workers->elt_size;
             char *ptr = (*balancer)->workers->elts;
-            int def = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_DEFAULT);
-            int fnv = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_FNV);
+            unsigned int def = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_DEFAULT);
+            unsigned int fnv = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_FNV);
 #if HAVE_CLUSTER_EX_DEBUG
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "proxy_cluster_pre_request: worker %s", worker_name);
@@ -3133,5 +3133,6 @@ module AP_MODULE_DECLARE_DATA proxy_cluster_module = {
     create_proxy_cluster_server_config, /* server config creator */
     NULL,                               /* server config merger */
     proxy_cluster_cmds,                 /* command table */
-    proxy_cluster_hooks                 /* register hooks */
+    proxy_cluster_hooks,                /* register hooks */
+    AP_MODULE_FLAG_NONE                 /* flags */
 };

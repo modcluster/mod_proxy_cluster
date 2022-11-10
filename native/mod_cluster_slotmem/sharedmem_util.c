@@ -166,7 +166,7 @@ static void restore_slotmem(void *ptr, const char *name, apr_size_t item_size, i
     if (rv == APR_SUCCESS) {
         apr_finfo_t fi;
         if (apr_file_info_get(&fi, APR_FINFO_SIZE, fp) == APR_SUCCESS) {
-            if (fi.size == nbytes) {
+            if (fi.size == (long long int) nbytes) {
                 apr_file_read(fp, ptr, &nbytes);
             }
             else {

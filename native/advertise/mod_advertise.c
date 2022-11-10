@@ -857,5 +857,6 @@ module AP_MODULE_DECLARE_DATA advertise_module =
     create_advertise_server_config,                    /* server config creator                       */
     NULL,                     /* server config merger                        */
     cmd_table,               /* command table                               */
-    register_hooks           /* set up other request processing hooks       */
+    register_hooks,          /* set up other request processing hooks       */
+    AP_MODULE_FLAG_NONE      /* flags */
 };

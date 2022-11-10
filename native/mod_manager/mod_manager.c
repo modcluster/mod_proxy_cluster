@@ -1883,7 +1883,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     hostinfo.node = node->mess.id;
     if (vhost->host != NULL) {
         char *s = hostinfo.host;
-        int j = 1;
+        unsigned j = 1;
         strncpy(hostinfo.host, vhost->host, HOSTALIASZ);
         while (*s != ',' && j<sizeof(hostinfo.host)) {
            j++;
@@ -2416,7 +2416,6 @@ static int manager_map_to_storage(request_rec *r)
 
     ours = check_method(r); 
     if (ours) {
-        int i;
         /* The method one of ours */
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                     "manager_map_to_storage %s (%s)", r->method, r->uri);
@@ -3771,6 +3770,7 @@ module AP_MODULE_DECLARE_DATA manager_module = {
     NULL,
     create_manager_server_config,
     merge_manager_server_config,
-    manager_cmds,      /* command table */
-    manager_hooks      /* register hooks */
+    manager_cmds,       /* command table */
+    manager_hooks,      /* register hooks */
+    AP_MODULE_FLAG_NONE /* flags */
 };
