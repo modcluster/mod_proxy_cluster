@@ -2058,7 +2058,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
                      "Failed to register watchdog callback (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
-        }
+    }
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, APLOGNO(03265)
                  "watchdog callback registered (%s for %s)", LB_CLUSTER_WATHCHDOG_NAME, s->server_hostname);
@@ -2072,7 +2072,6 @@ static int proxy_cluster_pre_config(apr_pool_t *pconf, apr_pool_t *plog,
     set_worker_hc_param_f = APR_RETRIEVE_OPTIONAL_FN(set_worker_hc_param);
     return OK;
 }
-
 
 /* Copied from httpd mod_proxy */
 static const char *proxy_interpolate(request_rec *r, const char *str)
@@ -3189,7 +3188,7 @@ static const char *cmd_proxy_cluster_deterministic_failover(cmd_parms *parms, vo
     return NULL;
 }
 
-static const char*cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dummy, const char *arg)
+static const char *cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dummy, const char *arg)
 {
     int val = atoi(arg);
     if (val<0) {
@@ -3199,7 +3198,7 @@ static const char*cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dummy
     }
     return NULL;
 }
-static const char*cmd_proxy_cluster_proxyhctemplate(cmd_parms *cmd, void *dummy, const char *arg)
+static const char *cmd_proxy_cluster_proxyhctemplate(cmd_parms *cmd, void *dummy, const char *arg)
 {
     proxyhctemplate = apr_pstrdup(cmd->pool, arg);
     while (*arg) {
