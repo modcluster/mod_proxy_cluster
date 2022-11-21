@@ -41,9 +41,13 @@ do
   cd ../../..
 done
 
-# copy one the prepared conf file and include it
-cp /tmp/$CONF /usr/local/apache2/conf/
-echo "Include conf/$CONF" >> /usr/local/apache2/conf/httpd.conf
+# wget and copy the prepared conf file and include it
+(cd /tmp; wget $CONF)
+FILECONF=`filename $CONF`
+if [ -f /tmp/$FILECONF ]; then
+  cp /tmp/$FILECONF /usr/local/apache2/conf/
+  echo "Include conf/$FILECONF" >> /usr/local/apache2/conf/httpd.conf
+fi
 
 # start apache httpd server in foreground
 
