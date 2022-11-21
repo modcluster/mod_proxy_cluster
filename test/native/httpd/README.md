@@ -16,5 +16,5 @@ CONF: The mod_proxy_cluster configuration file to include in httpd.conf (The *co
 
 For example (the default)
 ```bash
-podman run --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.54.tar.gz -e SOURCES=https://github.com/modcluster/mod_proxy_cluster -e BRANCH=main -e CONF=mod_proxy_cluster.conf quay.io/${USER}/mod_cluster_httpd
+podman run --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.54.tar.gz -e SOURCES=https://github.com/modcluster/mod_proxy_cluster -e BRANCH=main -e CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/httpd/mod_proxy_cluster.conf quay.io/${USER}/mod_cluster_httpd
 ```
