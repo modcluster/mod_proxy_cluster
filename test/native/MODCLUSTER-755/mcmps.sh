@@ -39,6 +39,10 @@ do
    for ((i=9000; i < 9000+$NODE_COUNT; i++))
    do
       curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X STATUS --data "JVMRoute=appserver$i&Load=100"
+      if [ $? -ne 0 ]; then
+        echo "htttpd stopped!!!"
+        break
+      fi
    done
    sleep 10
 done
