@@ -174,7 +174,7 @@ static void add_hcheck(server_rec *s, proxy_server_conf *conf, proxy_worker *wor
              }
              ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_DEBUG, 0, s,
                              "hcheck %s=%s add to worker %s", key, val,
-#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 12
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
                                worker->s->name_ex
 #else
                                worker->s->name
