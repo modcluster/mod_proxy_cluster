@@ -15,7 +15,7 @@ class MiniServer():
     self.HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
     self.PORT = port  # Port to listen on (non-privileged ports are > 1023)
     letters = string.ascii_lowercase
-    self.JVMROUTE = ''.join(random.choice(letters) for i in range(10))
+    self.JVMROUTE = ''.join(random.choice(letters) for i in range(3))
     self.page = ""
     self.page = self.page + "HTTP/1.1 200 OK\r\n"
     self.page = self.page + "Content-Length: 10\r\n"
@@ -127,7 +127,8 @@ def main():
       server.processtimeoutacc(s)
     else:
       conn, addr = s.accept()
-      server.processcon(conn, addr)
+      t = threading.Thread(target=server.processcon, args=(conn, addr,))
+      t.start()
 
 if __name__ == '__main__':
   main()
