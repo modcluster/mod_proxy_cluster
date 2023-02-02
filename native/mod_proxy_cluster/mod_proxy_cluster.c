@@ -2271,7 +2271,7 @@ static int proxy_cluster_trans(request_rec *r)
  
     ap_log_rerror(APLOG_MARK, APLOG_TRACE8, 0, r,
                 "proxy_cluster_trans DECLINED %s uri: %s unparsed_uri: %s",
-                 balancer, r->filename, r->unparsed_uri);
+                 balancer ? balancer : "", r->filename, r->unparsed_uri);
     return DECLINED;
 }
 
