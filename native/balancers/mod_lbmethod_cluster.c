@@ -437,5 +437,6 @@ AP_DECLARE_MODULE(lbmethod_cluster) = {
     NULL,        /* create per-server config structure */
     NULL,         /* merge per-server config structures */
     NULL,                       /* command apr_table_t */
-    register_hooks              /* register hooks */
+    register_hooks,             /* register hooks */
+    AP_MODULE_FLAG_NONE         /* flags */
 };

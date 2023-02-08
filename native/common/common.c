@@ -580,10 +580,10 @@ static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, 
 #endif
     for (i = 0; i < node_table->sizenode; i++) {
         if (strcmp(node_table->node_info[i].mess.JVMRoute, route) == 0) {
-            nodeinfo_t ou = node_table->node_info[i];
-            if (!strcasecmp(balancer, ou.mess.balancer)) {
-                if (ou.mess.Domain[0] != '\0') {
-                    *domain = ou.mess.Domain;
+            nodeinfo_t* ou = &node_table->node_info[i];
+            if (!strcasecmp(balancer, ou->mess.balancer)) {
+                if (ou->mess.Domain[0] != '\0') {
+                    *domain = ou->mess.Domain;
                 }
                 return APR_SUCCESS;
             }

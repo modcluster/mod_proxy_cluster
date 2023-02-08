@@ -103,5 +103,6 @@ module AP_MODULE_DECLARE_DATA cluster_slotmem_module = {
     NULL,       /* create per-server config structure */
     NULL,       /* merge per-server config structures */
     NULL,       /* command apr_table_t */
-    ap_sharedmem_register_hook /* register hooks */
+    ap_sharedmem_register_hook, /* register hooks */
+    AP_MODULE_FLAG_NONE         /* flags */
 };
