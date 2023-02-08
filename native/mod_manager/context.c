@@ -77,6 +77,8 @@ static mem_t * create_attach_mem_context(char *string, int *num, int type, apr_p
  */
 static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
 {
+    (void) pool;
+
     contextinfo_t *in = (contextinfo_t *)*data;
     contextinfo_t *ou = (contextinfo_t *)mem;
     if (strcmp(in->context, ou->context) == 0 &&
@@ -126,6 +128,8 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
  * @return address of the read context or NULL if error.
  */
 static apr_status_t loc_read_context(void* mem, void **data, int id, apr_pool_t *pool) {
+    (void) id; (void) pool;
+
     contextinfo_t *in = (contextinfo_t *)*data;
     contextinfo_t *ou = (contextinfo_t *)mem;
     if (strcmp(in->context, ou->context) == 0 &&

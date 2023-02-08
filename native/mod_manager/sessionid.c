@@ -77,6 +77,8 @@ static mem_t * create_attach_mem_sessionid(char *string, int *num, int type, apr
  */
 static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
 {
+    (void) pool;
+
     sessionidinfo_t *in = (sessionidinfo_t *)*data;
     sessionidinfo_t *ou = (sessionidinfo_t *)mem;
     if (strcmp(in->sessionid, ou->sessionid) == 0) {
@@ -123,6 +125,8 @@ apr_status_t insert_update_sessionid(mem_t *s, sessionidinfo_t *sessionid)
  * @return address of the read sessionid or NULL if error.
  */
 static apr_status_t loc_read_sessionid(void* mem, void **data, int id, apr_pool_t *pool) {
+    (void) id; (void) pool;
+
     sessionidinfo_t *in = (sessionidinfo_t *)*data;
     sessionidinfo_t *ou = (sessionidinfo_t *)mem;
 

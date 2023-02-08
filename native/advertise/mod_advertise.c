@@ -135,6 +135,8 @@ static ma_global_data_t  *magd = NULL;
 static const char *cmd_advertise_m(cmd_parms *cmd, void *dummy,
                                    const char *arg, const char *opt)
 {
+    (void) dummy;
+
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     if (mconf->ma_advertise_srvs)
         return "Duplicate ServerAdvertise directives are not allowed";
@@ -172,6 +174,8 @@ static const char *cmd_advertise_m(cmd_parms *cmd, void *dummy,
 static const char *cmd_advertise_g(cmd_parms *cmd, void *dummy,
                                    const char *arg)
 {
+    (void) dummy;
+
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     if (mconf->ma_advertise_port != MA_DEFAULT_ADVPORT &&
         (strcmp(mconf->ma_advertise_adrs, MA_DEFAULT_GROUP) != 0))
@@ -198,6 +202,8 @@ static const char *cmd_advertise_g(cmd_parms *cmd, void *dummy,
 static const char *cmd_bindaddr(cmd_parms *cmd, void *dummy,
                                    const char *arg)
 {
+    (void) dummy;
+
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     if (mconf->ma_bind_set)
         return "Duplicate AdvertiseBindAddress directives are not allowed";
@@ -224,6 +230,8 @@ static const char *cmd_bindaddr(cmd_parms *cmd, void *dummy,
 static const char *cmd_advertise_f(cmd_parms *cmd, void *dummy,
                                    const char *arg)
 {
+    (void) dummy;
+
     apr_time_t s, u = 0;
     const char *p;
 
@@ -250,6 +258,8 @@ static const char *cmd_advertise_f(cmd_parms *cmd, void *dummy,
 static const char *cmd_advertise_k(cmd_parms *cmd, void *dummy,
                                    const char *arg)
 {
+   (void) dummy;
+
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     if (mconf->ma_advertise_skey != NULL)
         return "Duplicate AdvertiseSecurityKey directives are not allowed";
@@ -266,6 +276,8 @@ static const char *cmd_advertise_k(cmd_parms *cmd, void *dummy,
 static const char *cmd_advertise_h(cmd_parms *cmd, void *dummy,
                                    const char *arg)
 {
+    (void) dummy;
+
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
 
     if (mconf->ma_advertise_srvh != NULL)
@@ -432,6 +444,8 @@ static void ma_group_leave()
 
 static void * APR_THREAD_FUNC parent_thread(apr_thread_t *thd, void *data)
 {
+    (void) thd;
+
     static int current_status  = 0;
     int f_time = 1;
     apr_interval_time_t a_step = 0;
@@ -471,6 +485,8 @@ static apr_status_t pconfig_cleanup(void *data);
 
 static apr_status_t process_cleanup(void *data)
 {
+    (void)data;
+
     int advertise_run = ma_advertise_run;
 
     is_mp_running     = 0;
@@ -501,6 +517,8 @@ static apr_status_t process_cleanup(void *data)
 
 static apr_status_t pconfig_cleanup(void *data)
 {
+    (void) data;
+
     int advertise_run = ma_advertise_run;
 
     is_mp_running     = 0;
@@ -540,6 +558,8 @@ static apr_status_t pconfig_cleanup(void *data)
 static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog,
                             apr_pool_t *ptemp, server_rec *s)
 {
+    (void) plog; (void) ptemp;
+
     apr_status_t rv;
     const char *pk = "advertise_init_module_tag";
     apr_pool_t *pproc = s->process->pool;
@@ -706,6 +726,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog,
 
 static void  child_init_hook(apr_pool_t *p, server_rec *s)
 {
+    (void) p;
     main_server = s;
 }
 
@@ -816,6 +837,8 @@ static void register_hooks(apr_pool_t *p)
 /* Create a default conf structure */
 static void *create_advertise_server_config(apr_pool_t *p, server_rec *s)
 {
+    (void) s;
+
     mod_advertise_config *mconf = apr_pcalloc(p, sizeof(*mconf));
 
     /* Set default values */

@@ -83,6 +83,8 @@ static apr_thread_mutex_t *globalmutex_lock = NULL;
 
 static apr_status_t unixd_set_shm_perms(const char *fname)
 {
+    (void) fname;
+
 #ifdef AP_NEED_SET_MUTEX_PERMS
 #if APR_USE_SHMEM_SHMGET || APR_USE_SHMEM_SHMGET_ANON
     struct shmid_ds shmbuf;
@@ -501,7 +503,7 @@ static apr_status_t ap_slotmem_mem(ap_slotmem_t *score, int id, void**mem)
     return APR_SUCCESS;
 }
 
-static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void**mem)
+static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void **mem)
 {
     int ff;
     int *ident;
@@ -521,8 +523,10 @@ static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void**me
     
     return rv;
 }
-static apr_status_t ap_slotmem_free(ap_slotmem_t *score, int item_id, void*mem)
+static apr_status_t ap_slotmem_free(ap_slotmem_t *score, int item_id, void *mem)
 {
+    (void) mem;
+
     int ff;
     int *ident;
     if (item_id > score->num || item_id <=0) {
@@ -581,6 +585,8 @@ static const slotmem_storage_method storage = {
  * and initialise the global pool */
 const slotmem_storage_method *mem_getstorage(apr_pool_t *p, char *type)
 {
+    (void) type;
+
     if (globalpool == NULL && p != NULL)
         globalpool = p;
     return(&storage);
@@ -588,10 +594,12 @@ const slotmem_storage_method *mem_getstorage(apr_pool_t *p, char *type)
 /* Add the pool_clean routine */
 void sharedmem_initialize_cleanup(apr_pool_t *p)
 {
+    (void) p;
     apr_pool_cleanup_register(p, &globallistmem, cleanup_slotmem, apr_pool_cleanup_null);
 }
 /* Create the mutex for insert/remove logic */
 apr_status_t sharedmem_initialize_child(apr_pool_t *p)
 {
+    (void) p;
     return (apr_thread_mutex_create(&globalmutex_lock, APR_THREAD_MUTEX_DEFAULT, globalpool));
 }

@@ -77,6 +77,8 @@ static mem_t * create_attach_mem_domain(char *string, int *num, int type, apr_po
  */
 static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
 {
+    (void) pool;
+
     domaininfo_t *in = (domaininfo_t *)*data;
     domaininfo_t *ou = (domaininfo_t *)mem;
     if (strcmp(in->JVMRoute, ou->JVMRoute) == 0 && strcmp(in->balancer, ou->balancer) == 0) {
@@ -123,6 +125,8 @@ apr_status_t insert_update_domain(mem_t *s, domaininfo_t *domain)
  * @return address of the read domain or NULL if error.
  */
 static apr_status_t loc_read_domain(void* mem, void **data, int id, apr_pool_t *pool) {
+    (void) id; (void) pool;
+
     domaininfo_t *in = (domaininfo_t *)*data;
     domaininfo_t *ou = (domaininfo_t *)mem;
 
