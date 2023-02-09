@@ -572,6 +572,8 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
 /* Given the route find the corresponding domain (if there is a domain) */
 static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, const char *balancer, proxy_node_table *node_table)
 {
+    (void) r;
+
     int i;
     /* XXX JFCLERE!!!! domaininfo_t *dom; */
 #if HAVE_CLUSTER_EX_DEBUG
@@ -614,6 +616,8 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
                                       proxy_node_table *node_table,
                                       int use_alias)
 {
+    (void) balancer_table;
+
     char *route = NULL;
     char *sessionid = NULL;
     char *sticky_used;
@@ -713,7 +717,7 @@ nodeinfo_t* table_get_node_route(proxy_node_table *node_table, char *route, int 
  * @return the balancer name or NULL if not found.
  */ 
 const char *get_context_host_balancer(request_rec *r,
-		proxy_vhost_table *vhost_table, proxy_context_table *context_table, proxy_node_table *node_table, int use_alias)
+        proxy_vhost_table *vhost_table, proxy_context_table *context_table, proxy_node_table *node_table, int use_alias)
 {
     void *sconf = r->server->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)

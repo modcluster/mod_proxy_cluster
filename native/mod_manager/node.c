@@ -91,6 +91,8 @@ apr_status_t get_last_mem_error(mem_t *mem) {
  */
 static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
 {
+    (void) pool;
+
     nodeinfo_t *in = (nodeinfo_t *)*data;
     nodeinfo_t *ou = (nodeinfo_t *)mem;
     if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
@@ -160,6 +162,8 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id)
  * @return address of the read node or NULL if error.
  */
 static apr_status_t loc_read_node(void* mem, void **data, int id, apr_pool_t *pool) {
+    (void) id; (void) pool;
+
     nodeinfo_t *in = (nodeinfo_t *)*data;
     nodeinfo_t *ou = (nodeinfo_t *)mem;
     if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
