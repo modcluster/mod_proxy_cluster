@@ -77,10 +77,10 @@ static mem_t * create_attach_mem_host(char *string, int *num, int type, apr_pool
  */
 static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
 {
-    (void) pool;
-
     hostinfo_t *in = (hostinfo_t *)*data;
     hostinfo_t *ou = (hostinfo_t *)mem;
+    (void) pool;
+
     if (strcmp(in->host, ou->host) == 0 && in->vhost == ou->vhost && in->node == ou->node) {
         memcpy(ou, in, sizeof(hostinfo_t));
         ou->id = id;
@@ -125,10 +125,9 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
  * @return address of the read host or NULL if error.
  */
 static apr_status_t loc_read_host(void* mem, void **data, int id, apr_pool_t *pool) {
-    (void) id; (void) pool;
-
     hostinfo_t *in = (hostinfo_t *)*data;
     hostinfo_t *ou = (hostinfo_t *)mem;
+    (void) id; (void) pool;
 
     if (strcmp(in->host, ou->host) == 0 && in->node == ou->node ) {
         *data = ou;

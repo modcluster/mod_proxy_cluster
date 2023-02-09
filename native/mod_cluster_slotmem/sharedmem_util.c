@@ -525,10 +525,10 @@ static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void **m
 }
 static apr_status_t ap_slotmem_free(ap_slotmem_t *score, int item_id, void *mem)
 {
-    (void) mem;
-
     int ff;
     int *ident;
+    (void) mem;
+
     if (item_id > score->num || item_id <=0) {
         return APR_EINVAL;
     } else {

@@ -572,9 +572,9 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
 /* Given the route find the corresponding domain (if there is a domain) */
 static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, const char *balancer, proxy_node_table *node_table)
 {
+    int i;
     (void) r;
 
-    int i;
     /* XXX JFCLERE!!!! domaininfo_t *dom; */
 #if HAVE_CLUSTER_EX_DEBUG
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
@@ -616,8 +616,6 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
                                       proxy_node_table *node_table,
                                       int use_alias)
 {
-    (void) balancer_table;
-
     char *route = NULL;
     char *sessionid = NULL;
     char *sticky_used;
@@ -625,6 +623,7 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
     int i;
     char *ptr = conf->balancers->elts;
     int sizeb = conf->balancers->elt_size;
+    (void) balancer_table;
 
     for (i = 0; i < conf->balancers->nelts; i++, ptr=ptr+sizeb) {
         proxy_balancer *balancer = (proxy_balancer *) ptr;
