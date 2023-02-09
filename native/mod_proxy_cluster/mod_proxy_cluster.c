@@ -682,8 +682,6 @@ static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, pr
  */
 static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
 {
-    (void) pool;
-
     int i;
     char *pptr = (char *) node;
     proxy_cluster_helper *helper;
@@ -691,6 +689,8 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
     pptr = pptr + node->offset;
 
     worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_shared *) pptr, node);
+    (void) pool;
+
     if (!worker) {
         /* XXX: Another process may use it, can't do: node_storage->remove_node(node); */
         return 0; /* Done */
@@ -740,10 +740,9 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
  */
 static void update_workers_node(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server, int check, proxy_node_table *node_table)
 {
-    (void) conf;
-
     int i;
     unsigned int last;
+    (void) conf;
 
     if (node_table == NULL)
         return;
@@ -980,8 +979,6 @@ static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *wor
                                                char *url, proxy_server_conf *conf,
                                                apr_interval_time_t ping, apr_interval_time_t workertimeout)
 {
-    (void) ping; (void) workertimeout;
-
     apr_status_t status;
     apr_interval_time_t timeout;
     proxy_conn_rec *backend = NULL;
@@ -990,6 +987,7 @@ static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *wor
     apr_uri_t *uri;
     char *scheme = worker->s->scheme;
     int is_ssl = 0;
+    (void) ping; (void) workertimeout;
 
     if ((strcasecmp(scheme, "HTTPS") == 0 ||
         strcasecmp(scheme, "WSS") == 0 ||
@@ -1258,10 +1256,9 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
  */
 static void remove_timeout_sessionid(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
 {
-    (void) conf; (void) server;
-
     int *id, size, i;
     apr_time_t now;
+    (void) conf; (void) server;
 
     now = apr_time_sec(apr_time_now());
 
@@ -1702,13 +1699,12 @@ static const struct balancer_method balancerhandler =
  */
 static void remove_removed_node(apr_pool_t *pool, server_rec *server)
 {
-    (void) server;
-
     int *id, size, i;
     apr_time_t now = apr_time_now();
-
     /* read the ident of the nodes */
     size = node_storage->get_max_size_node();
+    (void) server;
+
     if (size == 0)
         return;
     id = apr_pcalloc(pool, sizeof(int) * size);
@@ -1911,11 +1907,8 @@ static void  proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
 static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
                                      apr_pool_t *ptemp, server_rec *main_s)
 {
-    (void) plog; (void) ptemp;
-
     APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
     APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
-
     server_rec *s = main_s;
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
@@ -1923,6 +1916,8 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
     int sizeb = conf->balancers->elt_size;
     int idx;
     int has_static_workers = 0;
+    (void) plog; (void) ptemp;
+
     if (sizew != sizeof(proxy_worker) || sizeb != sizeof(proxy_balancer)) {
         ap_version_t version;
         ap_get_server_revision(&version);
@@ -2413,8 +2408,8 @@ static proxy_worker *find_session_route(proxy_balancer *balancer,
                                         proxy_context_table *context_table,
                                         proxy_node_table *node_table)
 {
-    (void) url;
     proxy_worker *worker = NULL;
+    (void) url;
 
 #if HAVE_CLUSTER_EX_DEBUG
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
@@ -2622,11 +2617,11 @@ static void remove_session_route(request_rec *r, const char *name)
  */
 static void upd_context_count(const char *id, int val, server_rec *s)
 {
-    (void) s;
-
     int ident = atoi(id);
     contextinfo_t *context;
     context_storage->lock_contexts();
+    (void) s;
+
     if (context_storage->read_context(ident, &context) == APR_SUCCESS) {
         context->nbrequests = context->nbrequests + val;
     }
@@ -2889,8 +2884,6 @@ static int proxy_cluster_post_request(proxy_worker *worker,
                                        request_rec *r,
                                        proxy_server_conf *conf)
 {
-    (void) conf;
-
     proxy_cluster_helper *helper;
     const char *sessionid;
     const char *route;
@@ -2899,6 +2892,7 @@ static int proxy_cluster_post_request(proxy_worker *worker,
     char *oroute;
     const char *context_id = apr_table_get(r->subprocess_env, "BALANCER_CONTEXT_ID");
     apr_status_t rv;
+    (void) conf; /* unused argument */
 
     /* Ajust the context counter here too */
     if (context_id && *context_id) {
@@ -3045,9 +3039,9 @@ static void *create_proxy_cluster_server_config(apr_pool_t *p, server_rec *s)
 
 static const char*cmd_proxy_cluster_creatbal(cmd_parms *cmd, void *dummy, const char *arg)
 {
+    int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    int val = atoi(arg);
     if (val<0 || val>2) {
         return "CreateBalancers must be one of: 0, 1 or 2";
     } else {
@@ -3075,9 +3069,9 @@ static const char*cmd_proxy_cluster_use_alias(cmd_parms *cmd, void *dummy, const
 
 static const char*cmd_proxy_cluster_lbstatus_recalc_time(cmd_parms *cmd, void *dummy, const char *arg)
 {
+    int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    int val = atoi(arg);
     if (val<0) {
         return "LBstatusRecalTime must be greater than 0";
     } else {
@@ -3088,9 +3082,9 @@ static const char*cmd_proxy_cluster_lbstatus_recalc_time(cmd_parms *cmd, void *d
 
 static const char*cmd_proxy_cluster_wait_for_remove(cmd_parms *cmd, void *dummy, const char *arg)
 {
+    int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    int val = atoi(arg);
     if (val<10) {
         return "WaitForRemove must be greater than 10";
     } else {
@@ -3101,9 +3095,8 @@ static const char*cmd_proxy_cluster_wait_for_remove(cmd_parms *cmd, void *dummy,
 
 static const char*cmd_proxy_cluster_enable_options(cmd_parms *cmd, void *dummy, const char *args)
 {
-    (void) dummy;
-
     char *val = ap_getword_conf(cmd->pool, &args);
+    (void) dummy;
 
     if (strcasecmp(val, "Off") == 0 || strcasecmp(val, "0") == 0) {
         /* Disables OPTIONS, overrides the default */
@@ -3120,17 +3113,17 @@ static const char*cmd_proxy_cluster_enable_options(cmd_parms *cmd, void *dummy, 
 
 static const char *cmd_proxy_cluster_deterministic_failover(cmd_parms *parms, void *mconfig, int on)
 {
-    (void) parms; (void) mconfig;
     deterministic_failover = on;
-
+    (void) parms; (void) mconfig;
+ 
     return NULL;
 }
 
 static const char *cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dummy, const char *arg)
 {
+    int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    int val = atoi(arg);
     if (val<0) {
         return "CacheShareFor must be greater than 0";
     } else {

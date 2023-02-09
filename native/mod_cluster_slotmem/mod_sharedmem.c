@@ -44,10 +44,9 @@
 /* make sure the shared memory is cleaned */
 static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
 {
-    (void) plog; (void) ptemp;
-
     void *data;
     const char *userdata_key = "mod_sharedmem_init";
+    (void) plog; (void) ptemp;
 
     apr_pool_userdata_get(&data, userdata_key, s->process->pool);
     if (!data) {
@@ -67,10 +66,9 @@ static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp
 static int pre_config(apr_pool_t *p, apr_pool_t *plog,
                              apr_pool_t *ptemp)
 {
-    (void) p; (void) plog; (void) ptemp;
-
     apr_pool_t *global_pool;
     apr_status_t rv;
+    (void) p; (void) plog; (void) ptemp;
 
     rv = apr_pool_create(&global_pool, NULL);
     if (rv != APR_SUCCESS) {

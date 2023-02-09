@@ -77,10 +77,10 @@ static mem_t * create_attach_mem_context(char *string, int *num, int type, apr_p
  */
 static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
 {
-    (void) pool;
-
     contextinfo_t *in = (contextinfo_t *)*data;
     contextinfo_t *ou = (contextinfo_t *)mem;
+    (void) pool;
+
     if (strcmp(in->context, ou->context) == 0 &&
                in->vhost == ou->vhost && in->node == ou->node) {
         /* We don't update nbrequests it belongs to mod_proxy_cluster logic */
@@ -128,10 +128,10 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
  * @return address of the read context or NULL if error.
  */
 static apr_status_t loc_read_context(void* mem, void **data, int id, apr_pool_t *pool) {
-    (void) id; (void) pool;
-
     contextinfo_t *in = (contextinfo_t *)*data;
     contextinfo_t *ou = (contextinfo_t *)mem;
+    (void) id; (void) pool;
+
     if (strcmp(in->context, ou->context) == 0 &&
         in->vhost == ou->vhost && ou->node == in->node) {
         *data = ou;

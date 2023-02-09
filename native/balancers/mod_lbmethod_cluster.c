@@ -233,9 +233,9 @@ static int lbmethod_cluster_trans(request_rec *r)
  */
 static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now, proxy_node_table *node_table)
 {
+    int i;
     (void) s;
 
-    int i;
     for (i=0; i<node_table->sizenode; i++) {
         nodeinfo_t *ou;
         if (node_storage->read_node(node_table->nodes[i], &ou) != APR_SUCCESS)
@@ -350,10 +350,9 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
 static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
                                      apr_pool_t *ptemp, server_rec *s)
 {
-   (void) plog; (void) ptemp;
-
    APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
    APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
+   (void) plog; (void) ptemp;
 
    node_storage = ap_lookup_provider("manager" , "shared", "0");
     if (node_storage == NULL) {
