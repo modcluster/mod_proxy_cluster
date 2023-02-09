@@ -1224,6 +1224,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     }
     /* check if a node corresponding to the same worker already exists */
     if (is_same_worker_existing(r, &nodeinfo)) {
+        loc_unlock_nodes();
         *errtype = TYPEMEM;
         return MNODEET;
     }
