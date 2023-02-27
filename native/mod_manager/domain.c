@@ -94,7 +94,7 @@ apr_status_t insert_update_domain(mem_t *s, domaininfo_t *domain)
 {
     apr_status_t rv;
     domaininfo_t *ou;
-    int ident;
+    int ident = 0;
 
     domain->id = 0;
     s->storage->ap_slotmem_lock(s->slotmem);

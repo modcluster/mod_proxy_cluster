@@ -94,7 +94,7 @@ apr_status_t insert_update_sessionid(mem_t *s, sessionidinfo_t *sessionid)
 {
     apr_status_t rv;
     sessionidinfo_t *ou;
-    int ident;
+    int ident = 0;
 
     sessionid->id = 0;
     s->storage->ap_slotmem_lock(s->slotmem);

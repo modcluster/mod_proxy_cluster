@@ -105,10 +105,12 @@ apr_status_t get_last_mem_error(mem_t *mem);
  * Insert(alloc) and update a node record in the shared table
  * @param pointer to the shared table.
  * @param node node to store in the shared table.
+ * @param int pointer to store the id where the node is inserted
+ * @param int tells to clean or not the worker_shared part.
  * @return APR_SUCCESS if all went well
  *
  */
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id);
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean);
 
 /**
  * read a node record from the shared table

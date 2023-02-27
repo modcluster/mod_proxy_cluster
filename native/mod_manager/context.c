@@ -96,7 +96,7 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
 {
     apr_status_t rv;
     contextinfo_t *ou;
-    int ident;
+    int ident = 0;
 
     context->id = 0;
     s->storage->ap_slotmem_lock(s->slotmem);

@@ -94,7 +94,7 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
 {
     apr_status_t rv;
     hostinfo_t *ou;
-    int ident;
+    int ident = 0;
 
     host->id = 0;
     s->storage->ap_slotmem_lock(s->slotmem);

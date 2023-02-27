@@ -94,7 +94,7 @@ apr_status_t insert_update_balancer(mem_t *s, balancerinfo_t *balancer)
 {
     apr_status_t rv;
     balancerinfo_t *ou;
-    int ident;
+    int ident = 0;
 
     balancer->id = 0;
     s->storage->ap_slotmem_lock(s->slotmem);

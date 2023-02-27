@@ -113,26 +113,27 @@ static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *po
     }
     return APR_NOTFOUND;
 }
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id)
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
 {
     apr_status_t rv;
     nodeinfo_t *ou;
     int ident;
     apr_time_t now;
 
-    node->mess.id = 0;
+    node->mess.id = -1;
     now = apr_time_now();
     rv = s->storage->ap_slotmem_lock(s->slotmem);
     if (rv != APR_SUCCESS)
         return(rv);
     rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &node, s->p);
-    if (node->mess.id != 0 && rv == APR_SUCCESS) {
+    if (node->mess.id != -1 && rv == APR_SUCCESS) {
         s->storage->ap_slotmem_unlock(s->slotmem);
         *id = node->mess.id;
         return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
+    ident = *id;
     rv = s->storage->ap_slotmem_alloc(s->slotmem, &ident, (void **) &ou);
     if (rv != APR_SUCCESS) {
         s->storage->ap_slotmem_unlock(s->slotmem);
@@ -148,7 +149,9 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id)
     ou->offset = APR_ALIGN_DEFAULT(ou->offset);
 
     /* blank the proxy status information */
-    memset(&(ou->stat), '\0', SIZEOFSCORE);
+    if (clean) {
+        memset(&(ou->stat), '\0', SIZEOFSCORE);
+    }
 
     s->storage->ap_slotmem_unlock(s->slotmem);
 

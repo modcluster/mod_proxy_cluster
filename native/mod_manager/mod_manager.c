@@ -926,6 +926,35 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
 }
 
 /*
+ * Check if the proxy balancer module already has a worker
+ * and return the id
+ */
+static proxy_worker *get_proxy_worker_id(request_rec *r, nodeinfo_t *nodeinfo, int *id, proxy_server_conf **the_conf)
+{
+    if (balancerhandler != NULL) {
+        return (balancerhandler->proxy_node_getid(r, nodeinfo->mess.balancer, nodeinfo->mess.Type, nodeinfo->mess.Host, nodeinfo->mess.Port, id, the_conf));
+    }
+    return NULL;
+}
+
+/*
+ * Unlock after get_proxy_worker_id()
+ * and return void
+ */
+static void unlock_get_proxy_worker_id(void)
+{
+    if (balancerhandler != NULL) {
+        balancerhandler->unlock_after_proxy_node_getid();
+    }
+}
+static void reenable_proxy_worker(request_rec *r, nodeinfo_t *node, proxy_worker *worker, nodeinfo_t *nodeinfo, proxy_server_conf *the_conf)
+{
+    if (balancerhandler != NULL) {
+        balancerhandler->reenable_proxy_worker(r->server, node, worker, nodeinfo, the_conf);
+    }
+}
+
+/*
  * Process a CONFIG message
  * Balancer: <Balancer name>
  * <balancer configuration>
@@ -959,6 +988,9 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     int vid = 1; /* zero and "" is empty */
     void *sconf = r->server->module_config;
     mod_manager_config *mconf = ap_get_module_config(sconf, &manager_module);
+    int clean = -1;
+    proxy_worker *worker;
+    proxy_server_conf *the_conf = NULL;
 
     vhost = apr_palloc(r->pool, sizeof(struct cluster_host));
 
@@ -1211,10 +1243,10 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         if (!is_same_node(node, &nodeinfo)) {
             /* Here we can't update it because the old one is still in */
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "process_config: node %s already exist", node->mess.JVMRoute);
+                         "process_config: node %s : %s already exist removing...", node->mess.JVMRoute, nodeinfo.mess.JVMRoute);
             strcpy(node->mess.JVMRoute, "REMOVED");
             node->mess.remove = 1;
-            insert_update_node(nodestatsmem, node, &id);
+            insert_update_node(nodestatsmem, node, &id, 0);
             loc_remove_host_context(node->mess.id, r->pool);
             inc_version_node();
             loc_unlock_nodes();
@@ -1229,11 +1261,57 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         return MNODEET;
     }
 
+    /* Check for corresponding proxy_worker */
+    worker = get_proxy_worker_id(r, &nodeinfo, &id, &the_conf);
+    if (id != 0) {
+       /* Same node should be OK, different nodes will bring problems */
+       if (node != NULL && node->mess.id==id ) {
+          ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                       "process_config: get_proxy_worker_id() worker exist and should be OK");
+       } else {
+          /* Here that is the tricky part, we will insert_update the whole node including proxy_worker_shared */
+          char *pptr;
+          unsigned long offset;
+          
+          ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                       "process_config: get_proxy_worker_id() worker %d (%s)exists and IS NOT OK!!!", id, nodeinfo.mess.JVMRoute);
+          clean = 0;
+          pptr = (char *) &nodeinfo;
+          offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int); /* nodeinfo.offset doesn't contain the information */
+          offset = APR_ALIGN_DEFAULT(offset);
+          pptr = pptr + offset;
+          memcpy(pptr, worker->s, sizeof(proxy_worker_shared)); /* restore the information we are going to reuse */
+       }
+    }
+
     /* Insert or update node description */
-    if (insert_update_node(nodestatsmem, &nodeinfo, &id) != APR_SUCCESS) {
+    if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
         loc_unlock_nodes();
+        unlock_get_proxy_worker_id();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
+    }
+    if (clean == 0) {
+        /* need to read the node */
+        nodeinfo_t workernodeinfo;
+        nodeinfo_t *workernode;
+        workernodeinfo.mess.id = id;
+        workernode = read_node(nodestatsmem, &workernodeinfo);
+        ap_assert(workernode != NULL);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: get_proxy_worker_id() worker %s inserted... %d", nodeinfo.mess.JVMRoute, id);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config:... SHARED scheme %s hostname %s hostname_ex %s port %d route %s name %s index %d JVMRoute: %s %d:%d",
+                     worker->s->scheme, worker->s->hostname, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex, worker->s->index, workernode->mess.JVMRoute, workernodeinfo.mess.id, id);
+        /* make sure we can use it */
+        ap_assert(worker->context != NULL);
+        ap_assert(workernode->mess.id == id);
+
+        /* so the scheme, hostname and port correspond to worker which was removed and readded */
+        reenable_proxy_worker(r, workernode, worker, &nodeinfo, the_conf);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: reenable_proxy_worker... scheme %s hostname %s hostname_ex %s port %d route %s name %s id: %d",
+                     worker->s->scheme, worker->s->hostname, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex, worker->s->index);
     }
     inc_version_node();
 
@@ -1250,15 +1328,18 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: NO balancer-manager");
         }
+        unlock_get_proxy_worker_id();
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
         if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
             loc_unlock_nodes();
+            unlock_get_proxy_worker_id();
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
         }
         if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
             loc_unlock_nodes();
+            unlock_get_proxy_worker_id();
             return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
         }
         phost = phost->next;
@@ -1277,6 +1358,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                      "process_config: NO balancer-manager");
     }
 
+    unlock_get_proxy_worker_id();
     return NULL;
 }
 /*
@@ -1782,7 +1864,7 @@ static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinf
     if (status == REMOVE) {
         int id;
         node->mess.remove = 1;
-        insert_update_node(nodestatsmem, node, &id);
+        insert_update_node(nodestatsmem, node, &id, 0);
     }
     return NULL;
 
