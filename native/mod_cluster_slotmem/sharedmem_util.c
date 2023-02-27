@@ -213,10 +213,10 @@ static apr_status_t ap_slotmem_do(ap_slotmem_t *mem, mc_slotmem_callback_fn_t *f
 
     /* performs the func only on allocated slots! */
     ptr = mem->base;
-    for (i = 1; i < mem->num+1; i++) {
+    for (i = 1; i < mem->num + 1; i++) {
         ident = mem->ident;
         isfree = 0;
-        for (j=0; j<mem->num+1; j++) {
+        for (j = 0; j < mem->num + 1; j++) {
             if (ident[j] == i) {
                 isfree = 1;
                 break;
@@ -333,7 +333,7 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
         if (name) {
             int try = 0;
             rv = APR_EEXIST;
-            while (rv == APR_EEXIST && try<5) {
+            while (rv == APR_EEXIST && try < 5) {
                 rv = apr_shm_remove(fname, globalpool);
                 rv = apr_shm_create(&res->shm, nbytes, fname, globalpool);
                 if (rv == APR_EEXIST) {
@@ -364,7 +364,7 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
         ptr = ptr +  dsize;
         /* write the idents table */
         ident = (int *) ptr;
-        for (i=0; i<item_num+1; i++) {
+        for (i = 0; i < item_num + 1; i++) {
             ident[i] = i + 1;
         }
         /* clean the slots table */
@@ -383,7 +383,7 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
     res->version = &(new_desc->version);
     res->globalpool = globalpool;
     res->next = NULL;
-    if (globallistmem==NULL) {
+    if (globallistmem == NULL) {
         globallistmem = res;
     }
     else {
@@ -462,7 +462,7 @@ static apr_status_t ap_slotmem_attach(ap_slotmem_t **new, const char *name, apr_
     *res->version = 0;
     res->globalpool = globalpool;
     res->next = NULL;
-    if (globallistmem==NULL) {
+    if (globallistmem == NULL) {
         globallistmem = res;
     }
     else {
@@ -484,13 +484,13 @@ static apr_status_t ap_slotmem_mem(ap_slotmem_t *score, int id, void**mem)
     if (!score) {
         return APR_ENOSHMAVAIL;
     }
-    if (id<0 || id>score->num) {
+    if (id < 0 || id > score->num) {
         return APR_ENOSHMAVAIL;
     }
 
     /* Check that it is not a free slot */
     ident = score->ident;
-    for (i=0; i<score->num+1; i++) {
+    for (i = 0; i < score->num + 1; i++) {
         if (ident[i] == id)
             return APR_NOTFOUND;
     } 
@@ -553,7 +553,7 @@ static int ap_slotmem_get_used(ap_slotmem_t *score, int *ids)
     int *ident;
 
     ident = score->ident;
-    for (i=0; i<score->num+1; i++) {
+    for (i = 0; i < score->num + 1; i++) {
         if (ident[i] == 0) {
             *ids = i;
             ids++;

@@ -262,7 +262,7 @@ char *get_cookie_param(request_rec *r, const char *name, int in)
                 isspace(start_cookie[-1])) {
 
                 start_cookie += strlen(name);
-                while(*start_cookie && isspace(*start_cookie))
+                while (*start_cookie && isspace(*start_cookie))
                     ++start_cookie;
                 if (*start_cookie == '=' && start_cookie[1]) {
                     /*
@@ -273,12 +273,12 @@ char *get_cookie_param(request_rec *r, const char *name, int in)
                     cookie = apr_pstrdup(r->pool, start_cookie);
                     if ((end_cookie = strchr(cookie, ';')) != NULL)
                         *end_cookie = '\0';
-                    if((end_cookie = strchr(cookie, ',')) != NULL)
+                    if ((end_cookie = strchr(cookie, ',')) != NULL)
                         *end_cookie = '\0';
                     /* remove " from version1 cookies */
-                    if (*cookie == '\"' && *(cookie+strlen(cookie)-1) == '\"') {
+                    if (*cookie == '\"' && *(cookie + strlen(cookie) - 1) == '\"') {
                         ++cookie;
-                        *(cookie+strlen(cookie)-1) = '\0';
+                        *(cookie + strlen(cookie) - 1) = '\0';
                         cookie = apr_pstrdup(r->pool, cookie);
                     }
                     return cookie;
@@ -382,7 +382,7 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, proxy_node_
     conf = (proxy_server_conf *) ap_get_module_config(r->server->module_config, &proxy_module);
     sizeb = conf->balancers->elt_size;
     ptr = conf->balancers->elts;
-    for (i = 0; i < conf->balancers->nelts; i++, ptr=ptr+sizeb) {
+    for (i = 0; i < conf->balancers->nelts; i++, ptr = ptr + sizeb) {
         balancer = (proxy_balancer *) ptr;
         if (strlen(balancer->s->name) > 11 && strcasecmp(&balancer->s->name[11], node->mess.balancer) == 0)
             break;
@@ -459,7 +459,7 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
     if (sizecontext == 0)
         return NULL;
     contexts =  apr_palloc(r->pool, sizeof(int)*sizecontext);
-    for (i=0; i < sizecontext; i++)
+    for (i = 0; i < sizecontext; i++)
         contexts[i] = i;
     length =  apr_pcalloc(r->pool, sizeof(int)*sizecontext);
     status =  apr_palloc(r->pool, sizeof(int)*sizecontext);
@@ -474,24 +474,24 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
                      "find_node_context_host: Host: %s", hostname);
 #endif
         sizevhost = vhost_table->sizevhost;
-        for (i=0; i<sizevhost; i++) {
+        for (i = 0; i < sizevhost; i++) {
             hostinfo_t *vhost = vhost_table->vhost_info + i;
             if (strcmp(hostname, vhost->host) == 0) {
                 /* add the contexts that match */
-                for (j=0; j<sizecontext; j++) {
+                for (j = 0; j < sizecontext; j++) {
                     contextinfo_t *context = &context_table->context_info[j];
                     if (context->vhost == vhost->vhost && context->node == vhost->node)
                         contextsok[j] = 1;
                 }
             }
         }
-        for (j=0; j<sizecontext; j++) {
+        for (j = 0; j < sizecontext; j++) {
             if (!contextsok[j])
                 contexts[j] = -1;
         }
     }
 #if HAVE_CLUSTER_EX_DEBUG
-    for (j=0; j<sizecontext; j++) {
+    for (j = 0; j < sizecontext; j++) {
         contextinfo_t *context;
         if (contexts[j] == -1) continue;
         context = &context_table->context_info[j]; 
@@ -503,7 +503,7 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
 
     /* Check the contexts */
     max = 0;
-    for (j=0; j<sizecontext; j++) {
+    for (j = 0; j < sizecontext; j++) {
         contextinfo_t *context;
         int len;
         if (contexts[j] == -1) continue;
@@ -520,7 +520,7 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
         }
         len = strlen(context->context);
         if (strncmp(uri, context->context, len) == 0) {
-            if (uri[len] == '\0' || uri[len] == '/' || len==1) {
+            if (uri[len] == '\0' || uri[len] == '/' || len == 1) {
                 status[j] = context->status;
                 length[j] = len;
                 if (len > max) {
@@ -535,12 +535,12 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
 
     /* find the best matching contexts */
     nbest = 1;
-    for (j=0; j<sizecontext; j++)
+    for (j = 0; j < sizecontext; j++)
         if (length[j] == max)
             nbest++;
-    best =  apr_palloc(r->pool, sizeof(node_context)*nbest);
-    nbest  = 0;
-    for (j=0; j<sizecontext; j++)
+    best  = apr_palloc(r->pool, sizeof(node_context) * nbest);
+    nbest = 0;
+    for (j = 0; j < sizecontext; j++)
         if (length[j] == max) {
             contextinfo_t *context;
             int ok = 0;
@@ -625,7 +625,7 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
     int sizeb = conf->balancers->elt_size;
     (void) balancer_table;
 
-    for (i = 0; i < conf->balancers->nelts; i++, ptr=ptr+sizeb) {
+    for (i = 0; i < conf->balancers->nelts; i++, ptr= ptr + sizeb) {
         proxy_balancer *balancer = (proxy_balancer *) ptr;
 
         if (balancer->s->sticky[0] == '\0' || balancer->s->sticky_path[0] == '\0')

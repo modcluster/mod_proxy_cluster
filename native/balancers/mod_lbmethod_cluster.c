@@ -54,7 +54,7 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
     proxy_worker *mycandidate = NULL;
     int i;
 
-    for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
+    for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
         nodeinfo_t* node;
         int id;
         proxy_worker **run = (proxy_worker **) ptr;
@@ -92,7 +92,7 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
 #endif
             char *ptr = balancer->workers->elts;
             int sizew = balancer->workers->elt_size;
-            for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
+            for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
                 proxy_worker **run = (proxy_worker **) ptr;
                 proxy_worker *httpworker = *run;
                 if (!strcmp(httpworker->s->hostname, mycandidate->s->hostname)) {
@@ -236,7 +236,7 @@ static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now,
     int i;
     (void) s;
 
-    for (i=0; i<node_table->sizenode; i++) {
+    for (i = 0; i < node_table->sizenode; i++) {
         nodeinfo_t *ou;
         if (node_storage->read_node(node_table->nodes[i], &ou) != APR_SUCCESS)
             continue;
@@ -425,8 +425,8 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog,
 
 static void register_hooks(apr_pool_t *p)
 {
-    static const char * const aszPre[]={ "mod_manager.c", "mod_rewrite.c", NULL };
-    static const char * const aszSucc[]={ "mod_proxy.c", NULL };
+    static const char * const aszPre[]  = { "mod_manager.c", "mod_rewrite.c", NULL };
+    static const char * const aszSucc[] = { "mod_proxy.c", NULL };
 
     ap_register_provider(p, PROXY_LBMETHOD, "cluster", "0", &cluster);
 

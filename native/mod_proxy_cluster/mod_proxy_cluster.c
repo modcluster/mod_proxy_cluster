@@ -144,7 +144,7 @@ static char * normalize_hostname(apr_pool_t *p, char *hostname)
     char *ret = apr_palloc(p, strlen(hostname) + 1);
     char *ptr = ret;
     strcpy(ptr, hostname);
-    for (;*ptr; ++ptr) {
+    for (; *ptr; ++ptr) {
        *ptr = apr_tolower(*ptr);
     }
     return ret;
@@ -281,7 +281,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                     worker->s->upgrade[sizeof(worker->s->upgrade)-1] = '\0';
                     strncpy(worker->s->secret, node->mess.AJPSecret, sizeof(worker->s->secret));
                     worker->s->secret[sizeof(worker->s->secret)-1] = '\0';
-                    if (node->mess.ResponseFieldSize>0) {
+                    if (node->mess.ResponseFieldSize > 0) {
                        worker->s->response_field_size = node->mess.ResponseFieldSize;
                        worker->s->response_field_size_set = 1;
                     } else {
@@ -362,7 +362,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->route[sizeof(worker->s->route)-1] = '\0';
         strncpy(worker->s->upgrade, node->mess.Upgrade, sizeof(worker->s->upgrade));
         worker->s->upgrade[sizeof(worker->s->upgrade)-1] = '\0';
-        if (node->mess.ResponseFieldSize>0) {
+        if (node->mess.ResponseFieldSize > 0) {
             worker->s->response_field_size = node->mess.ResponseFieldSize;
             worker->s->response_field_size_set = 1;
         } else {
@@ -428,7 +428,7 @@ static balancerinfo_t *read_balancer_name(const char *name, apr_pool_t *pool)
         return NULL; /* Done broken. */
     bal = apr_pcalloc(pool, sizeof(int) * sizebal);
     sizebal = balancer_storage->get_ids_used_balancer(bal);
-    for (i=0; i<sizebal; i++) {
+    for (i = 0; i < sizebal; i++) {
         balancerinfo_t *balan;
         balancer_storage->read_balancer(bal[i], &balan);
         /* Something like balancer://cluster1 and cluster1 */
@@ -486,7 +486,7 @@ static proxy_balancer *add_balancer_node(nodeinfo_t *node, proxy_server_conf *co
                           "add_balancer_node: Can't create lock for balancer");
         }
         balancer->workers = apr_array_make(conf->pool, 5, sizeof(proxy_worker *));
-        strncpy(balancer->s->name, name, PROXY_BALANCER_MAX_NAME_SIZE-1);
+        strncpy(balancer->s->name, name, PROXY_BALANCER_MAX_NAME_SIZE - 1);
         /* XXX: TODO we should have our own lbmethod(s), this one is the mod_proxy_balancer default one! */
         balancer->lbmethod = ap_lookup_provider(PROXY_LBMETHOD, "byrequests", "0");
     } else {
@@ -506,10 +506,10 @@ static proxy_balancer *add_balancer_node(nodeinfo_t *node, proxy_server_conf *co
             strcpy(balancer->s->lbpname, MC_STICKY); /* default is Sticky */
         if (balan->StickySessionRemove)
             strcpy(balancer->s->lbpname, MC_REMOVE_SESSION);
-        strncpy(balancer->s->sticky, balan->StickySessionCookie, PROXY_BALANCER_MAX_STICKY_SIZE-1);
-        balancer->s->sticky[PROXY_BALANCER_MAX_STICKY_SIZE-1] = '\0';
-        strncpy(balancer->s->sticky_path, balan->StickySessionPath, PROXY_BALANCER_MAX_STICKY_SIZE-1);
-        balancer->s->sticky_path[PROXY_BALANCER_MAX_STICKY_SIZE-1] = '\0';
+        strncpy(balancer->s->sticky, balan->StickySessionCookie, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+        balancer->s->sticky[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
+        strncpy(balancer->s->sticky_path, balan->StickySessionPath, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+        balancer->s->sticky_path[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
         if (balan->StickySessionForce) {
             strcpy(balancer->s->lbpname, MC_NO_FAILOVER);
             balancer->s->sticky_force = 1;
@@ -557,13 +557,13 @@ static void reuse_balancer(proxy_balancer *balancer, char *name, apr_pool_t *poo
             changed = -1;
         }
         if (strcmp(balan->StickySessionCookie, balancer->s->sticky) != 0) {
-            strncpy(balancer->s->sticky , balan->StickySessionCookie, PROXY_BALANCER_MAX_STICKY_SIZE-1);
-            balancer->s->sticky[PROXY_BALANCER_MAX_STICKY_SIZE-1] = '\0';
+            strncpy(balancer->s->sticky , balan->StickySessionCookie, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+            balancer->s->sticky[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
             changed = -1;
         }
         if (strcmp(balan->StickySessionPath, balancer->s->sticky_path) != 0) {
-            strncpy(balancer->s->sticky_path , balan->StickySessionPath, PROXY_BALANCER_MAX_STICKY_SIZE-1);
-            balancer->s->sticky_path[PROXY_BALANCER_MAX_STICKY_SIZE-1] = '\0';
+            strncpy(balancer->s->sticky_path , balan->StickySessionPath, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+            balancer->s->sticky_path[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
             changed = -1;
         }
         balancer->s->timeout =  balan->Timeout;
@@ -594,7 +594,7 @@ static void add_balancers_workers(nodeinfo_t *node, char *ptr_node, apr_pool_t *
         proxy_balancer *balancer = ap_proxy_get_balancer(pool, conf, name, 0);
 
         if (!balancer && (creat_bal == CREAT_NONE ||
-            (creat_bal == CREAT_ROOT && s!=main_server))) {
+            (creat_bal == CREAT_ROOT && s != main_server))) {
             s = s->next;
             continue;
         }
@@ -627,7 +627,7 @@ static void add_balancers_workers_for_server(nodeinfo_t *node, char *ptr_node, a
     proxy_balancer *balancer = ap_proxy_get_balancer(pool, conf, name, 0);
 
     if (!balancer && (creat_bal == CREAT_NONE ||
-        (creat_bal == CREAT_ROOT && s!=main_server))) {
+        (creat_bal == CREAT_ROOT && s != main_server))) {
         return;
     }
     if (!balancer)
@@ -649,12 +649,12 @@ static proxy_worker *get_worker_from_id_stat(proxy_server_conf *conf, int id, pr
     int sizeb = conf->balancers->elt_size;
     int sizew = sizeof(proxy_worker *);
 
-    for (i = 0; i < conf->balancers->nelts; i++, ptr=ptr+sizeb) {
+    for (i = 0; i < conf->balancers->nelts; i++, ptr = ptr + sizeb) {
         int j;
         char *ptrw;
         proxy_balancer *balancer = (proxy_balancer *) ptr;
         ptrw = balancer->workers->elts;
-        for (j = 0; j < balancer->workers->nelts; j++,  ptrw=ptrw+sizew) {
+        for (j = 0; j < balancer->workers->nelts; j++,  ptrw = ptrw + sizew) {
             proxy_worker **worker = (proxy_worker **) ptrw;
             proxy_cluster_helper *helper = (proxy_cluster_helper *) (*worker)->context;
             if ((*worker)->s == stat && helper->index == id) {
@@ -993,7 +993,8 @@ static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *wor
         strcasecmp(scheme, "WSS") == 0 ||
         strcasecmp(scheme, "WS") == 0 ||
         strcasecmp(scheme, "HTTP") == 0) &&
-        !enable_options) {
+        !enable_options)
+    {
         /* we cant' do CPING/CPONG so we just return OK */
         return APR_SUCCESS;
     }
@@ -1133,7 +1134,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
     size = node_storage->get_ids_used_node(id);
 
     /* update lbstatus if needed */
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (node_storage->read_node(id[i], &ou) != APR_SUCCESS)
             continue;
@@ -1272,7 +1273,7 @@ static void remove_timeout_sessionid(proxy_server_conf *conf, apr_pool_t *pool, 
     size = sessionid_storage->get_ids_used_sessionid(id);
 
     /* update lbstatus if needed */
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         sessionidinfo_t *ou;
         if (sessionid_storage->read_sessionid(id[i], &ou) != APR_SUCCESS)
             continue;
@@ -1300,7 +1301,7 @@ static void remove_timeout_domain(apr_pool_t *pool)
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = domain_storage->get_ids_used_domain(id);
 
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         domaininfo_t *ou;
         if (domain_storage->read_domain(id[i], &ou) != APR_SUCCESS)
             continue;
@@ -1375,12 +1376,12 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
     best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
 
     /* First try to see if we have available candidate */
-    if (domain && strlen(domain)>0)
+    if (domain && strlen(domain) > 0)
         checked_domain = 0;
     while (!checked_standby) {
         char *ptr = balancer->workers->elts;
         int sizew = balancer->workers->elt_size;
-        for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
+        for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
             node_context *nodecontext;
             nodeinfo_t *node;
             proxy_cluster_helper *helper;
@@ -1672,7 +1673,7 @@ static int proxy_host_isup(request_rec *r, char *scheme, char *host, char *port)
     /* XXX: For the moment we support only AJP */
     if (strcasecmp(scheme, "AJP") == 0) {
         rv = ajp_handle_cping_cpong(sock, r, apr_time_from_sec(10));
-        if (rv!= APR_SUCCESS) {
+        if (rv != APR_SUCCESS) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "proxy_host_isup: cping_cpong failed");
             return 500;
@@ -1709,7 +1710,7 @@ static void remove_removed_node(apr_pool_t *pool, server_rec *server)
         return;
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = node_storage->get_ids_used_node(id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (node_storage->read_node(id[i], &ou) != APR_SUCCESS)
             continue;
@@ -1724,7 +1725,7 @@ static void remove_removed_node(apr_pool_t *pool, server_rec *server)
                 dom.balancer[sizeof(dom.balancer) - 1] = '\0';
                 strncpy(dom.domain, ou->mess.Domain, sizeof(dom.domain));
                 dom.domain[sizeof(dom.domain) - 1] = '\0';
-                if (domain_storage->insert_update_domain(&dom)!=APR_SUCCESS) {
+                if (domain_storage->insert_update_domain(&dom) != APR_SUCCESS) {
                     remove_timeout_domain(pool);
                     domain_storage->insert_update_domain(&dom);
                 }
@@ -1748,7 +1749,7 @@ static void remove_workers_nodes(proxy_server_conf *conf, apr_pool_t *pool, serv
     }
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = node_storage->get_ids_used_node(id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (node_storage->read_node(id[i], &ou) != APR_SUCCESS)
             continue;
@@ -1780,7 +1781,7 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
         if (cache_share_for) {
             /* time to refresh or create */
             apr_time_t now = apr_time_now();
-            if (now >= last_cached+cache_share_for) {
+            if (now >= last_cached + cache_share_for) {
                 apr_thread_mutex_lock(lock);
                 last_cached = now;
                 if (cached_pool) {
@@ -2301,7 +2302,7 @@ static proxy_worker *find_route_worker(request_rec *r,
     checking_standby = checked_standby = 0;
     while (!checked_standby) {
         char *ptr = balancer->workers->elts;
-        for (i = 0; i < balancer->workers->nelts; i++, ptr=ptr+sizew) {
+        for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
             proxy_worker **run = (proxy_worker **) ptr;
             int index = (*run)->s->index;
             proxy_cluster_helper *helper = (*run)->context;
@@ -2314,7 +2315,7 @@ static proxy_worker *find_route_worker(request_rec *r,
             if (index == 0)
                 continue; /* marked removed */
 
-            if ( (checking_standby ? !PROXY_WORKER_IS_STANDBY(worker) : PROXY_WORKER_IS_STANDBY(worker)) )
+            if ((checking_standby ? !PROXY_WORKER_IS_STANDBY(worker) : PROXY_WORKER_IS_STANDBY(worker)))
                 continue;
             if (*(worker->s->route) && strcmp(worker->s->route, route) == 0) {
                 /* that is the worker corresponding to the route */
@@ -2556,14 +2557,14 @@ static void remove_session_route(request_rec *r, const char *name)
     /* First try to manipulate the url. */
     for (path = strstr(url, name); path; path = strstr(path + 1, name)) {
         start = path;
-        if (*(start-1) == '&')
+        if (*(start - 1) == '&')
             start--;
         path += strlen(name);
         if (*path == '=') {
             ++path;
             if (strlen(path)) {
                 char *filename = r->filename;
-                while (*path !='&' && *path !='\0')
+                while (*path != '&' && *path != '\0')
                     path++;
                 /* We have it */
                 *start = '\0';
@@ -2589,7 +2590,7 @@ static void remove_session_route(request_rec *r, const char *name)
                     start--;
                 }
                 start_cookie += strlen(name);
-                while(*start_cookie && isspace(*start_cookie))
+                while (*start_cookie && isspace(*start_cookie))
                     ++start_cookie;
                 if (*start_cookie == '=' && start_cookie[1]) {
                     /*
@@ -2707,11 +2708,11 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
                upd_context_count(context_id, -1, r->server);
             }
             apr_thread_mutex_lock(lock);
-            for (i = 0; i < (*balancer)->workers->nelts; i++, ptr=ptr+sizew) {
+            for (i = 0; i < (*balancer)->workers->nelts; i++, ptr = ptr + sizew) {
                 proxy_worker **run = (proxy_worker **) ptr;
                 if ((*run)->hash.def == def && (*run)->hash.fnv == fnv) {
                     helper = (proxy_cluster_helper *) (*run)->context;
-                    if (helper->count_active>0)
+                    if (helper->count_active > 0)
                         helper->count_active--;
                     break;
                 }
@@ -3001,8 +3002,8 @@ static int proxy_cluster_post_request(proxy_worker *worker,
  */
 static void proxy_cluster_hooks(apr_pool_t *p)
 {
-    static const char * const aszPre[]={ "mod_manager.c", "mod_rewrite.c", NULL };
-    static const char * const aszSucc[]={ "mod_proxy.c", NULL };
+    static const char * const aszPre[]  = { "mod_manager.c", "mod_rewrite.c", NULL };
+    static const char * const aszSucc[] = { "mod_proxy.c", NULL };
 
     ap_hook_post_config(proxy_cluster_post_config, NULL, NULL, APR_HOOK_MIDDLE);
     ap_hook_pre_config(proxy_cluster_pre_config, NULL, NULL, APR_HOOK_MIDDLE);
@@ -3024,13 +3025,6 @@ static void proxy_cluster_hooks(apr_pool_t *p)
     ap_register_provider(p, PROXY_LBMETHOD, "byrequests", "0", &balancerhandler);
 }
 
-/* XXX: not needed
-static void *create_proxy_cluster_dir_config(apr_pool_t *p, char *dir)
-{
-    return NULL;
-}
- */
-
 static void *create_proxy_cluster_server_config(apr_pool_t *p, server_rec *s)
 {
     (void) p; (void) s;
@@ -3042,7 +3036,7 @@ static const char*cmd_proxy_cluster_creatbal(cmd_parms *cmd, void *dummy, const 
     int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    if (val<0 || val>2) {
+    if (val < 0 || val > 2) {
         return "CreateBalancers must be one of: 0, 1 or 2";
     } else {
         creat_bal = val;
@@ -3054,7 +3048,7 @@ static const char*cmd_proxy_cluster_use_alias(cmd_parms *cmd, void *dummy, const
 {
     (void) cmd; (void) dummy;
 
-   /* Cannot use AP_INIT_FLAG, to keep compatibility with versions <= 1.3.0.Final which accepted
+   /* Cannot use AP_INIT_FLAG, to keep compatibility with versions <= 1.3.0. Final which accepted
       only values 1 and 0. (see MODCLUSTER-403) */
    if (strcasecmp(arg, "Off") == 0 || strcasecmp(arg, "0") == 0) {
        use_alias = 0;
@@ -3072,7 +3066,7 @@ static const char*cmd_proxy_cluster_lbstatus_recalc_time(cmd_parms *cmd, void *d
     int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    if (val<0) {
+    if (val < 0) {
         return "LBstatusRecalTime must be greater than 0";
     } else {
         lbstatus_recalc_time = apr_time_from_sec(val);
@@ -3085,7 +3079,7 @@ static const char*cmd_proxy_cluster_wait_for_remove(cmd_parms *cmd, void *dummy,
     int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    if (val<10) {
+    if (val < 10) {
         return "WaitForRemove must be greater than 10";
     } else {
         wait_for_remove = apr_time_from_sec(val);
@@ -3124,7 +3118,7 @@ static const char *cmd_proxy_cluster_cache_shared_for(cmd_parms *cmd, void *dumm
     int val = atoi(arg);
     (void) cmd; (void) dummy;
 
-    if (val<0) {
+    if (val < 0) {
         return "CacheShareFor must be greater than 0";
     } else {
         cache_share_for = apr_time_from_sec(val);
