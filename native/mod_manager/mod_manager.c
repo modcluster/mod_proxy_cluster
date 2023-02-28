@@ -317,7 +317,7 @@ static void loc_remove_host_context(int node, apr_pool_t *pool)
     id = apr_palloc(pool, sizeof(int) * size);
     idcontext = apr_palloc(pool, sizeof(int) * sizecontext);
     size = get_ids_used_host(hoststatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         hostinfo_t *ou;
 
         if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
@@ -327,7 +327,7 @@ static void loc_remove_host_context(int node, apr_pool_t *pool)
     }
 
     sizecontext = get_ids_used_context(contextstatsmem, idcontext);
-    for (i=0; i<sizecontext; i++) {
+    for (i = 0; i < sizecontext; i++) {
         contextinfo_t *context;
         if (get_context(contextstatsmem, &context, idcontext[i]) != APR_SUCCESS)
             continue;
@@ -538,14 +538,14 @@ static void normalize_balancer_name(char* balancer_name, server_rec *s)
 {
     int upper_case_char_found = 0;
     char* balancer_name_start = balancer_name;
-    for (;*balancer_name; ++balancer_name) {
-        if(!upper_case_char_found) {
+    for (; *balancer_name; ++balancer_name) {
+        if (!upper_case_char_found) {
             upper_case_char_found = apr_isupper(*balancer_name);
         }
         *balancer_name = apr_tolower(*balancer_name);
     }
     balancer_name = balancer_name_start;
-    if(upper_case_char_found) {
+    if (upper_case_char_found) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s, SBALBAD, balancer_name);
     }
 }
@@ -686,7 +686,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     } else {
         /* Use anonymous shm by default, fall back on name-based. */
         rv = apr_shm_create(&versionipc_shm, sizeof(version_data), NULL, p);
-        if ( rv == APR_ENOTIMPL ) 
+        if (rv == APR_ENOTIMPL) 
         {
             /* For a name-based segment, remove it first in case of a
             * previous unclean shutdown. */
@@ -742,7 +742,7 @@ static char **process_buff(request_rec *r, char *buff)
 
     s = buff;
     ptr[0] = s;
-    ptr[i+1] = NULL;
+    ptr[i + 1] = NULL;
     i = 1;
     for (; *s != '\0'; s++) {
         /* our separators */
@@ -785,7 +785,7 @@ static apr_status_t  insert_update_hosts(mem_t *mem, char *str, int node, int vh
                 return status;
             previous = ptr + 1;
         }
-        ptr ++;
+        ptr++;
     }
     strncpy(info.host, previous, sizeof(info.host));
     return insert_update_host(mem, &info); 
@@ -826,7 +826,7 @@ static apr_status_t  insert_update_contexts(mem_t *mem, char *str, int node, int
 
             previous = ptr + 1;
         }
-        ptr ++;
+        ptr++;
     }
     info.id = 0;
     strncpy(info.context, previous, sizeof(info.context));
@@ -871,7 +871,7 @@ static int  is_same_worker_existing(request_rec *r, nodeinfo_t *node) {
         return 0;
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_node(nodestatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -1012,71 +1012,71 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     while (ptr[i]) {
         /* XXX: balancer part */
         if (strcasecmp(ptr[i], "Balancer") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.balancer)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.balancer)) {
                 *errtype = TYPESYNTAX;
                 return SBALBIG;
             }
-            normalize_balancer_name(ptr[i+1], r->server);
-            strncpy(nodeinfo.mess.balancer, ptr[i+1], sizeof(nodeinfo.mess.balancer));
+            normalize_balancer_name(ptr[i + 1], r->server);
+            strncpy(nodeinfo.mess.balancer, ptr[i + 1], sizeof(nodeinfo.mess.balancer));
             nodeinfo.mess.balancer[sizeof(nodeinfo.mess.balancer) - 1] = '\0';
-            strncpy(balancerinfo.balancer, ptr[i+1], sizeof(balancerinfo.balancer));
+            strncpy(balancerinfo.balancer, ptr[i + 1], sizeof(balancerinfo.balancer));
             balancerinfo.balancer[sizeof(balancerinfo.balancer) - 1] = '\0';
         }
         if (strcasecmp(ptr[i], "StickySession") == 0) {
-            if (strcasecmp(ptr[i+1], "no") == 0)
+            if (strcasecmp(ptr[i + 1], "no") == 0)
                 balancerinfo.StickySession = 0;
         }
         if (strcasecmp(ptr[i], "StickySessionCookie") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(balancerinfo.StickySessionCookie)) {
+            if (strlen(ptr[i + 1]) >= sizeof(balancerinfo.StickySessionCookie)) {
                 *errtype = TYPESYNTAX;
                 return SBAFBIG;
             }
-            strcpy(balancerinfo.StickySessionCookie, ptr[i+1]);
+            strcpy(balancerinfo.StickySessionCookie, ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "StickySessionPath") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(balancerinfo.StickySessionPath)) {
+            if (strlen(ptr[i + 1]) >= sizeof(balancerinfo.StickySessionPath)) {
                 *errtype = TYPESYNTAX;
                 return SBAFBIG;
             }
-            strcpy(balancerinfo.StickySessionPath, ptr[i+1]);
+            strcpy(balancerinfo.StickySessionPath, ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "StickySessionRemove") == 0) {
-            if (strcasecmp(ptr[i+1], "yes") == 0)
+            if (strcasecmp(ptr[i + 1], "yes") == 0)
                 balancerinfo.StickySessionRemove = 1;
         }
         /* The java part assumes default = yes and sents only StickySessionForce=No */
         if (strcasecmp(ptr[i], "StickySessionForce") == 0) {
-            if (strcasecmp(ptr[i+1], "no") == 0)
+            if (strcasecmp(ptr[i + 1], "no") == 0)
                 balancerinfo.StickySessionForce = 0;
         }
         /* Note that it is workerTimeout (set/getWorkerTimeout in java code) */ 
         if (strcasecmp(ptr[i], "WaitWorker") == 0) {
-            balancerinfo.Timeout = apr_time_from_sec(atoi(ptr[i+1]));
+            balancerinfo.Timeout = apr_time_from_sec(atoi(ptr[i + 1]));
         }
         if (strcasecmp(ptr[i], "Maxattempts") == 0) {
-            balancerinfo.Maxattempts = atoi(ptr[i+1]);
+            balancerinfo.Maxattempts = atoi(ptr[i + 1]);
         }
 
         /* XXX: Node part */
         if (strcasecmp(ptr[i], "JVMRoute") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.JVMRoute)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.JVMRoute)) {
                 *errtype = TYPESYNTAX;
                 return SROUBIG;
             }
-            strcpy(nodeinfo.mess.JVMRoute, ptr[i+1]);
+            strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
         }
         /* We renamed it LBGroup */
         if (strcasecmp(ptr[i], "Domain") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.Domain)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Domain)) {
                 *errtype = TYPESYNTAX;
                 return SDOMBIG;
             }
-            strcpy(nodeinfo.mess.Domain, ptr[i+1]);
+            strcpy(nodeinfo.mess.Domain, ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "Host") == 0) {
-            char *p_read = ptr[i+1], *p_write = ptr[i+1];
+            char *p_read = ptr[i+1], *p_write = ptr[i + 1];
             int flag = 0;
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.Host)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Host)) {
                 *errtype = TYPESYNTAX;
                 return SHOSBIG;
             }
@@ -1094,49 +1094,49 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                 *p_write = '\0';
             }
 
-            strcpy(nodeinfo.mess.Host, ptr[i+1]);
+            strcpy(nodeinfo.mess.Host, ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "Port") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.Port)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Port)) {
                 *errtype = TYPESYNTAX;
                 return SPORBIG;
             }
-            strcpy(nodeinfo.mess.Port, ptr[i+1]);
+            strcpy(nodeinfo.mess.Port, ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "Type") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.Type)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Type)) {
                 *errtype = TYPESYNTAX;
                 return STYPBIG;
             }
             strcpy(nodeinfo.mess.Type, ptr[i+1]);
         }
         if (strcasecmp(ptr[i], "Reversed") == 0) {
-            if (strcasecmp(ptr[i+1], "yes") == 0) {
+            if (strcasecmp(ptr[i + 1], "yes") == 0) {
             nodeinfo.mess.reversed = 1;
             }
         }
         if (strcasecmp(ptr[i], "flushpackets") == 0) {
-            if (strcasecmp(ptr[i+1], "on") == 0) {
+            if (strcasecmp(ptr[i + 1], "on") == 0) {
                 nodeinfo.mess.flushpackets = flush_on;
             }
-            else if (strcasecmp(ptr[i+1], "auto") == 0) {
+            else if (strcasecmp(ptr[i + 1], "auto") == 0) {
                 nodeinfo.mess.flushpackets = flush_auto;
             }
         }
         if (strcasecmp(ptr[i], "flushwait") == 0) {
-            nodeinfo.mess.flushwait = atoi(ptr[i+1]) * 1000;
+            nodeinfo.mess.flushwait = atoi(ptr[i + 1]) * 1000;
         }
         if (strcasecmp(ptr[i], "ping") == 0) {
-            nodeinfo.mess.ping = apr_time_from_sec(atoi(ptr[i+1]));
+            nodeinfo.mess.ping = apr_time_from_sec(atoi(ptr[i + 1]));
         }
         if (strcasecmp(ptr[i], "smax") == 0) {
-            nodeinfo.mess.smax = atoi(ptr[i+1]);
+            nodeinfo.mess.smax = atoi(ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "ttl") == 0) {
-            nodeinfo.mess.ttl = apr_time_from_sec(atoi(ptr[i+1]));
+            nodeinfo.mess.ttl = apr_time_from_sec(atoi(ptr[i + 1]));
         }
         if (strcasecmp(ptr[i], "Timeout") == 0) {
-            nodeinfo.mess.timeout = apr_time_from_sec(atoi(ptr[i+1]));
+            nodeinfo.mess.timeout = apr_time_from_sec(atoi(ptr[i + 1]));
         }
 
         /* Hosts and contexts (optional paramters) */
@@ -1149,10 +1149,10 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                phost->next = apr_palloc(r->pool, sizeof(struct cluster_host));
                phost = phost->next;
                phost->next = NULL;
-               phost->host = ptr[i+1];
+               phost->host = ptr[i + 1];
                phost->context = NULL;
             } else {
-               phost->host = ptr[i+1];
+               phost->host = ptr[i + 1];
             }
         }
         if (strcasecmp(ptr[i], "Context") == 0) {
@@ -1160,7 +1160,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                 *errtype = TYPESYNTAX;
                 return SCONBAD;
             }
-            phost->context = ptr[i+1];
+            phost->context = ptr[i + 1];
         }
         i++;
         i++;
@@ -1172,14 +1172,14 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         return SROUBAD;
     }
 
-    if ( mconf->enable_ws_tunnel && strcmp(nodeinfo.mess.Type, "ajp")) {
+    if (mconf->enable_ws_tunnel && strcmp(nodeinfo.mess.Type, "ajp")) {
         if (!strcmp(nodeinfo.mess.Type, "http"))
             strcpy(nodeinfo.mess.Type, "ws");
         if (!strcmp(nodeinfo.mess.Type, "https"))
             strcpy(nodeinfo.mess.Type, "wss");
         if (mconf->ws_upgrade_header) {
             strncpy(nodeinfo.mess.Upgrade,mconf->ws_upgrade_header, sizeof(nodeinfo.mess.Upgrade));
-            nodeinfo.mess.Upgrade[sizeof(nodeinfo.mess.Upgrade)-1] = '\0';
+            nodeinfo.mess.Upgrade[sizeof(nodeinfo.mess.Upgrade) - 1] = '\0';
         } else {
             strcpy(nodeinfo.mess.Upgrade,"websocket");
         }
@@ -1190,11 +1190,11 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     if (strcmp(nodeinfo.mess.Type, "ajp") == 0) {
         if (mconf->ajp_secret) {
             strncpy(nodeinfo.mess.AJPSecret,mconf->ajp_secret, sizeof(nodeinfo.mess.AJPSecret));
-            nodeinfo.mess.AJPSecret[sizeof(nodeinfo.mess.AJPSecret)-1] = '\0';
+            nodeinfo.mess.AJPSecret[sizeof(nodeinfo.mess.AJPSecret) - 1] = '\0';
         }
     }
 
-    if ( mconf->response_field_size && strcmp(nodeinfo.mess.Type, "ajp")) {
+    if (mconf->response_field_size && strcmp(nodeinfo.mess.Type, "ajp")) {
         nodeinfo.mess.ResponseFieldSize = mconf->response_field_size;
     }
     /* Insert or update balancer description */
@@ -1208,7 +1208,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     node = read_node(nodestatsmem, &nodeinfo);
     if (node != NULL) {
         /* If the node is removed (or kill and restarted) and recreated unchanged that is ok: network problems */
-        if (! is_same_node(node, &nodeinfo)) {
+        if (!is_same_node(node, &nodeinfo)) {
             /* Here we can't update it because the old one is still in */
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: node %s already exist", node->mess.JVMRoute);
@@ -1303,13 +1303,13 @@ static char * process_dump(request_rec *r, int *errtype)
     if (size == 0)
        return NULL;
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
        ap_rprintf(r, "<Dump><Balancers>");
     }
 
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_balancer(balancerstatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         balancerinfo_t *ou;
         if (get_balancer(balancerstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -1349,7 +1349,7 @@ static char * process_dump(request_rec *r, int *errtype)
 
         }
     }
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
        ap_rprintf(r, "</Balancers>");
     }
 
@@ -1357,10 +1357,10 @@ static char * process_dump(request_rec *r, int *errtype)
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_node(nodestatsmem, id);
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
        ap_rprintf(r, "<Nodes>");
     }
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -1412,14 +1412,14 @@ static char * process_dump(request_rec *r, int *errtype)
         }
     }
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
        ap_rprintf(r, "</Nodes><Hosts>");
     }
 
     size = loc_get_max_size_host();
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_host(hoststatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         hostinfo_t *ou;
         if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -1444,14 +1444,14 @@ static char * process_dump(request_rec *r, int *errtype)
             }
         }
     }
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
        ap_rprintf(r, "</Hosts><Contexts>");
     }
 
     size = loc_get_max_size_context();
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_context(contextstatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         contextinfo_t *ou;
         if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -1492,7 +1492,7 @@ static char * process_dump(request_rec *r, int *errtype)
         }
     }
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
        ap_rprintf(r, "</Contexts></Dump>");
     }
     return NULL;
@@ -1524,11 +1524,11 @@ static char * process_info(request_rec *r, int *errtype)
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_node(nodestatsmem, id);
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
        ap_rprintf(r, "<Info><Nodes>");
     }
 
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         proxy_worker_shared *proxystat;
         char *flushpackets;
@@ -1633,7 +1633,7 @@ static char * process_info(request_rec *r, int *errtype)
         
     }
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
         ap_rprintf(r, "</Nodes>");
     }
 
@@ -1641,10 +1641,10 @@ static char * process_info(request_rec *r, int *errtype)
     size = loc_get_max_size_host();
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_host(hoststatsmem, id);
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
         ap_rprintf(r, "<Vhosts>");
     }
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         hostinfo_t *ou;
         if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -1669,7 +1669,7 @@ static char * process_info(request_rec *r, int *errtype)
         }
     }
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
         ap_rprintf(r, "</Vhosts>");
     }
 
@@ -1678,11 +1678,11 @@ static char * process_info(request_rec *r, int *errtype)
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_context(contextstatsmem, id);
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
         ap_rprintf(r, "<Contexts>");
     }
 
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         contextinfo_t *ou;
         char *status;
         if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
@@ -1724,7 +1724,7 @@ static char * process_info(request_rec *r, int *errtype)
         }
     }
 
-    if ( type == TEXT_XML ) {
+    if (type == TEXT_XML) {
         ap_rprintf(r, "</Contexts></Info>");
     }
     return NULL;
@@ -1745,7 +1745,7 @@ static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinf
         return NULL;
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_host(hoststatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         hostinfo_t *ou;
         int sizecontext;
         int *idcontext;
@@ -1758,7 +1758,7 @@ static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinf
         sizecontext = get_max_size_context(contextstatsmem);
         idcontext = apr_palloc(r->pool, sizeof(int) * sizecontext);
         sizecontext = get_ids_used_context(contextstatsmem, idcontext);
-        for (j=0; j<sizecontext; j++) {
+        for (j = 0; j < sizecontext; j++) {
             contextinfo_t *context;
             if (get_context(contextstatsmem, &context, idcontext[j]) != APR_SUCCESS)
                 continue;
@@ -1809,11 +1809,11 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
 
     while (ptr[i]) {
         if (strcasecmp(ptr[i], "JVMRoute") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.JVMRoute)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.JVMRoute)) {
                 *errtype = TYPESYNTAX;
                 return SROUBIG;
             }
-            strcpy(nodeinfo.mess.JVMRoute, ptr[i+1]);
+            strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = 0;
         }
         if (strcasecmp(ptr[i], "Alias") == 0) {
@@ -1821,20 +1821,20 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
                 *errtype = TYPESYNTAX;
                 return SMULALB;
             }
-            p_tmp = ptr[i+1];
+            p_tmp = ptr[i + 1];
             /* Aliases to lower case for further case-insensitive treatment, IETF RFC 1035 Section 2.3.3. */
             while (*p_tmp) {
                 *p_tmp = apr_tolower(*p_tmp);
                 ++p_tmp;
             }
-            vhost->host = ptr[i+1];
+            vhost->host = ptr[i + 1];
         }
         if (strcasecmp(ptr[i], "Context") == 0) {
             if (vhost->context) {
                 *errtype = TYPESYNTAX;
                 return SMULCTB;
             }
-            vhost->context = ptr[i+1];
+            vhost->context = ptr[i + 1];
         }
         i++;
         i++;
@@ -1892,7 +1892,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         char *s = hostinfo.host;
         unsigned j = 1;
         strncpy(hostinfo.host, vhost->host, HOSTALIASZ);
-        while (*s != ',' && j<sizeof(hostinfo.host)) {
+        while (*s != ',' && j < sizeof(hostinfo.host)) {
            j++;
            s++;
         }
@@ -1914,12 +1914,12 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             size = loc_get_max_size_host();
             id = apr_palloc(r->pool, sizeof(int) * size);
             size = get_ids_used_host(hoststatsmem, id);
-            for (i=0; i<size; i++) {
+            for (i = 0; i < size; i++) {
                 hostinfo_t *ou;
                 if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
                     continue;
 
-            if(ou->node == node->mess.id && ou->vhost > vid)
+            if (ou->node == node->mess.id && ou->vhost > vid)
                 vid = ou->vhost;
             }
             vid++; /* Use next one. */
@@ -1954,11 +1954,11 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         int size = loc_get_max_size_context();
         int *id = apr_palloc(r->pool, sizeof(int) * size);
         size = get_ids_used_context(contextstatsmem, id);
-        for (i=0; i<size; i++) {
+        for (i = 0; i < size; i++) {
             contextinfo_t *ou;
             if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
                 continue;
-            if (strcmp(ou->context, vhost->context) ==0) {
+            if (strcmp(ou->context, vhost->context) == 0) {
                 /* There is the same context somewhere else */
                 nodeinfo_t *hisnode;
                 if (get_node(nodestatsmem, &hisnode, ou->node) != APR_SUCCESS)
@@ -1985,7 +1985,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         int size = loc_get_max_size_context();
         int *id = apr_palloc(r->pool, sizeof(int) * size);
         size = get_ids_used_context(contextstatsmem, id);
-        for (i=0; i<size; i++) {
+        for (i = 0; i < size; i++) {
             contextinfo_t *ou;
             if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
                 continue;
@@ -1993,16 +1993,16 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
                 ou->node == node->mess.id)
                 break;
         }
-        if (i==size) {
+        if (i == size) {
             int size = loc_get_max_size_host();
             int *id = apr_palloc(r->pool, sizeof(int) * size);
             size = get_ids_used_host(hoststatsmem, id);
-            for (i=0; i<size; i++) {
+            for (i = 0; i < size; i++) {
                  hostinfo_t *ou;
 
                  if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
                      continue;
-                 if(ou->vhost == host->vhost && ou->node == node->mess.id)
+                 if (ou->vhost == host->vhost && ou->node == node->mess.id)
                      remove_host(hoststatsmem, ou);
             }
         }
@@ -2089,7 +2089,7 @@ static char * process_status(request_rec *r, char **ptr, int *errtype)
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "Processing STATUS");
     while (ptr[i]) {
         if (strcasecmp(ptr[i], "JVMRoute") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.JVMRoute)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.JVMRoute)) {
                 *errtype = TYPESYNTAX;
                 return SROUBIG;
             }
@@ -2097,7 +2097,7 @@ static char * process_status(request_rec *r, char **ptr, int *errtype)
             nodeinfo.mess.id = 0;
         }
         else if (strcasecmp(ptr[i], "Load") == 0) {
-            Load = atoi(ptr[i+1]);
+            Load = atoi(ptr[i + 1]);
         }
         else {
             *errtype = TYPESYNTAX;
@@ -2171,19 +2171,19 @@ static char * process_ping(request_rec *r, char **ptr, int *errtype)
     nodeinfo.mess.id = -1;
     while (ptr[i] && ptr[i][0] != '\0') {
         if (strcasecmp(ptr[i], "JVMRoute") == 0) {
-            if (strlen(ptr[i+1])>=sizeof(nodeinfo.mess.JVMRoute)) {
+            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.JVMRoute)) {
                 *errtype = TYPESYNTAX;
                 return SROUBIG;
             }
-            strcpy(nodeinfo.mess.JVMRoute, ptr[i+1]);
+            strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = 0;
         }
         else if (strcasecmp(ptr[i], "Scheme") == 0)
             scheme = apr_pstrdup(r->pool, ptr[i+1]);
         else if (strcasecmp(ptr[i], "Host") == 0)
-            host = apr_pstrdup(r->pool, ptr[i+1]);
+            host = apr_pstrdup(r->pool, ptr[i + 1]);
         else if (strcasecmp(ptr[i], "Port") == 0)
-            port = apr_pstrdup(r->pool, ptr[i+1]);
+            port = apr_pstrdup(r->pool, ptr[i + 1]);
         else {
             *errtype = TYPESYNTAX;
             return apr_psprintf(r->pool, SBADFLD, ptr[i]);
@@ -2400,7 +2400,7 @@ static int manager_trans(request_rec *r)
                     "manager_trans %s (%s)", r->method, r->uri);
         r->handler = "mod-cluster"; /* that hack doesn't work on httpd-2.4.x */
         i = strlen(r->uri);
-        if (strcmp(r->uri, "*") == 0 || (i>=2 && r->uri[i-1] == '*' && r->uri[i-2] == '/')) {
+        if (strcmp(r->uri, "*") == 0 || (i >= 2 && r->uri[i - 1] == '*' && r->uri[i - 2] == '/')) {
             r->filename = apr_pstrdup(r->pool, NODE_COMMAND);
         } else {
             r->filename = apr_pstrdup(r->pool, r->uri);
@@ -2436,9 +2436,9 @@ static int manager_map_to_storage(request_rec *r)
 /* Create the commands that are possible on the context */
 static char*context_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
 {
-    char context[CONTEXTSZ+1];
+    char context[CONTEXTSZ + 1];
     char *raw;
-    strncpy(context, ou->context, CONTEXTSZ+1);
+    strncpy(context, ou->context, CONTEXTSZ + 1);
     raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
     return raw;
 }
@@ -2513,7 +2513,7 @@ static void manager_info_contexts(request_rec *r, int reduce_display, int allow_
         return;
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_context(contextstatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         contextinfo_t *ou;
         char *status;
         if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
@@ -2552,7 +2552,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_host(hoststatsmem, id);
     idChecker = apr_pcalloc(r->pool, sizeof(int) * size);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         hostinfo_t *ou;
         if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -2581,7 +2581,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
                 ap_rprintf(r, "%.*s\n", (int) sizeof(ou->host), ou->host);
             
             /* Go ahead and check for any other later alias entries for this vhost and print them now */
-            for (j=i+1; j<size; j++) {
+            for (j = i+1; j < size; j++) {
                 hostinfo_t *pv;
                 if (get_host(hoststatsmem, &pv, id[j]) != APR_SUCCESS)
                     continue;
@@ -2591,9 +2591,9 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
                     continue;
 
                 /* mark this entry as logged */
-                idChecker[j]=1;
+                idChecker[j] = 1;
                 /* step the outer loop forward if we can */
-                if (i == j-1)
+                if (i == j - 1)
                     i++;
                 if (reduce_display)
                     ap_rprintf(r, "%.*s ", (int) sizeof(pv->host), pv->host);
@@ -2621,7 +2621,7 @@ static void manager_sessionid(request_rec *r)
         return;
     ap_rprintf(r, "<h1>SessionIDs:</h1>");
     ap_rprintf(r, "<pre>");
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         sessionidinfo_t *ou;
         if (get_sessionid(sessionidstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -2648,7 +2648,7 @@ static void manager_domain(request_rec *r, int reduce_display)
         return;
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_domain(domainstatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         domaininfo_t *ou;
         if (get_domain(domainstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -2674,7 +2674,7 @@ static int count_sessionid(request_rec *r, char *route)
         return 0;
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_sessionid(sessionidstatsmem, id);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         sessionidinfo_t *ou;
         if (get_sessionid(sessionidstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -2706,15 +2706,15 @@ static void sort_nodes(nodeinfo_t *nodes, int nbnodes)
 {
     int i;
     int changed = -1;
-    if (nbnodes <=1)
+    if (nbnodes <= 1)
         return;
-    while(changed) {
+    while (changed) {
         changed = 0;
-        for (i=0; i<nbnodes-1; i++) {
-            if (strcmp(nodes[i].mess.Domain, nodes[i+1].mess.Domain)> 0) {
+        for (i = 0; i < nbnodes - 1; i++) {
+            if (strcmp(nodes[i].mess.Domain, nodes[i + 1].mess.Domain)> 0) {
                 nodeinfo_t node;
-                node = nodes[i+1];
-                nodes[i+1] = nodes[i];
+                node = nodes[i + 1];
+                nodes[i + 1] = nodes[i];
                 nodes[i] = node;
                 changed = -1;
             }
@@ -2733,20 +2733,20 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_node(nodestatsmem, id);
 
-    for (pos=0;ptr[pos]!=NULL && ptr[pos+1]!=NULL; pos=pos+2) ;
+    for (pos = 0; ptr[pos] != NULL && ptr[pos + 1] != NULL; pos = pos + 2) ;
 
     ptr[pos] = apr_pstrdup(r->pool, "JVMRoute");
-    ptr[pos+2] = NULL;
-    ptr[pos+3] = NULL;
+    ptr[pos + 2] = NULL;
+    ptr[pos + 3] = NULL;
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, r->server, "process_domain");
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
         if (strcmp(ou->mess.Domain, domain) != 0)
             continue;
         /* add the JVMRoute */
-        ptr[pos+1] = apr_pstrdup(r->pool, ou->mess.JVMRoute);
+        ptr[pos + 1] = apr_pstrdup(r->pool, ou->mess.JVMRoute);
         if (strcasecmp(cmd, "ENABLE-APP") == 0)
             errstring = process_enable(r, ptr, errtype, RANGENODE);
         else if (strcasecmp(cmd, "DISABLE-APP") == 0)
@@ -2878,7 +2878,7 @@ static int manager_info(request_rec *r)
             }
         }
         /* Process other command if any */
-        if (cmd != NULL && typ !=NULL && mconf->allow_cmd && errstring == NULL) {
+        if (cmd != NULL && typ != NULL && mconf->allow_cmd && errstring == NULL) {
             int global = RANGECONTEXT;
             int errtype = 0;
             int i;
@@ -2886,9 +2886,9 @@ static int manager_info(request_rec *r)
             const apr_array_header_t *arr = apr_table_elts(params);
             const apr_table_entry_t *elts = (const apr_table_entry_t *)arr->elts;
 
-            if (strcasecmp(typ,"NODE")==0)
+            if (strcasecmp(typ,"NODE") == 0)
                 global = RANGENODE;
-            else if (strcasecmp(typ,"DOMAIN")==0)
+            else if (strcasecmp(typ,"DOMAIN") == 0)
                 global = RANGEDOMAIN;
 
             if (global == RANGEDOMAIN)
@@ -2896,11 +2896,11 @@ static int manager_info(request_rec *r)
             else
                 ptr = apr_palloc(r->pool, sizeof(char *) * (arr->nelts + 1) * 2);
             for (i = 0; i < arr->nelts; i++) {
-                ptr[i*2] = elts[i].key;
-                ptr[i*2+1] = elts[i].val;
+                ptr[i * 2] = elts[i].key;
+                ptr[i * 2 + 1] = elts[i].val;
             }
-            ptr[arr->nelts*2] = NULL;
-            ptr[arr->nelts*2+1] = NULL;
+            ptr[arr->nelts * 2] = NULL;
+            ptr[arr->nelts * 2 + 1] = NULL;
              
             if (global == RANGEDOMAIN)
                 errstring = process_domain(r, ptr, &errtype, cmd, domain);
@@ -2969,7 +2969,7 @@ static int manager_info(request_rec *r)
 
     /* read the node to sort them by domain */
     nodes = apr_palloc(r->pool, sizeof(nodeinfo_t) * size);
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
@@ -2979,7 +2979,7 @@ static int manager_info(request_rec *r)
     sort_nodes(nodes, nbnodes);
 
     /* display the ordered nodes */
-    for (i=0; i<size; i++) {
+    for (i = 0; i < size; i++) {
         char *flushpackets;
         nodeinfo_t *ou = &nodes[i];
         char *pptr = (char *) ou;
@@ -3064,7 +3064,7 @@ static int manager_handler(request_rec *r)
     char *errstring = NULL;
     int errtype = 0;
     char *buff;
-    apr_size_t bufsiz=0, maxbufsiz, len;
+    apr_size_t bufsiz = 0, maxbufsiz, len;
     apr_status_t status;
     int global = 0;
     int ours = 0;
@@ -3505,7 +3505,7 @@ static const char*cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, c
         return err;
     }
     if (s < 0) {
-            return "ResponseFieldSize must be greater than 0 bytes, or 0 for system default.";
+        return "ResponseFieldSize must be greater than 0 bytes, or 0 for system default.";
     }
     if (ap_find_linked_module("mod_proxy_http.c") != NULL) {
         mconf->response_field_size = (s ? s : HUGE_STRING_LEN);
@@ -3644,7 +3644,7 @@ static const command_rec  manager_cmds[] =
 
 static void manager_hooks(apr_pool_t *p)
 {
-    static const char * const aszSucc[]={ "mod_proxy.c", NULL };
+    static const char * const aszSucc[] = { "mod_proxy.c", NULL };
 
     /* Create the shared tables for mod_proxy_cluster */
     ap_hook_post_config(manager_init, NULL, NULL, APR_HOOK_MIDDLE);
