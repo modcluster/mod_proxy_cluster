@@ -267,18 +267,18 @@ static int loc_worker_nodes_are_updated(void *data, unsigned int last)
 static apr_status_t lock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
 {
     apr_status_t rv;
-    rv = apr_file_lock(file, APR_FLOCK_EXCLUSIVE);
-    if (rv != APR_SUCCESS)
-        return rv;
     rv = apr_thread_mutex_lock(mutex);
     if (rv != APR_SUCCESS)
-        apr_file_unlock(file);
+        return rv;
+    rv = apr_file_lock(file, APR_FLOCK_EXCLUSIVE);
+    if (rv != APR_SUCCESS)
+        apr_thread_mutex_unlock(mutex);
     return rv;
 }
 static apr_status_t unlock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
 {
-    apr_thread_mutex_unlock(mutex);
-    return(apr_file_unlock(file));
+    apr_file_unlock(file);
+    return(apr_thread_mutex_unlock(mutex));
 }
 static apr_status_t loc_lock_nodes(void)
 {
@@ -941,10 +941,10 @@ static proxy_worker *get_proxy_worker_id(request_rec *r, nodeinfo_t *nodeinfo, i
  * Unlock after get_proxy_worker_id()
  * and return void
  */
-static void unlock_get_proxy_worker_id(void)
+static void unlock_get_proxy_worker_id(proxy_server_conf *the_conf)
 {
     if (balancerhandler != NULL) {
-        balancerhandler->unlock_after_proxy_node_getid();
+        balancerhandler->unlock_after_proxy_node_getid(the_conf);
     }
 }
 static void reenable_proxy_worker(request_rec *r, nodeinfo_t *node, proxy_worker *worker, nodeinfo_t *nodeinfo, proxy_server_conf *the_conf)
@@ -991,6 +991,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     int clean = -1;
     proxy_worker *worker;
     proxy_server_conf *the_conf = NULL;
+    apr_status_t rv;
 
     vhost = apr_palloc(r->pool, sizeof(struct cluster_host));
 
@@ -1236,7 +1237,8 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     }
 
     /* check for removed node */
-    loc_lock_nodes();
+    rv = loc_lock_nodes();
+    ap_assert(rv == APR_SUCCESS);
     node = read_node(nodestatsmem, &nodeinfo);
     if (node != NULL) {
         /* If the node is removed (or kill and restarted) and recreated unchanged that is ok: network problems */
@@ -1287,7 +1289,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     /* Insert or update node description */
     if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
         loc_unlock_nodes();
-        unlock_get_proxy_worker_id();
+        unlock_get_proxy_worker_id(the_conf);
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
     }
@@ -1328,18 +1330,18 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: NO balancer-manager");
         }
-        unlock_get_proxy_worker_id();
+        unlock_get_proxy_worker_id(the_conf);
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
         if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
             loc_unlock_nodes();
-            unlock_get_proxy_worker_id();
+            unlock_get_proxy_worker_id(the_conf);
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
         }
         if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
             loc_unlock_nodes();
-            unlock_get_proxy_worker_id();
+            unlock_get_proxy_worker_id(the_conf);
             return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
         }
         phost = phost->next;
@@ -1358,7 +1360,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                      "process_config: NO balancer-manager");
     }
 
-    unlock_get_proxy_worker_id();
+    unlock_get_proxy_worker_id(the_conf);
     return NULL;
 }
 /*
@@ -1864,7 +1866,9 @@ static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinf
     if (status == REMOVE) {
         int id;
         node->mess.remove = 1;
+        loc_lock_nodes();
         insert_update_node(nodestatsmem, node, &id, 0);
+        loc_unlock_nodes();
     }
     return NULL;
 
@@ -2190,7 +2194,9 @@ static char * process_status(request_rec *r, char **ptr, int *errtype)
     }
 
     /* Read the node */
+    loc_lock_nodes();
     node = read_node(nodestatsmem, &nodeinfo);
+    loc_unlock_nodes();
     if (node == NULL) {
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODERD, nodeinfo.mess.JVMRoute);
@@ -2294,7 +2300,9 @@ static char * process_ping(request_rec *r, char **ptr, int *errtype)
     } else {
 
         /* Read the node */
+        loc_lock_nodes();
         node = read_node(nodestatsmem, &nodeinfo);
+        loc_unlock_nodes();
         if (node == NULL) {
             *errtype = TYPEMEM;
             return apr_psprintf(r->pool, MNODERD, nodeinfo.mess.JVMRoute);

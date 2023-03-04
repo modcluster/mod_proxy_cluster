@@ -76,7 +76,7 @@ void (* reenable_proxy_worker)(server_rec *s, nodeinfo_t*  node, proxy_worker *w
 /**
  *  unlock after proxy_node_getid()
  */
-void (* unlock_after_proxy_node_getid)(void);
+void (* unlock_after_proxy_node_getid)(proxy_server_conf *the_conf);
 };
 
 typedef struct balancer_method balancer_method;
