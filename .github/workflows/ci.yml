@@ -1,0 +1,36 @@
+name: CI
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+jobs:
+  ci:
+    name: cmake-fedora-latest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: mod_proxy_cluster
+      - name: Setup Podman
+        run: |
+          sudo apt update
+          sudo apt-get -y install podman
+          podman pull fedora:38
+      - name: Create container and build
+        run: |
+          {
+              echo 'FROM fedora:38'
+              echo '# set TZ to ensure the test using timestamp'
+              echo 'RUN dnf install cmake httpd-devel -y'
+              echo 'RUN dnf groupinstall "C Development Tools and Libraries" -y'
+              echo 'RUN dnf clean all'
+              echo 'COPY mod_proxy_cluster mod_proxy_cluster'
+              echo 'WORKDIR /mod_proxy_cluster/native'
+              echo 'RUN cmake .'
+              echo 'RUN make'
+          } > podmanfile
+          podman build -f ./podmanfile
