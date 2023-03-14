@@ -211,9 +211,9 @@ static int loc_get_max_size_node(void)
     else
         return 0;
 }
-static apr_status_t loc_remove_node(nodeinfo_t *node)
+static apr_status_t loc_remove_node(int id)
 {
-    return (remove_node(nodestatsmem, node));
+    return (remove_node(nodestatsmem, id));
 }
 static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
 {
@@ -1231,14 +1231,15 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         nodeinfo.mess.ResponseFieldSize = mconf->response_field_size;
     }
     /* Insert or update balancer description */
+    rv = loc_lock_nodes();
+    ap_assert(rv == APR_SUCCESS);
     if (insert_update_balancer(balancerstatsmem, &balancerinfo) != APR_SUCCESS) {
+        loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MBALAUI, nodeinfo.mess.JVMRoute);
     }
 
     /* check for removed node */
-    rv = loc_lock_nodes();
-    ap_assert(rv == APR_SUCCESS);
     node = read_node(nodestatsmem, &nodeinfo);
     if (node != NULL) {
         /* If the node is removed (or kill and restarted) and recreated unchanged that is ok: network problems */

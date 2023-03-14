@@ -199,22 +199,13 @@ apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids)
 /**
  * remove(free) a node record from the shared table
  * @param pointer to the shared table.
- * @param node node to remove from the shared table.
+ * @param ids id of the node to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_node(mem_t *s, nodeinfo_t *node)
+apr_status_t remove_node(mem_t *s, int ids)
 {
-    apr_status_t rv;
-    nodeinfo_t *ou = node;
-    if (node->mess.id)
-        rv = s->storage->ap_slotmem_free(s->slotmem, node->mess.id, node);
-    else {
-        /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
-        rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_node, &ou, s->p);
-        if (rv == APR_SUCCESS)
-            rv = s->storage->ap_slotmem_free(s->slotmem, ou->mess.id, node);
-    }
-    return rv;
+    nodeinfo_t *ou = NULL;
+    return(s->storage->ap_slotmem_free(s->slotmem, ids, ou));
 }
 
 /**

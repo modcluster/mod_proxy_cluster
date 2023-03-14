@@ -131,10 +131,10 @@ apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids);
 /**
  * remove(free) a node record from the shared table
  * @param pointer to the shared table.
- * @param node node to remove from the shared table.
+ * @param ids id of node to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_node(mem_t *s, nodeinfo_t *node);
+apr_status_t remove_node(mem_t *s, int ids);
 
 /**
  * find a node record from the shared table using JVMRoute
@@ -228,7 +228,7 @@ int (*worker_nodes_are_updated)(void *data, unsigned int version);
 /*
  * Remove the node from shared memory (free the slotmem)
  */
-int (*remove_node)(nodeinfo_t *node);
+int (*remove_node)(int node);
 /*
  * Find the node using the JVMRoute information
  */

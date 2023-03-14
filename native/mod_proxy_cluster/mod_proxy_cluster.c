@@ -787,7 +787,7 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
     if (helper) {
         i = helper->count_active;
     }
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, server,
              "remove_workers_node (helper) count_active: %d JVMRoute: %s", i, node->mess.JVMRoute);
 
     if (i == 0) {
@@ -798,7 +798,7 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
         helper->index = 0; /* mark it removed */
         worker->s = helper->shared;
         helper->isinnodes = 0;
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, server,
                      "remove_workers_node... scheme %s hostname %s hostname_ex %s route %s name %s:%s",
                       stat->scheme, stat->hostname, stat->hostname_ex, stat->route, stat->name, helper->shared->name);
         memcpy(worker->s, stat, sizeof(proxy_worker_shared));
@@ -1256,7 +1256,8 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 apr_pool_t *rrp;
                 request_rec *rnew;
                 proxy_worker *worker;
-                node_storage->lock_nodes();
+                rv = node_storage->lock_nodes();
+                ap_assert(rv == APR_SUCCESS);
                 worker = get_worker_from_id_stat(conf, id[i], stat, ou);
                 node_storage->unlock_nodes();
 
@@ -1661,7 +1662,8 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     ptr = (char *) node;
 
     /* create the balancers and workers (that could be the first time) */
-    node_storage->lock_nodes();
+    rv = node_storage->lock_nodes();
+    ap_assert(rv == APR_SUCCESS);
     add_balancers_workers(node, ptr, r->pool);
     node_storage->unlock_nodes();
 
@@ -1793,7 +1795,7 @@ static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, int *id,
                 proxy_cluster_helper *helper;
                 if (worker->s->index != 0) {
                     *id = worker->s->index;
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                                  "searchworker %s: worker->s->index: %d", ptr, *id );
                     the_conf = &conf;
                     return worker; /* Done current index */
@@ -1801,14 +1803,14 @@ static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, int *id,
                 helper = (proxy_cluster_helper *) worker->context;
                 if (helper && helper->index != 0) {
                     *id = helper->index;
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                                  "searchworker %s: helper->index %d", ptr, *id );
                     the_conf = &conf;
                     return worker; /* Done previous index */
                 }
                 if (helper && helper->shared) {
                     *id = helper->shared->index;
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                                  "searchworker %s: helper->shared->index %d", ptr, *id );
                     the_conf = &conf;
                     return worker; /* our index was saved when we remove... */
@@ -1945,8 +1947,10 @@ static void remove_removed_node(apr_pool_t *pool, server_rec *server)
                 }
             }
             /* remove the node from the shared memory */
+            ap_log_error(APLOG_MARK, APLOG_ERR, 0, server,
+                         "remove_removed_node: %d %s" , ou->mess.id, ou->mess.JVMRoute);
             node_storage->remove_host_context(ou->mess.id, pool);
-            node_storage->remove_node(ou);
+            node_storage->remove_node(ou->mess.id);
         }
     }
 }
@@ -2851,13 +2855,11 @@ static void upd_context_count(const char *id, int val, server_rec *s)
 {
     int ident = atoi(id);
     contextinfo_t *context;
-    context_storage->lock_contexts();
     (void) s;
 
     if (context_storage->read_context(ident, &context) == APR_SUCCESS) {
         context->nbrequests = context->nbrequests + val;
     }
-    context_storage->unlock_contexts();
 }
 
 static apr_status_t decrement_busy_count(void *worker_)
@@ -3065,13 +3067,14 @@ static int proxy_cluster_pre_request(proxy_worker **worker,
 
     /* Also mark the context here note that find_best_worker set BALANCER_CONTEXT_ID */
     context_id = apr_table_get(r->subprocess_env, "BALANCER_CONTEXT_ID");
+    rv = node_storage->lock_nodes();
+    ap_assert(rv == APR_SUCCESS);
     if (context_id && *context_id) {
        upd_context_count(context_id, 1, r->server);
     }
 
     /* Mark the worker used for the cleanup logic */
     /* XXX: Do we need the lock here??? */
-    node_storage->lock_nodes();
     helper = (proxy_cluster_helper *) (*worker)->context;
     helper->count_active++;
     node_storage->unlock_nodes();
@@ -3127,12 +3130,13 @@ static int proxy_cluster_post_request(proxy_worker *worker,
     (void) conf; /* unused argument */
 
     /* Ajust the context counter here too */
+    rv = node_storage->lock_nodes();
+    ap_assert(rv == APR_SUCCESS);
     if (context_id && *context_id) {
        upd_context_count(context_id, -1, r->server);
     }
 
     /* mark the worker as not in use */
-    node_storage->lock_nodes();
     helper = (proxy_cluster_helper *) worker->context;
     helper->count_active--;
 
