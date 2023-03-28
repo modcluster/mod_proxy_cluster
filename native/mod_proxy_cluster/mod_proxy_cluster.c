@@ -53,6 +53,10 @@
 #include <unistd.h>
 #endif
 
+#if APR_HAS_THREADS
+#include "apr_thread_pool.h"
+#endif
+
 /* define HAVE_CLUSTER_EX_DEBUG to have extented debug in mod_cluster */
 #define HAVE_CLUSTER_EX_DEBUG 0
 
@@ -66,6 +70,15 @@
 /* Don't failover if the corresponding worker is failing StickySessionForce="yes", implies StickySession="yes" */
 #define MC_NO_FAILOVER "MC_NF"
 
+#if APR_HAS_THREADS
+#ifndef MC_USE_THREADS
+#define MC_USE_THREADS 1
+#endif
+#else
+#define MC_USE_THREADS 0
+#endif
+
+#define MC_THREADPOOL_SIZE (16)
 
 struct proxy_cluster_helper {
     int count_active; /* currently active request using the worker */
@@ -73,6 +86,12 @@ struct proxy_cluster_helper {
     int index; /* like the worker->id */
 };
 typedef struct  proxy_cluster_helper proxy_cluster_helper;
+
+typedef struct watchdog_thread_args {
+    server_rec *server;
+    apr_pool_t *pool;
+    apr_pool_t *argpool;
+} watchdog_thread_args_t;
 
 static struct node_storage_method *node_storage = NULL; 
 static struct host_storage_method *host_storage = NULL; 
@@ -84,6 +103,11 @@ static struct domain_storage_method *domain_storage = NULL;
 #define LB_CLUSTER_WATHCHDOG_NAME ("_mod_cluster_")
 static APR_OPTIONAL_FN_TYPE(ap_watchdog_set_callback_interval) *mc_watchdog_set_interval;
 static ap_watchdog_t *watchdog;
+
+#if MC_USE_THREADS
+static apr_thread_pool_t *mc_thread_pool;
+static int mc_thread_pool_size;
+#endif
 
 static apr_thread_mutex_t *lock = NULL;
 
@@ -1830,32 +1854,97 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
 }
 
 
+static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool);
+
+static void* APR_THREAD_FUNC execute_watchdog(apr_thread_t *thread, void *data) {
+    watchdog_thread_args_t *targs = (watchdog_thread_args_t *)data;
+    apr_pool_t *pool = targs->pool;
+    apr_time_t wait = cache_share_for;
+    server_rec *s = targs->server;
+     if (s) {
+        /* It is called for every server defined in httpd */
+        proxy_cluster_watchdog_func(s, pool);
+        /* set the next call back to cache_share_for or 1 if zero */
+        if (!wait)
+            wait = apr_time_from_sec(1);
+        mc_watchdog_set_interval(watchdog, wait, s, mc_watchdog_callback);
+    }
+    /* If its used in a thread, we have to dealoc the pool for passed arguments */
+    if (thread != NULL) {
+        apr_pool_destroy(targs->argpool);
+    }
+    return NULL;
+}
+
 static apr_status_t mc_watchdog_callback(int state, void *data,
                                          apr_pool_t *pool)
 {
+    apr_status_t res = APR_SUCCESS;
     server_rec *s = (server_rec *)data;
+    watchdog_thread_args_t targs = { .server = s, .pool = pool, .argpool = NULL };
+#if MC_USE_THREADS
+    apr_pool_t *targs_pool;
+    watchdog_thread_args_t *targs_ptr;
+#endif
     switch (state) {
         case AP_WATCHDOG_STATE_STARTING:
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "cluster_watchdog_callback STARTING");
+#if MC_USE_THREADS
+            if (mc_thread_pool_size && mc_thread_pool == NULL) {
+                res = apr_thread_pool_create(&mc_thread_pool, mc_thread_pool_size,
+                                             mc_thread_pool_size, s->process->pool);
+                if (res != APR_SUCCESS) {
+                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s,
+                                 "apr_thread_pool_create failed, threads will not be used");
+                    mc_thread_pool = NULL;
+                }
+            } else {
+                mc_thread_pool = NULL;
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "Threads are not used");
+            }
+#endif
             break;
 
         case AP_WATCHDOG_STATE_RUNNING:
-            if (s) {
-               apr_time_t wait = cache_share_for;
-               /* It is called for every server defined in httpd */
-               proxy_cluster_watchdog_func(s, pool);
-               /* set the next call back to cache_share_for or 1 if zero */
-               if (!wait)
-                   wait = apr_time_from_sec(1);
-               mc_watchdog_set_interval(watchdog, wait, s, mc_watchdog_callback);
+#if MC_USE_THREADS
+            if (mc_thread_pool) {
+                apr_pool_create(&targs_pool, s->process->pool);
+                apr_pool_tag(targs_pool, "mc_watchdog_targs");
+                targs_ptr = apr_palloc(targs_pool, sizeof(watchdog_thread_args_t));
+                if (targs_ptr != NULL) {
+                    targs_ptr->argpool = targs_pool;
+                    targs_ptr->server  = targs.server;
+                    targs_ptr->pool    = targs.pool;
+                    res = apr_thread_pool_push(mc_thread_pool, execute_watchdog,
+                                                 (void *) targs_ptr, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+                    if (res == APR_SUCCESS) {
+                        /* Early return. Task was scheduled! */
+                        return res;
+                    }
+                    /* Log about failed scheduling and execute without threads below. */
+                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "thread push was NOT successful: %d", res);
+                } else {
+                    ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "Memory allocation for thread args failed");
+                }
+                /* Thread alloc or push failed, so run it without threads!
+                 * That means the execution continues after the endif below!
+                 */
             }
+#endif
+            res = APR_SUCCESS;
+            execute_watchdog(NULL, (void *) &targs);
             break;
 
         case AP_WATCHDOG_STATE_STOPPING:
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "cluster_watchdog_callback STOPPING");
+#if MC_USE_THREADS
+            res = apr_thread_pool_destroy(mc_thread_pool);
+            if (res != APR_SUCCESS) {
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "apr_thread_pool_destroy failed");
+            }
+            mc_thread_pool = NULL;
+#endif
             break;
     }
-    return APR_SUCCESS;
+    return res;
 }
 
 /*
@@ -2080,6 +2169,11 @@ static int proxy_cluster_pre_config(apr_pool_t *pconf, apr_pool_t *plog,
                                apr_pool_t *ptemp)
 {
     (void) pconf; (void) plog; (void) ptemp;
+
+#if MC_USE_THREADS
+    mc_thread_pool = NULL;
+    mc_thread_pool_size = MC_THREADPOOL_SIZE;
+#endif
 
     set_worker_hc_param_f = APR_RETRIEVE_OPTIONAL_FN(set_worker_hc_param);
     return OK;
@@ -3170,6 +3264,20 @@ static const char *cmd_proxy_cluster_use_nocanon(cmd_parms *parms, void *mconfig
 }
 
 
+static const char *cmd_mc_thread_count(cmd_parms *cmd, void *dummy, const char *arg) {
+#if MC_USE_THREADS
+    int size;
+    (void) cmd; (void) dummy;
+    size = atoi(arg);
+    if (size < 0) {
+        return "Invalid value for ModProxyClusterThreadCount. Parameter has to be >= 0";
+    }
+
+    mc_thread_pool_size = size;
+#endif
+    return NULL;
+}
+
 static const command_rec  proxy_cluster_cmds[] =
 {
     AP_INIT_TAKE1(
@@ -3236,6 +3344,15 @@ static const command_rec  proxy_cluster_cmds[] =
         OR_ALL,
         "UseNocanon - When no ProxyPass or ProxyMatch for the URL, passes the URL path \"raw\" to the backend (Default: Off)"
     ),
+#if MC_USE_THREADS
+    AP_INIT_TAKE1(
+        "ModProxyClusterThreadCount",
+        cmd_mc_thread_count,
+        NULL,
+        OR_ALL,
+        "ModProxyClusterThreadCount - Set custom size for the watchdog thread pool (Default: 16)"
+    ),
+#endif
     {NULL}
 };
 
