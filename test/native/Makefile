@@ -1,7 +1,7 @@
-APACHE_BASE ?= /home/jbento/modclusterdemo/opt/jboss/httpd/
-APACHE_INC  ?= /home/jbento/modclusterdemo/opt/jboss/httpd/include/httpd
-IMG ?= tomcat_mod_cluster:latest
-MOD_CLUSTER_VERSION ?= 2.0.0.Alpha1-SNAPSHOT
+APACHE_BASE ?= /usr/local/apache
+APACHE_INC  ?= ${APACHE_BASE}/include
+IMG ?= quay.io/${USER}/tomcat_mod_cluster:latest
+MOD_CLUSTER_VERSION ?= 2.0.2.Final-SNAPSHOT
 
 Advertise: Advertise.c
 	cc -c -I$(APACHE_INC) Advertise.c
@@ -15,3 +15,6 @@ docker-build: jars
 
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+tests:
+	IMG=${IMG} sh tests.sh
