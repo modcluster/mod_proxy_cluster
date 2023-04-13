@@ -16,5 +16,11 @@ docker-build: jars
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
+setup-httpd:
+	cd httpd
+	podman build -t quay.io/${USER}/mod_cluster_httpd .
+	podman run -d --network=host quay.io/${USER}/mod_cluster_httpd
+	cd ..
+
 tests:
 	IMG=${IMG} sh tests.sh

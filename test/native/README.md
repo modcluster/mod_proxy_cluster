@@ -67,7 +67,8 @@ java -jar target/test-1.0.jar
 *NOTE: You'll probably need an older JAVA version – version 11 should be ok. You can change it via JAVA env variable.*
 
 # Running tests
-You need an Apache httpd with the mod_cluster.so installed and the following piece in httpd.conf
+You need an Apache httpd with the mod_cluster.so installed and running. You can run it in docker -- checkout the `httpd/`
+subdirectory or simply run `make setup-httpd`. You should have following piece in httpd.conf/mod_proxy_cluster.conf:
 
 ```
 LoadModule cluster_slotmem_module modules/mod_cluster_slotmem.so
