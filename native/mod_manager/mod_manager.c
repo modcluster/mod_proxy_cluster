@@ -937,17 +937,6 @@ static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, int 
     return NULL;
 }
 
-/*
- * XXX here for tracing purpose... JFCLERE will remove it
- * Unlock after proxy_node_getid()
- * and return void
- */
-static void unlock_get_proxy_worker_id(proxy_server_conf *the_conf)
-{
-    if (balancerhandler != NULL) {
-        balancerhandler->unlock_after_proxy_node_getid(the_conf);
-    }
-}
 static void reenable_proxy_worker(request_rec *r, nodeinfo_t *node, proxy_worker *worker, nodeinfo_t *nodeinfo, proxy_server_conf *the_conf)
 {
     if (balancerhandler != NULL) {
@@ -1337,7 +1326,6 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     /* Insert or update node description */
     if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
         loc_unlock_nodes();
-        unlock_get_proxy_worker_id(the_conf);
         if (removed)
             ap_assert(0); /* troubles */
         *errtype = TYPEMEM;
@@ -1382,18 +1370,15 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: NO balancer-manager");
         }
-        unlock_get_proxy_worker_id(the_conf);
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
         if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
             loc_unlock_nodes();
-            unlock_get_proxy_worker_id(the_conf);
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
         }
         if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
             loc_unlock_nodes();
-            unlock_get_proxy_worker_id(the_conf);
             return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
         }
         phost = phost->next;
@@ -1414,7 +1399,6 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                      "process_config: NO balancer-manager");
     }
 
-    unlock_get_proxy_worker_id(the_conf);
     return NULL;
 }
 /*
