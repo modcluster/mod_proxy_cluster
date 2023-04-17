@@ -77,6 +77,7 @@ struct nodemess {
     apr_size_t oldelected;   /* value of s->elected when calculating the lbstatus */
     apr_off_t  oldread;      /* Number of bytes read from remote when calculating the lbstatus */
     apr_time_t lastcleantry; /* time of last unsuccessful try to clean the worker in proxy part */
+    int num_remove_check;    /* number of tries to remove a REMOVED node */
 };
 typedef struct nodemess nodemess_t; 
 

@@ -120,10 +120,9 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
     int ident;
     apr_time_t now;
 
-    node->mess.id = -1;
     now = apr_time_now();
     rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &node, s->p);
-    if (node->mess.id != -1 && rv == APR_SUCCESS) {
+    if (rv == APR_SUCCESS) {
         *id = node->mess.id;
         return APR_SUCCESS; /* updated */
     }

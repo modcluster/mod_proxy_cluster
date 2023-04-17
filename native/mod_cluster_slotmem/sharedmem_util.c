@@ -517,6 +517,8 @@ static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void**me
             id++;
             ff = ident[id];
         }
+        if (ff!=*item_id)
+            return APR_ENOMEM; /* already in use!!! */
     } 
     ff = ident[id];
     if (ff > score->num) {

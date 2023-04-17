@@ -77,6 +77,11 @@ void (* reenable_proxy_worker)(server_rec *s, nodeinfo_t*  node, proxy_worker *w
  *  unlock after proxy_node_getid()
  */
 void (* unlock_after_proxy_node_getid)(proxy_server_conf *the_conf);
+
+/**
+ * return the first free id to insert in node table
+ */
+int (*proxy_node_get_free_id)(request_rec *r, int node_table_size);
 };
 
 typedef struct balancer_method balancer_method;
