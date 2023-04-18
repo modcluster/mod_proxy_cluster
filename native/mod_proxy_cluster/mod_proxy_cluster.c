@@ -154,7 +154,6 @@ static char * normalize_hostname(apr_pool_t *p, char *hostname)
  * Normalize the worker name
  */
 static char* normalize_workername(apr_pool_t *pool, char *url) {
-    char *ptr;
     apr_uri_t uri;
     if (apr_uri_parse(pool, url, &uri) != APR_SUCCESS) {
         return NULL;
@@ -165,8 +164,7 @@ static char* normalize_workername(apr_pool_t *pool, char *url) {
     if (uri.port && uri.port == ap_proxy_port_of_scheme(uri.scheme)) {
         uri.port = 0;
     }
-    ptr = apr_uri_unparse(pool, &uri, APR_URI_UNP_REVEALPASSWORD);
-    return ptr;
+    return apr_uri_unparse(pool, &uri, APR_URI_UNP_REVEALPASSWORD);
 }
 
 
@@ -220,32 +218,24 @@ static void check_workers(proxy_server_conf *conf, server_rec *s)
         for (j = 0; j < balancer->workers->nelts; j++, workers++) {
             volatile proxy_worker *worker = *workers;
             proxy_cluster_helper *helper;
+            int stop_worker = 0;
             helper = (proxy_cluster_helper *) worker->context;
-            ap_assert(helper); /* we are in troubles ... */
+            ap_assert(helper); /* we are in trouble ... */
             if (worker->s->port == 0 && worker->s->scheme[0] == '\0' && worker->s->hostname[0] == '\0' && worker->s->route[0] == '\0') {
                 /* this happens when a new child process is created and it "cleaned" some old slotmem */
                 /* it is like the remove_workers_node we try to restore the non shared memory allocated in create_worker() */
                 ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "check_workers DOING (empty port : %d id : %d!!!!", helper->shared->port, helper->index);
-                /* if count_active is not zero we are probably in troubles */
-                helper->count_active = 0;
-                ap_assert(helper->shared);
-                ap_assert(helper->shared->port != 0);
-                worker->s = helper->shared;
-                helper->isinnodes = 0;
-                /* If we use hcheck, we need to stop it for the worker */
-                if (proxyhctemplate != NULL) {
-                   worker->s->method = NONE;
-                   worker->s->updated = 0;
-                   worker->s->status |= PROXY_WORKER_STOPPED;
-                }
-                continue;
+                stop_worker = 1;
             }
             if (worker->s->port != helper->shared->port ||
                 strcmp(worker->s->scheme, helper->shared->scheme) ||
                 strcmp(worker->s->hostname, helper->shared->hostname)) {
                 /* here the shared memory has changed since we created the worker */
                 ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "check_workers DOING (changed %d : %d)!!!!", helper->shared->port, worker->s->port);
-                /* if count_active is not zero we are probably in troubles */
+                stop_worker = 1;
+            }
+            if (stop_worker) {
+                /* if count_active is not zero we are probably in trouble */
                 helper->count_active = 0;
                 ap_assert(helper->shared);
                 ap_assert(helper->shared->port != 0);
@@ -257,7 +247,6 @@ static void check_workers(proxy_server_conf *conf, server_rec *s)
                    worker->s->updated = 0;
                    worker->s->status |= PROXY_WORKER_STOPPED;
                 }
-                ap_assert(worker->s->port != 0);
                 continue;
             }
         }
@@ -384,7 +373,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                 return APR_SUCCESS; /* Done Already existing */
             } else {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                             "Created: can't reuse worker as it for %s (scheme: %s hostname %s hostname_ex %s port %d route %s name %s) cleaning...",
+                             "Created: can't reuse worker as it is for %s (scheme: %s hostname %s hostname_ex %s port %d route %s name %s) cleaning...",
                               url, worker->s->scheme, worker->s->hostname, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex );
                 ptr = ptr_node;
                 ptr = ptr + node->offset;
@@ -1352,7 +1341,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
 
                 if (rv != APR_SUCCESS) {
                     /* We can't reach the node: XXX changing ou->mess.updatetimelb here ??? */
-                    /* XXX if this is a timeout, we have might have a outdated list of nodes!!! */
+                    /* XXX if this is a timeout, we might have a outdated list of nodes!!! */
                     worker->s->status |= PROXY_WORKER_IN_ERROR;
                     ou->mess.num_failure_idle++;
                     if (ou->mess.num_failure_idle > 60) {
@@ -1875,6 +1864,8 @@ static proxy_worker * proxy_node_getid(request_rec *r, char *balancername, char 
     ptr = normalize_workername(r->pool, url);
     if (ptr == NULL) {
         *id = 0;
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
+                     "proxy_node_getid: normalize_workername returns NULL");
         return NULL; /* Should not happend */
     }
     bal = apr_pstrcat(r->pool, "balancer://", balancername, NULL);
@@ -1913,7 +1904,7 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
                 volatile proxy_worker *worker = *workers;
                 proxy_cluster_helper *helper;
                 helper = (proxy_cluster_helper *) worker->context;
-                ap_assert(helper); /* we are in troubles ... */
+                ap_assert(helper); /* we are in trouble ... */
                 if (worker->s->index != 0) {
                     free_id[worker->s->index] = worker->s->index;
                 }
@@ -2009,7 +2000,7 @@ static int node_has_workers(server_rec *server, proxy_server_conf *conf, int id)
             volatile proxy_worker *worker = *workers;
             proxy_cluster_helper *helper;
             helper = (proxy_cluster_helper *) worker->context;
-            ap_assert(helper); /* we are in troubles ... */
+            ap_assert(helper); /* we are in trouble ... */
             if (helper->index == id) {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                              "remove_removed_node %d for REMOVED node_has_workers %d", id, getpid());

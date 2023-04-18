@@ -1292,9 +1292,9 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                       strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
                   } else {
                       /* if the workernode->mess is zeroed we are going to reinsert it */
-                      if (workernode->mess.JVMRoute[0] == '\0')
+                      if (workernode->mess.JVMRoute[0] == '\0') {
                           removed = -1;
-                      else {
+                      } else {
                           ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                                        "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT %s!!!", id, workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
                           ap_assert(0); /* we are in trouble */

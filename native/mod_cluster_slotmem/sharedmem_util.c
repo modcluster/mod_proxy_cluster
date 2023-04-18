@@ -503,7 +503,7 @@ static apr_status_t ap_slotmem_mem(ap_slotmem_t *score, int id, void**mem)
     return APR_SUCCESS;
 }
 
-static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void**mem)
+static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void **mem)
 {
     int ff;
     int id = 0;
