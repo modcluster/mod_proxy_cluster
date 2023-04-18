@@ -114,7 +114,7 @@ def main():
   s = server.listen()
 
   # connect MCMP client part.
-  ai = socket.getaddrinfo("localhost", 6666)
+  ai = socket.getaddrinfo("127.0.0.1", 6666)
   addr = ai[0][-1]
   client = socket.socket()
   client.connect(addr)

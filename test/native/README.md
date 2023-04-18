@@ -103,3 +103,8 @@ repetitions (those are printed out with their respective values right after exec
 If tests fail or you interupt them, make sure that docker tomcat container that were created are removed first
 (you need to run `docker container stop <container>` and `docker container rm <container>`).
 
+# Testing with miniserver
+There is also a python script that can be run to check mod_proxy_cluster. You can find it within `includes` directory
+as `miniserver.py`. Execute it simply as `./includes/miniserver.py <port-number>`.
+
+You must have `httpd` with `mod_proxy_cluster` running.
