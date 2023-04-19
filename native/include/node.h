@@ -77,6 +77,7 @@ struct nodemess {
     apr_size_t oldelected;   /* value of s->elected when calculating the lbstatus */
     apr_off_t  oldread;      /* Number of bytes read from remote when calculating the lbstatus */
     apr_time_t lastcleantry; /* time of last unsuccessful try to clean the worker in proxy part */
+    int num_remove_check;    /* number of tries to remove a REMOVED node */
 };
 typedef struct nodemess nodemess_t; 
 
@@ -105,10 +106,12 @@ apr_status_t get_last_mem_error(mem_t *mem);
  * Insert(alloc) and update a node record in the shared table
  * @param pointer to the shared table.
  * @param node node to store in the shared table.
+ * @param int pointer to store the id where the node is inserted
+ * @param int tells to clean or not the worker_shared part.
  * @return APR_SUCCESS if all went well
  *
  */
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id);
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean);
 
 /**
  * read a node record from the shared table
@@ -129,10 +132,10 @@ apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids);
 /**
  * remove(free) a node record from the shared table
  * @param pointer to the shared table.
- * @param node node to remove from the shared table.
+ * @param ids id of node to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_node(mem_t *s, nodeinfo_t *node);
+apr_status_t remove_node(mem_t *s, int ids);
 
 /**
  * find a node record from the shared table using JVMRoute
@@ -226,7 +229,7 @@ int (*worker_nodes_are_updated)(void *data, unsigned int version);
 /*
  * Remove the node from shared memory (free the slotmem)
  */
-int (*remove_node)(nodeinfo_t *node);
+int (*remove_node)(int node);
 /*
  * Find the node using the JVMRoute information
  */

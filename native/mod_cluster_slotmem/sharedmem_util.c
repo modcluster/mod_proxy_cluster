@@ -506,14 +506,25 @@ static apr_status_t ap_slotmem_mem(ap_slotmem_t *score, int id, void**mem)
 static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void **mem)
 {
     int ff;
+    int id = 0;
     int *ident;
     apr_status_t rv;
     ident = score->ident;
-    ff = ident[0];
+    if (*item_id != 0) {
+        /* we want a specific id, not a new one */
+        ff = ident[id];
+        while (ff < score->num && ff!=*item_id) {
+            id++;
+            ff = ident[id];
+        }
+        if (ff!=*item_id)
+            return APR_ENOMEM; /* already in use!!! */
+    } 
+    ff = ident[id];
     if (ff > score->num) {
         rv = APR_ENOMEM;
     } else {
-        ident[0] = ident[ff];
+        ident[id] = ident[ff];
         ident[ff] = 0;
         *item_id = ff;
         *mem = (char *) score->base + score->size * (ff - 1);

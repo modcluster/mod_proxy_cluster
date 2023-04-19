@@ -50,7 +50,35 @@ int (* proxy_node_isup)(request_rec *r, int id, int load);
  * @return 0: All OK 500 : Error
  */ 
 int (* proxy_host_isup)(request_rec *r, char *scheme, char *host, char *port);
+/**
+ * Check if a worker already exists and return the corresponding id
+ * @param r request_rec structure.
+ * @param balancername, the balancer name.
+ * @param scheme something like ajp, http or https.
+ * @param host the hostname.
+ * @param port the port on which the node connector is running
+ * @param id the address to store the index that was previously used.
+ * @param the_conf adress to store the proxy_server_conf the worker is using.
+ * @return the worker or NULL if not existing.
+ */
+proxy_worker *(* proxy_node_getid)(request_rec *r, char *balancername, char *scheme, char *host, char *port, int *id, proxy_server_conf **the_conf);
+
+/**
+ * Re enable the proxy_worker
+ * @param r request_rec structure.
+ * @param node pointer to node structure we have created.
+ * @param worker the proxy_worker to re enable
+ * @param nodeinfo pointer to node structure we are creating
+ * @param the_conf the proxy_server_conf from proxy_node_getid()
+ */
+void (* reenable_proxy_worker)(server_rec *s, nodeinfo_t*  node, proxy_worker *worker, nodeinfo_t* nodeinfo, proxy_server_conf *the_conf);
+
+/**
+ * return the first free id to insert in node table
+ */
+int (*proxy_node_get_free_id)(request_rec *r, int node_table_size);
 };
+
 typedef struct balancer_method balancer_method;
 
 /* Context table copy for local use */

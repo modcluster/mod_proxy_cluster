@@ -113,29 +113,24 @@ static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *po
     }
     return APR_NOTFOUND;
 }
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id)
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
 {
     apr_status_t rv;
     nodeinfo_t *ou;
     int ident;
     apr_time_t now;
 
-    node->mess.id = 0;
     now = apr_time_now();
-    rv = s->storage->ap_slotmem_lock(s->slotmem);
-    if (rv != APR_SUCCESS)
-        return(rv);
     rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &node, s->p);
-    if (node->mess.id != 0 && rv == APR_SUCCESS) {
-        s->storage->ap_slotmem_unlock(s->slotmem);
+    if (rv == APR_SUCCESS) {
         *id = node->mess.id;
         return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
+    ident = *id;
     rv = s->storage->ap_slotmem_alloc(s->slotmem, &ident, (void **) &ou);
     if (rv != APR_SUCCESS) {
-        s->storage->ap_slotmem_unlock(s->slotmem);
         return rv;
     }
     memcpy(ou, node, sizeof(nodeinfo_t));
@@ -148,9 +143,9 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id)
     ou->offset = APR_ALIGN_DEFAULT(ou->offset);
 
     /* blank the proxy status information */
-    memset(&(ou->stat), '\0', SIZEOFSCORE);
-
-    s->storage->ap_slotmem_unlock(s->slotmem);
+    if (clean) {
+        memset(&(ou->stat), '\0', SIZEOFSCORE);
+    }
 
     return APR_SUCCESS;
 }
@@ -196,33 +191,20 @@ nodeinfo_t * read_node(mem_t *s, nodeinfo_t *node)
 apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids)
 {
   apr_status_t status;
-  status = s->storage->ap_slotmem_lock(s->slotmem);
-  if (status != APR_SUCCESS)
-    return(status);
   status = s->storage->ap_slotmem_mem(s->slotmem, ids, (void **) node);
-  s->storage->ap_slotmem_unlock(s->slotmem);
   return(status);
 }
 
 /**
  * remove(free) a node record from the shared table
  * @param pointer to the shared table.
- * @param node node to remove from the shared table.
+ * @param ids id of the node to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_node(mem_t *s, nodeinfo_t *node)
+apr_status_t remove_node(mem_t *s, int ids)
 {
-    apr_status_t rv;
-    nodeinfo_t *ou = node;
-    if (node->mess.id)
-        rv = s->storage->ap_slotmem_free(s->slotmem, node->mess.id, node);
-    else {
-        /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
-        rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_node, &ou, s->p);
-        if (rv == APR_SUCCESS)
-            rv = s->storage->ap_slotmem_free(s->slotmem, ou->mess.id, node);
-    }
-    return rv;
+    nodeinfo_t *ou = NULL;
+    return(s->storage->ap_slotmem_free(s->slotmem, ids, ou));
 }
 
 /**
