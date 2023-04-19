@@ -110,8 +110,6 @@ static apr_thread_pool_t *mc_thread_pool;
 static int mc_thread_pool_size;
 #endif
 
-static apr_thread_mutex_t *lock = NULL;
-
 static server_rec *main_server = NULL;
 #define CREAT_ALL  0 /* create balancers/workers in all VirtualHost */
 #define CREAT_NONE 1 /* don't create balancers (but add workers) */
