@@ -367,14 +367,22 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                         add_hcheck(server, conf, worker);
                     }
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                                 "Created: REUSING %s (scheme: %s hostname %s hostname_ex %s port %d route %s name %s) cleaning...",
-                                  url, worker->s->scheme, worker->s->hostname, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex );
+                                 "Created: REUSING %s (scheme: %s hostname %s port %d route %s name %s) cleaning...",
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                                  url, worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex );
+#else
+                                  url, worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name );
+#endif
                 }
                 return APR_SUCCESS; /* Done Already existing */
             } else {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                             "Created: can't reuse worker as it is for %s (scheme: %s hostname %s hostname_ex %s port %d route %s name %s) cleaning...",
-                              url, worker->s->scheme, worker->s->hostname, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex );
+                             "Created: can't reuse worker as it is for %s (scheme: %s hostname %s port %d route %s name %s) cleaning...",
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                              url, worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex );
+#else
+                              url, worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name );
+#endif
                 ptr = ptr_node;
                 ptr = ptr + node->offset;
                 shared = worker->s;
@@ -420,7 +428,11 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
 #endif
         /* We will modify it only is the name has changed to minimize access */
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
                      "Created: worker for %s arranging shared memory %s:%s", url, worker->s->name_ex, shared->name_ex);
+#else
+                     "Created: worker for %s arranging shared memory %s:%s", url, worker->s->name, shared->name);
+#endif
         worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
         worker->s->index = node->mess.id;
 #if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
@@ -431,9 +443,11 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                      "Created: worker for %s arranging shared memory hostname %s:%s", url, worker->s->hostname, shared->hostname);
         strncpy(worker->s->hostname, shared->hostname, sizeof(worker->s->hostname));
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                      "Created: worker for %s arranging shared memory hostname_ex %s:%s", url, worker->s->hostname_ex, shared->hostname_ex);
         strncpy(worker->s->hostname_ex, shared->hostname_ex, sizeof(worker->s->hostname_ex));
+#endif
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                      "Created: worker for %s arranging shared memory scheme %s:%s", url, worker->s->scheme, shared->scheme);
         strncpy(worker->s->scheme, shared->scheme, sizeof(worker->s->scheme));
@@ -478,7 +492,11 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         }
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
                      "Created: worker for %s shared memory  OK %s:%s", url, worker->s->name_ex, shared->name_ex);
+#else
+                     "Created: worker for %s shared memory  OK %s:%s", url, worker->s->name, shared->name);
+#endif
         worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
     }
 
@@ -808,11 +826,19 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
         worker->s = helper->shared;
         helper->isinnodes = 0;
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, server,
-                     "remove_workers_node... scheme %s hostname %s hostname_ex %s port %d route %s name (%s):(%s) id (%d:%d)",
-                      stat->scheme, stat->hostname, stat->hostname_ex, stat->port, stat->route, stat->name, helper->shared->name, stat->index, helper->index);
+                     "remove_workers_node... scheme %s hostname %s port %d route %s name (%s):(%s) id (%d:%d)",
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                      stat->scheme, stat->hostname_ex, stat->port, stat->route, stat->name, helper->shared->name, stat->index, helper->index);
+#else
+                      stat->scheme, stat->hostname, stat->port, stat->route, stat->name, helper->shared->name, stat->index, helper->index);
+#endif
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, server,
-                     "remove_workers_node... restored: scheme %s hostname %s hostname_ex %s port %d route %s name %s id:%d",
-                      worker->s->scheme, worker->s->hostname, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name, worker->s->index);
+                     "remove_workers_node... restored: scheme %s hostname %s port %d route %s name %s id:%d",
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                      worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name, worker->s->index);
+#else
+                      worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name, worker->s->index);
+#endif
         /* XXX : look bad with new logic!!!! memcpy(worker->s, stat, sizeof(proxy_worker_shared)); */
         ap_assert(worker->s->port != 0);
 
