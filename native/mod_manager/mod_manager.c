@@ -879,8 +879,12 @@ static int  is_same_worker_existing(request_rec *r, nodeinfo_t *node) {
             /* we have a node that corresponds to the same worker */
             if (!strcmp(ou->mess.JVMRoute,node->mess.JVMRoute))
                 return 0; /* well it is the same */
-            if (ou->mess.remove)
-                return 0; /* well it marked removed */
+            if (ou->mess.remove) {
+                if (strcmp(ou->mess.JVMRoute, "REMOVED") == 0) {
+                    /* Look in remove_removed_node, only "REMOVED" have cleaned the contexts/hosts */
+                    return 0; /* well it marked removed */
+                }
+            }
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: node %s and %s correspond to the same worker!", node->mess.JVMRoute, ou->mess.JVMRoute);
             return -1;

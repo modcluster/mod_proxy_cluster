@@ -244,7 +244,7 @@ static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now,
             (now - ou->mess.lastcleantry) >= wait_for_remove) {
             /* remove the node from the shared memory */
             node_storage->remove_host_context(ou->mess.id, pool);
-            node_storage->remove_node(ou);
+            node_storage->remove_node(ou->mess.id);
         }
     }
 }
