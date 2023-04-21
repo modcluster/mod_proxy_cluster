@@ -34,6 +34,7 @@
 #include "http_core.h"
 #include "scoreboard.h"
 #include "ap_mpm.h"
+#include "mpm_common.h"
 #include "mod_proxy.h"
 #include "mod_watchdog.h"
 
@@ -142,6 +143,9 @@ static proxy_node_table *cached_node_table = NULL;
 /* for the hctemplate stuff */
 static char *proxyhctemplate = NULL;
 static APR_OPTIONAL_FN_TYPE(set_worker_hc_param) *set_worker_hc_param_f = NULL;
+
+/* To stop the watchdog loop */
+static int child_stopping = 0;
 
 static int proxy_worker_cmp(const void *a, const void *b)
 {
@@ -1277,7 +1281,14 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
     /* update lbstatus if needed */
     for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
+
         ap_assert (node_storage->lock_nodes() == APR_SUCCESS);
+        /* Check if we are told to stop */
+        if (child_stopping) {
+            node_storage->unlock_nodes();
+            return;
+        }
+
         if (node_storage->read_node(id[i], &ou) != APR_SUCCESS) {
             node_storage->unlock_nodes();
             continue;
@@ -1357,6 +1368,12 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 }
                 node_storage->unlock_nodes();
 
+
+                /* We are going to check the worker... check if we are told to stop */
+                if (child_stopping) {
+                    return;
+                }
+
                 if (strchr(worker->s->hostname, ':') != NULL)
                     url = apr_pstrcat(pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
                 else
@@ -1379,6 +1396,11 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 rnew->uri = "/";
                 rnew->headers_in = apr_table_make(rnew->pool, 1);
                 rv = proxy_cluster_try_pingpong(rnew, worker, url, conf, ou->mess.ping, ou->mess.timeout);
+
+                /* We have check the worker... check if we were told to stop */
+                if (child_stopping) {
+                    return;
+                }
 
                 ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
                 if (read_node_worker(id[i], &ou, worker) != APR_SUCCESS) {
@@ -2195,7 +2217,10 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
             }
             node_table = cached_node_table;
         } else {
+            apr_status_t rv = node_storage->lock_nodes();
+            ap_assert(rv == APR_SUCCESS);
             node_table = read_node_table(pool, node_storage, 0);
+            node_storage->unlock_nodes();
         }
     }
 
@@ -2325,6 +2350,12 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
     }
     return res;
 }
+
+static void proxy_cluster_child_stopping(apr_pool_t *pool, int graceful)
+{
+    child_stopping = -1;
+}
+
 
 /*
  * Create a thread per process to make maintenance task.
@@ -3504,6 +3535,9 @@ static void proxy_cluster_hooks(apr_pool_t *p)
     /* create the "maintenance" thread */
     ap_hook_child_init(proxy_cluster_child_init, aszPre, NULL, APR_HOOK_LAST);
 
+    /* stop it */
+    ap_hook_child_stopping(proxy_cluster_child_stopping, NULL, NULL, APR_HOOK_MIDDLE);
+
     /* check the url and give the mapping to mod_proxy */
     ap_hook_translate_name(proxy_cluster_trans, aszPre, aszSucc, APR_HOOK_FIRST);
 
@@ -3663,8 +3697,8 @@ static const char *cmd_proxy_cluster_use_nocanon(cmd_parms *parms, void *mconfig
 }
 
 
-static const char *cmd_mc_thread_count(cmd_parms *cmd, void *dummy, const char *arg) {
 #if MC_USE_THREADS
+static const char *cmd_mc_thread_count(cmd_parms *cmd, void *dummy, const char *arg) {
     int size;
     (void) cmd; (void) dummy;
     size = atoi(arg);
@@ -3673,9 +3707,9 @@ static const char *cmd_mc_thread_count(cmd_parms *cmd, void *dummy, const char *
     }
 
     mc_thread_pool_size = size;
-#endif
     return NULL;
 }
+#endif
 
 static const command_rec  proxy_cluster_cmds[] =
 {
