@@ -1908,9 +1908,7 @@ static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinf
     if (status == REMOVE) {
         int id;
         node->mess.remove = 1;
-        loc_lock_nodes();
         insert_update_node(nodestatsmem, node, &id, 0);
-        loc_unlock_nodes();
     }
     return NULL;
 
