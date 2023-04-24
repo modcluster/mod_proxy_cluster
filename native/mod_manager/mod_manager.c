@@ -121,10 +121,10 @@ typedef struct version_data {
 } version_data;
 
 /* mutex and lock for tables/slotmen */
-static apr_thread_mutex_t *nodes_global_mutex = NULL;
-static apr_file_t *nodes_global_lock = NULL;
-static apr_thread_mutex_t *contexts_global_mutex = NULL;
-static apr_file_t *contexts_global_lock = NULL;
+static apr_global_mutex_t *node_mutex;
+static apr_global_mutex_t *context_mutex;
+static const char *node_mutex_type = "node-shm";
+static const char *context_mutex_type = "context-shm";
 
 /* counter for the version (nodes) */
 static apr_shm_t *versionipc_shm = NULL;
@@ -264,29 +264,13 @@ static int loc_worker_nodes_are_updated(void *data, unsigned int last)
     mconf->tableversion = last;
     return (0);
 }
-static apr_status_t lock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
-{
-    apr_status_t rv;
-    rv = apr_thread_mutex_lock(mutex);
-    if (rv != APR_SUCCESS)
-        return rv;
-    rv = apr_file_lock(file, APR_FLOCK_EXCLUSIVE);
-    if (rv != APR_SUCCESS)
-        apr_thread_mutex_unlock(mutex);
-    return rv;
-}
-static apr_status_t unlock_memory(apr_file_t *file, apr_thread_mutex_t *mutex)
-{
-    apr_file_unlock(file);
-    return(apr_thread_mutex_unlock(mutex));
-}
 static apr_status_t loc_lock_nodes(void)
 {
-    return(lock_memory(nodes_global_lock, nodes_global_mutex));
+    return(apr_global_mutex_lock(node_mutex));
 }
 static apr_status_t loc_unlock_nodes(void)
 {
-    return(unlock_memory(nodes_global_lock, nodes_global_mutex));
+    return(apr_global_mutex_unlock(node_mutex));
 }
 static int loc_get_max_size_context(void)
 {
@@ -360,14 +344,16 @@ static int loc_get_ids_used_context(int *ids)
 {
     return(get_ids_used_context(contextstatsmem, ids)); 
 }
+
 static apr_status_t loc_lock_contexts(void)
 {
-    return(lock_memory(contexts_global_lock, contexts_global_mutex));
+    return(apr_global_mutex_lock(context_mutex));
 }
 static apr_status_t loc_unlock_contexts(void)
 {
-    return(unlock_memory(contexts_global_lock, contexts_global_mutex));
+    return(apr_global_mutex_unlock(context_mutex));
 }
+
 static const struct context_storage_method context_storage =
 {
     loc_read_context,
@@ -515,14 +501,6 @@ static apr_status_t cleanup_manager(void *param)
     domainstatsmem = NULL;
     (void) param;
 
-    if (nodes_global_lock) {
-        apr_file_close(nodes_global_lock);
-        nodes_global_lock = NULL;
-    }
-    if (contexts_global_lock) {
-        apr_file_close(contexts_global_lock);
-        contexts_global_lock = NULL;
-    }
     if (versionipc_shm) {
         apr_shm_destroy(versionipc_shm);
         versionipc_shm = NULL;
@@ -564,6 +542,20 @@ static APR_INLINE int is_child_process(void)
 }
 
 /*
+ * This routine is called in the parent; we must register our
+ * mutex type before the config is processed so that users can
+ * adjust the mutex settings using the Mutex directive.
+ */
+
+static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog,
+                            apr_pool_t *ptemp)
+{   
+    ap_mutex_register(pconf, node_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
+    ap_mutex_register(pconf, context_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
+    return OK;
+}
+
+/*
  * call after parser the configuration.
  * create the shared memory.
  */
@@ -577,21 +569,14 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     char *sessionid;
     char *domain;
     char *version;
-    char *filename;
     version_data *base;
-    void *data;
-    const char *userdata_key = "mod_manager_init";
     apr_uuid_t uuid;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
     apr_status_t rv;
-    apr_pool_userdata_get(&data, userdata_key, s->process->pool);
     (void) plog; /* unused variable */
 
-   if (!data) {
-        /* first call do nothing */
-        apr_pool_userdata_set((const void *)1, userdata_key, apr_pool_cleanup_null, s->process->pool);
+    if (ap_state_query(AP_SQ_MAIN_STATE) == AP_SQ_MS_CREATE_PRE_CONFIG)
         return OK;
-    }
 
     if (mconf->basefilename) {
         node = apr_pstrcat(ptemp, mconf->basefilename, "/manager.node", NULL);
@@ -616,19 +601,6 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         mconf->maxhost = mconf->maxnode;
     if (mconf->maxcontext < mconf->maxhost)
         mconf->maxcontext = mconf->maxhost;
-
-    filename = apr_pstrcat(p, node , ".lock", NULL);
-    if (apr_file_open(&nodes_global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, p) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: apr_file_open for lock failed");
-        return !OK;
-    }
-
-    filename = apr_pstrcat(p, context , ".lock", NULL);
-    if (apr_file_open(&contexts_global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, p) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
-                    "manager_init: apr_file_open for lock failed");
-            return !OK;
-    }
 
     /* Get a provider to handle the shared memory */
     storage = ap_lookup_provider(SLOTMEM_STORAGE, "shared", "0");
@@ -722,6 +694,16 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
      * clean up to prevent backgroup thread (proxy_cluster_watchdog_func) to crash
      */
     mc_initialize_cleanup(p);
+
+    /* Create global mutex */
+    if (ap_global_mutex_create(&node_mutex, NULL, node_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create failed");
+        return !OK;
+    }
+    if (ap_global_mutex_create(&context_mutex, NULL, context_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create failed");
+        return !OK;
+    }
 
     return OK;
 }
@@ -3322,15 +3304,18 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "Fatal storage provider not initialized");
         return;
     }
-    if (apr_thread_mutex_create(&nodes_global_mutex, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
-                    "manager_child_init: apr_thread_mutex_create failed");
-        return;
+
+    if (apr_global_mutex_child_init(&node_mutex, apr_global_mutex_lockfile(node_mutex), p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(02994)
+                     "Failed to reopen mutex %s in child",
+                     node_mutex_type);
+        exit(1);
     }
-    if (apr_thread_mutex_create(&contexts_global_mutex, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
-                    "manager_child_init: apr_thread_mutex_create failed");
-        return;
+    if (apr_global_mutex_child_init(&context_mutex, apr_global_mutex_lockfile(context_mutex), p) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(02994)
+                     "Failed to reopen mutex %s in child",
+                     context_mutex_type);
+        exit(1);
     }
 
     mconf->tableversion = 0;
@@ -3778,11 +3763,14 @@ static void manager_hooks(apr_pool_t *p)
 {
     static const char * const aszSucc[] = { "mod_proxy.c", NULL };
 
+    /* For the lock */
+    ap_hook_pre_config(manager_pre_config, NULL, NULL, APR_HOOK_MIDDLE);
+
     /* Create the shared tables for mod_proxy_cluster */
     ap_hook_post_config(manager_init, NULL, NULL, APR_HOOK_MIDDLE);
 
     /* Attach to the shared tables with create the child */
-    ap_hook_child_init(manager_child_init, NULL, NULL, APR_HOOK_MIDDLE);
+    ap_hook_child_init(manager_child_init, NULL, NULL, APR_HOOK_FIRST);
 
     /* post read_request handling: to be handle to use ProxyPass / */
     ap_hook_translate_name(manager_trans, NULL, aszSucc,

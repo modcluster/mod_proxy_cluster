@@ -90,9 +90,13 @@ struct proxy_cluster_helper {
 typedef struct  proxy_cluster_helper proxy_cluster_helper;
 
 typedef struct watchdog_thread_args {
-    server_rec *server;
+    proxy_worker *worker;
     apr_pool_t *pool;
-    apr_pool_t *argpool;
+    proxy_server_conf *conf;
+    nodeinfo_t *ou;
+    server_rec *server;
+    apr_time_t now;
+    int id;
 } watchdog_thread_args_t;
 
 static struct node_storage_method *node_storage = NULL; 
@@ -1261,6 +1265,78 @@ static apr_status_t read_node_worker(int id, nodeinfo_t **node, proxy_worker *wo
     return APR_SUCCESS;
 }
 
+static void* APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data)
+{
+    apr_status_t rv;
+    char sport[7];
+    char *url;
+    apr_pool_t *rrp;
+    request_rec *rnew;
+
+    watchdog_thread_args_t *targs = (watchdog_thread_args_t *)data;
+    proxy_worker *worker = targs->worker;
+    apr_pool_t *pool = targs->pool;
+    proxy_server_conf *conf = targs->conf;
+    nodeinfo_t *ou = targs->ou;
+    server_rec *server = targs->server;
+    apr_time_t now = targs->now;
+    int id = targs->id;
+
+    apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
+
+    if (strchr(worker->s->hostname, ':') != NULL)
+        url = apr_pstrcat(pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
+    else
+        url = apr_pstrcat(pool, worker->s->scheme, "://", worker->s->hostname,  ":", sport, "/", NULL);
+
+    apr_pool_create(&rrp, pool);
+    apr_pool_tag(rrp, "subrequest");
+    rnew = apr_pcalloc(rrp, sizeof(request_rec));
+    rnew->pool = rrp;
+    /* we need only those ones */
+    rnew->server = server;
+    rnew->connection = apr_pcalloc(rrp, sizeof(conn_rec));
+    rnew->connection->log_id = "-";
+    rnew->connection->conn_config = ap_create_conn_config(rrp);
+    rnew->log_id = "-";
+    rnew->useragent_addr = apr_pcalloc(rrp, sizeof(apr_sockaddr_t));
+    rnew->per_dir_config = server->lookup_defaults;
+    rnew->notes = apr_table_make(rnew->pool, 1);
+    rnew->method = "PING";
+    rnew->uri = "/";
+    rnew->headers_in = apr_table_make(rnew->pool, 1);
+    rv = proxy_cluster_try_pingpong(rnew, worker, url, conf, ou->mess.ping, ou->mess.timeout);
+
+    /* We have checked the worker... check if we were told to stop */
+    if (child_stopping) {
+        return APR_SUCCESS;
+    } 
+
+    ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
+    if (read_node_worker(id, &ou, worker) != APR_SUCCESS) {
+        /* the node is gone or something like that */
+        node_storage->unlock_nodes();
+        return APR_SUCCESS;
+    }
+
+    if (rv != APR_SUCCESS) {
+        /* We can't reach the node: XXX changing ou->mess.updatetimelb here ??? */
+        /* XXX if this is a timeout, we might have a outdated list of nodes!!! */
+        worker->s->status |= PROXY_WORKER_IN_ERROR;
+        ou->mess.num_failure_idle++;
+        if (ou->mess.num_failure_idle > 60) {
+            /* Failing for 5 minutes: time to mark it removed */
+            ou->mess.remove = 1;
+            ou->updatetime = now;
+        } 
+    } else {
+        ou->mess.num_failure_idle = 0;
+    }
+
+    node_storage->unlock_nodes();
+    return APR_SUCCESS;
+}
+
 /*
  * update the lbfactor of each node if needed,
  */
@@ -1323,10 +1399,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 /* worker->s->retries is also set to zero is a connection is     */
                 /* establish so we use read to check for changes                 */ 
                 char sport[7];
-                char *url;
-                apr_status_t rv;
-                apr_pool_t *rrp;
-                request_rec *rnew;
+                watchdog_thread_args_t targs;
                 proxy_worker *worker;
                 worker = get_worker_from_id_stat(conf, id[i], stat, ou);
 
@@ -1368,64 +1441,68 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 }
                 node_storage->unlock_nodes();
 
-
                 /* We are going to check the worker... check if we are told to stop */
                 if (child_stopping) {
                     return;
                 }
 
-                if (strchr(worker->s->hostname, ':') != NULL)
-                    url = apr_pstrcat(pool, worker->s->scheme, "://[", worker->s->hostname, "]:", sport, "/", NULL);
-                else
-                    url = apr_pstrcat(pool, worker->s->scheme, "://", worker->s->hostname,  ":", sport, "/", NULL);
+                /* We need threads to process that "blocking" logic */
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                                 "update_workers_lbstatus Using old logic!!!!");
+#if MC_USE_THREADS
+                if (mc_thread_pool) {
+                    apr_status_t res;
+                    apr_pool_t *targs_pool;
+                    watchdog_thread_args_t *targs_ptr;
+                    apr_pool_create(&targs_pool, server->process->pool);
+                    apr_pool_tag(targs_pool, "mc_watchdog_targs");
+                    targs_ptr = apr_palloc(targs_pool, sizeof(watchdog_thread_args_t));
+                    if (targs_ptr != NULL) {
+                        targs_ptr->server = server;
+                        targs_ptr->pool = targs_pool;
+                        targs_ptr->conf = conf;
+                        targs_ptr->ou = ou;
+                        targs_ptr->worker = worker;
+                        targs_ptr->now = now;
+                        targs_ptr->id = id[i];
+                        res = apr_thread_pool_push(mc_thread_pool, check_proxy_worker,
+                                                   (void *) targs_ptr, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+                        if (res == APR_SUCCESS) {
+                            /* Early return. Task was scheduled! */
+                            return;
+                        }
+                        /* Log about failed scheduling and execute without threads below. */
+                        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "thread push was NOT successful: %d", res);
+                    } else {
+                        ap_log_error(APLOG_MARK, APLOG_ERR, 0, server, "Memory allocation for thread args failed");
+                    }
+                    /* Thread alloc or push failed, so run it without threads!
+                     * That means the execution continues after the endif below!
+                     */
+                }
+#endif
 
-                apr_pool_create(&rrp, pool);
-                apr_pool_tag(rrp, "subrequest");
-                rnew = apr_pcalloc(rrp, sizeof(request_rec));
-                rnew->pool = rrp;
-                /* we need only those ones */
-                rnew->server = server;
-                rnew->connection = apr_pcalloc(rrp, sizeof(conn_rec));
-                rnew->connection->log_id = "-";
-                rnew->connection->conn_config = ap_create_conn_config(rrp);
-                rnew->log_id = "-";
-                rnew->useragent_addr = apr_pcalloc(rrp, sizeof(apr_sockaddr_t));
-                rnew->per_dir_config = server->lookup_defaults;
-                rnew->notes = apr_table_make(rnew->pool, 1);
-                rnew->method = "PING";
-                rnew->uri = "/";
-                rnew->headers_in = apr_table_make(rnew->pool, 1);
-                rv = proxy_cluster_try_pingpong(rnew, worker, url, conf, ou->mess.ping, ou->mess.timeout);
+                targs.server = server;
+                targs.pool = pool;
+                targs.conf = conf;
+                targs.ou = ou;
+                targs.worker = worker;
+                targs.now = now;
+                targs.id = id[i];
 
-                /* We have check the worker... check if we were told to stop */
+                check_proxy_worker(NULL, (void *) &targs);
+
+                /* We have checked the worker... check if we were told to stop */
                 if (child_stopping) {
                     return;
                 }
-
-                ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
-                if (read_node_worker(id[i], &ou, worker) != APR_SUCCESS) {
-                    /* the node is gone or something like that */
-                    node_storage->unlock_nodes();
-                    continue;
-                }
-
-                if (rv != APR_SUCCESS) {
-                    /* We can't reach the node: XXX changing ou->mess.updatetimelb here ??? */
-                    /* XXX if this is a timeout, we might have a outdated list of nodes!!! */
-                    worker->s->status |= PROXY_WORKER_IN_ERROR;
-                    ou->mess.num_failure_idle++;
-                    if (ou->mess.num_failure_idle > 60) {
-                        /* Failing for 5 minutes: time to mark it removed */
-                        ou->mess.remove = 1;
-                        ou->updatetime = now;
-                    } 
-                } else {
-                    ou->mess.num_failure_idle = 0;
-                }
-            } else
+            } else {
                 ou->mess.num_failure_idle = 0;
-        } 
-        node_storage->unlock_nodes();
+                node_storage->unlock_nodes();
+            }
+        }  else {
+           node_storage->unlock_nodes();
+        }
     } 
 }
 
@@ -2219,6 +2296,10 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
         } else {
             apr_status_t rv = node_storage->lock_nodes();
             ap_assert(rv == APR_SUCCESS);
+            if (child_stopping) {
+                node_storage->unlock_nodes();
+                return;
+            }
             node_table = read_node_table(pool, node_storage, 0);
             node_storage->unlock_nodes();
         }
@@ -2231,6 +2312,10 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
         /* Create new workers if the shared memory has changed */
         rv = node_storage->lock_nodes();
         ap_assert(rv == APR_SUCCESS);
+        if (child_stopping) {
+            node_storage->unlock_nodes();
+            return;
+        }
         if (last) {
             /* Add the workers and balancers */
             update_workers_node(conf, pool, s, 0, node_table);
@@ -2248,6 +2333,10 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
         /* cleanup removed node in shared memory */
         rv = node_storage->lock_nodes();
         ap_assert(rv == APR_SUCCESS);
+        if (child_stopping) {
+            node_storage->unlock_nodes();
+            return;
+        }
         remove_removed_node(pool, conf, s);
         node_storage->unlock_nodes();
         s = s->next;
@@ -2258,38 +2347,11 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
 }
 
 
-static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool);
-
-static void* APR_THREAD_FUNC execute_watchdog(apr_thread_t *thread, void *data) {
-    watchdog_thread_args_t *targs = (watchdog_thread_args_t *)data;
-    apr_pool_t *pool = targs->pool;
-    apr_time_t wait = cache_share_for;
-    server_rec *s = targs->server;
-     if (s) {
-        /* It is called for every server defined in httpd */
-        proxy_cluster_watchdog_func(s, pool);
-        /* set the next call back to cache_share_for or 1 if zero */
-        if (!wait)
-            wait = apr_time_from_sec(1);
-        mc_watchdog_set_interval(watchdog, wait, s, mc_watchdog_callback);
-    }
-    /* If its used in a thread, we have to dealoc the pool for passed arguments */
-    if (thread != NULL) {
-        apr_pool_destroy(targs->argpool);
-    }
-    return NULL;
-}
-
 static apr_status_t mc_watchdog_callback(int state, void *data,
                                          apr_pool_t *pool)
 {
     apr_status_t res = APR_SUCCESS;
     server_rec *s = (server_rec *)data;
-    watchdog_thread_args_t targs = { .server = s, .pool = pool, .argpool = NULL };
-#if MC_USE_THREADS
-    apr_pool_t *targs_pool;
-    watchdog_thread_args_t *targs_ptr;
-#endif
     switch (state) {
         case AP_WATCHDOG_STATE_STARTING:
 #if MC_USE_THREADS
@@ -2305,37 +2367,20 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
                 mc_thread_pool = NULL;
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "Threads are not used");
             }
+            ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "mc_watchdog_callback, apr_thread_pool_create created!!!");
 #endif
             break;
 
         case AP_WATCHDOG_STATE_RUNNING:
-#if MC_USE_THREADS
-            if (mc_thread_pool) {
-                apr_pool_create(&targs_pool, s->process->pool);
-                apr_pool_tag(targs_pool, "mc_watchdog_targs");
-                targs_ptr = apr_palloc(targs_pool, sizeof(watchdog_thread_args_t));
-                if (targs_ptr != NULL) {
-                    targs_ptr->argpool = targs_pool;
-                    targs_ptr->server  = targs.server;
-                    targs_ptr->pool    = targs.pool;
-                    res = apr_thread_pool_push(mc_thread_pool, execute_watchdog,
-                                                 (void *) targs_ptr, APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
-                    if (res == APR_SUCCESS) {
-                        /* Early return. Task was scheduled! */
-                        return res;
-                    }
-                    /* Log about failed scheduling and execute without threads below. */
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "thread push was NOT successful: %d", res);
-                } else {
-                    ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "Memory allocation for thread args failed");
-                }
-                /* Thread alloc or push failed, so run it without threads!
-                 * That means the execution continues after the endif below!
-                 */
+            if (s) {
+               apr_time_t wait = cache_share_for;
+               /* It is called for every server defined in httpd */
+               proxy_cluster_watchdog_func(s, pool);
+               /* set the next call back to cache_share_for or 1 if zero */
+               if (!wait)
+                   wait = apr_time_from_sec(1);
+               mc_watchdog_set_interval(watchdog, wait, s, mc_watchdog_callback);
             }
-#endif
-            res = APR_SUCCESS;
-            execute_watchdog(NULL, (void *) &targs);
             break;
 
         case AP_WATCHDOG_STATE_STOPPING:
