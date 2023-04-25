@@ -1335,8 +1335,12 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         /* so the scheme, hostname and port correspond to worker which was removed and readded */
         reenable_proxy_worker(r, workernode, worker, &nodeinfo, the_conf);
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "process_config: reenable_proxy_worker... scheme %s hostname %s hostname_ex %s port %d route %s name %s id: %d",
-                     worker->s->scheme, worker->s->hostname, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex, worker->s->index);
+                     "process_config: reenable_proxy_worker... scheme %s hostname %s port %d route %s name %s id: %d",
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
+                     worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex, worker->s->index);
+#else
+                     worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name, worker->s->index);
+#endif
     } else {
           ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                        "process_config: NEW (%s) %s inserted in worker %d", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port, id);
