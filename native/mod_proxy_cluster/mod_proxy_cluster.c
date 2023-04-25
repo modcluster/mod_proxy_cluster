@@ -1306,6 +1306,7 @@ static void* APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     rnew->uri = "/";
     rnew->headers_in = apr_table_make(rnew->pool, 1);
     rv = proxy_cluster_try_pingpong(rnew, worker, url, conf, ou->mess.ping, ou->mess.timeout);
+    apr_pool_destroy(rrp);
 
     /* We have checked the worker... check if we were told to stop */
     if (child_stopping) {
@@ -1357,7 +1358,6 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
     /* update lbstatus if needed */
     for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
-
         ap_assert (node_storage->lock_nodes() == APR_SUCCESS);
         /* Check if we are told to stop */
         if (child_stopping) {
@@ -2367,7 +2367,6 @@ static apr_status_t mc_watchdog_callback(int state, void *data,
                 mc_thread_pool = NULL;
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "Threads are not used");
             }
-            ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "mc_watchdog_callback, apr_thread_pool_create created!!!");
 #endif
             break;
 
