@@ -697,11 +697,11 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
 
     /* Create global mutex */
     if (ap_global_mutex_create(&node_mutex, NULL, node_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create failed");
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create %s failed", node_mutex_type);
         return !OK;
     }
     if (ap_global_mutex_create(&context_mutex, NULL, context_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create failed");
+        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create %s failed", node_mutex_type);
         return !OK;
     }
 
@@ -3307,13 +3307,13 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(02994)
                      "Failed to reopen mutex %s in child",
                      node_mutex_type);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     if (apr_global_mutex_child_init(&context_mutex, apr_global_mutex_lockfile(context_mutex), p) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(02994)
                      "Failed to reopen mutex %s in child",
                      context_mutex_type);
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     mconf->tableversion = 0;
