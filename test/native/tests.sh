@@ -31,7 +31,7 @@ stoptomcat() {
 #
 # Stop running all dockered tomcats
 stoptomcats() {
-    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+    for i in `docker ps -a --format "{{.Names}}" | grep tomcat`
     do
         stoptomcat $i
     done
@@ -96,7 +96,7 @@ removetomcatname() {
 #
 # Remove all tomcat containers and images
 removetomcats() {
-    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+    for i in `docker ps -a --format "{{.Names}}" | grep tomcat`
     do
         removetomcatname $i
     done
@@ -130,13 +130,14 @@ echotestlabel() {
     echo "***************************************************************"
 }
 
+# This should suspend the tomcat for ~ 1000 seconds ~ causing it gets removed afterwhile.
 jdbsuspend() {
     rm -f /tmp/testpipein
     mkfifo /tmp/testpipein
     rm -f /tmp/testpipeout
     mkfifo /tmp/testpipeout
     sleep 1000 > /tmp/testpipein &
-    docker exec -i tomcat8080 jdb -attach 6660 < /tmp/testpipein > /tmp/testpipeout &
+    jdb -attach 6660 < /tmp/testpipein > /tmp/testpipeout &
     echo "suspend" > /tmp/testpipein
     cat < /tmp/testpipeout &
 }
