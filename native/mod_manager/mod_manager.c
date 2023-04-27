@@ -1235,7 +1235,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             strcpy(node->mess.JVMRoute, "REMOVED");
             node->mess.remove = 1;
             node->updatetime = apr_time_now();
-            insert_update_node(nodestatsmem, node, &id, 0);
+            node->mess.num_remove_check = 0;
             loc_remove_host_context(node->mess.id, r->pool);
             inc_version_node();
             loc_unlock_nodes();
@@ -1299,14 +1299,30 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
           ap_assert(the_conf);
        }
     } else {
-          ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                       "process_config: NEW (%s) %s", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port);
+          nodeinfo_t *workernode;
+          rv = find_node_byhostport(nodestatsmem, &workernode, nodeinfo.mess.Host, nodeinfo.mess.Port);
+          if (rv == APR_SUCCESS) {
+              /* Normally the node is just being removed, so no host/context but some other child might have a worker */
+              ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                           "process_config: NOT NEW (%d %s) %s %s (%s)", workernode->mess.id, workernode->mess.JVMRoute, workernode->mess.Host, workernode->mess.Port, nodeinfo.mess.JVMRoute);
+              if (strcmp(workernode->mess.JVMRoute, "REMOVED") == 0) {
+                  id = workernode->mess.id; /* we are reusing it */
+                  strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
+                  workernode->mess.remove = 0;
+                  workernode->mess.num_remove_check = 0;
+              } else {
+                  ap_assert(0); /* we need to figure out what to do... */
+              }
+          } else {
+                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                              "process_config: NEW (%s) %s", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port);
+          }
     }
     if (id == 0) {
         /* make sure we insert in a "free" node according to the worker logic */
         id = proxy_node_get_free_id(r, node_storage.get_max_size_node());
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "process_config: NEW (%s) %s in %d", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port, id);
+                     "process_config: NEW (%s) %s %s in %d", nodeinfo.mess.JVMRoute, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
     }
 
     /* Insert or update node description */

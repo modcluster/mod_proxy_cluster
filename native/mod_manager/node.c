@@ -275,3 +275,39 @@ mem_t * create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slot
 {
     return(create_attach_mem_node(string, num, CREATE_SLOTMEM|persist, p, storage));
 }
+
+
+/**
+ * find the first node that corresponds to host/port.
+ * @param pointer to the shared table.
+ * @param node node to read from the shared table.
+ * @param host string containing the host.
+ * @param port string containing the port .
+ * @return APR_SUCCESS if all went well
+ */
+static apr_status_t loc_read_node_byhostport(void* mem, void **data, int id, apr_pool_t *pool) {
+    nodeinfo_t *in = (nodeinfo_t *)*data;
+    nodeinfo_t *ou = (nodeinfo_t *)mem;
+    (void) id; (void) pool;
+
+    if (strcmp(in->mess.Host, ou->mess.Host) == 0 &&
+        strcmp(in->mess.Port, ou->mess.Port) == 0) {
+        *data = ou;
+        return APR_SUCCESS;
+    }
+    return APR_NOTFOUND;
+}
+apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host, const char *port)
+{
+    nodeinfo_t ou;
+    apr_status_t rv;
+
+    strncpy(ou.mess.Host, host, sizeof(ou.mess.Host));
+    ou.mess.Host[sizeof(ou.mess.Host) - 1] = '\0';
+    strncpy(ou.mess.Port, port, sizeof(ou.mess.Port));
+    ou.mess.Port[sizeof(ou.mess.Port) - 1] = '\0';
+    *node = &ou;
+
+    rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_node_byhostport, node, s->p);
+    return rv;
+}
