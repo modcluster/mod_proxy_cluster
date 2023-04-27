@@ -33,20 +33,21 @@ proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method
         return vhost_table;
     }
 
-    vhost_table->vhosts =  apr_palloc(pool, sizeof(int) * host_storage->get_max_size_host());
+    vhost_table->vhosts = apr_palloc(pool, sizeof(int) * host_storage->get_max_size_host());
     vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
     if (for_cache)
         vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * size);
     else
         vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
     for (i = 0; i < vhost_table->sizevhost; i++) {
-        hostinfo_t* h;
+        hostinfo_t *h;
         int host_index = vhost_table->vhosts[i];
         host_storage->read_host(host_index, &h);
         vhost_table->vhost_info[i] = *h;
     }
     return vhost_table;
 }
+
 /* Update the virtual host table from shared memory to populate a cached table */
 proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *vhost_table, struct host_storage_method *host_storage)
 {
@@ -62,7 +63,7 @@ proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *vhost_table, str
 
     vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
     for (i = 0; i < vhost_table->sizevhost; i++) {
-        hostinfo_t* h;
+        hostinfo_t *h;
         int host_index = vhost_table->vhosts[i];
         host_storage->read_host(host_index, &h);
         vhost_table->vhost_info[i] = *h;
@@ -77,20 +78,20 @@ proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage
     int size;
     proxy_context_table *context_table = apr_palloc(pool, sizeof(proxy_context_table));
     size = context_storage->get_max_size_context();
-    if (size == 0) { 
+    if (size == 0) {
         context_table->sizecontext = 0;
         context_table->contexts = NULL;
         context_table->context_info = NULL;
         return context_table;
     }
-    context_table->contexts =  apr_palloc(pool, sizeof(int) * size);
+    context_table->contexts = apr_palloc(pool, sizeof(int) * size);
     context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
     if (for_cache)
         context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * size);
     else
         context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * context_table->sizecontext);
     for (i = 0; i < context_table->sizecontext; i++) {
-        contextinfo_t* h;
+        contextinfo_t *h;
         int context_index = context_table->contexts[i];
         context_storage->read_context(context_index, &h);
         context_table->context_info[i] = *h;
@@ -99,7 +100,8 @@ proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage
 }
 
 /* Update the context table from shared memory to populate a cached table */
-proxy_context_table *update_context_table_cached(proxy_context_table *context_table, struct context_storage_method *context_storage)
+proxy_context_table *update_context_table_cached(proxy_context_table *context_table,
+                                                 struct context_storage_method *context_storage)
 {
     int i;
     int size;
@@ -112,7 +114,7 @@ proxy_context_table *update_context_table_cached(proxy_context_table *context_ta
     }
     context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
     for (i = 0; i < context_table->sizecontext; i++) {
-        contextinfo_t* h;
+        contextinfo_t *h;
         int context_index = context_table->contexts[i];
         context_storage->read_context(context_index, &h);
         context_table->context_info[i] = *h;
@@ -121,26 +123,27 @@ proxy_context_table *update_context_table_cached(proxy_context_table *context_ta
 }
 
 /* Read the balancer table from shared memory */
-proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage, int for_cache)
+proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage,
+                                          int for_cache)
 {
     int i;
     int size;
     proxy_balancer_table *balancer_table = apr_palloc(pool, sizeof(proxy_balancer_table));
     size = balancer_storage->get_max_size_balancer();
-    if (size == 0) { 
+    if (size == 0) {
         balancer_table->sizebalancer = 0;
         balancer_table->balancers = NULL;
         balancer_table->balancer_info = NULL;
         return balancer_table;
     }
-    balancer_table->balancers =  apr_palloc(pool, sizeof(int) * size);
+    balancer_table->balancers = apr_palloc(pool, sizeof(int) * size);
     balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
     if (for_cache)
         balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * size);
     else
         balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
     for (i = 0; i < balancer_table->sizebalancer; i++) {
-        balancerinfo_t* h;
+        balancerinfo_t *h;
         int balancer_index = balancer_table->balancers[i];
         balancer_storage->read_balancer(balancer_index, &h);
         balancer_table->balancer_info[i] = *h;
@@ -149,7 +152,8 @@ proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_stor
 }
 
 /* Update the balancer table from shared memory to populate a cached table */
-proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table, struct balancer_storage_method *balancer_storage)
+proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table,
+                                                   struct balancer_storage_method *balancer_storage)
 {
     int i;
     int size;
@@ -162,7 +166,7 @@ proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balance
     }
     balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
     for (i = 0; i < balancer_table->sizebalancer; i++) {
-        balancerinfo_t* h;
+        balancerinfo_t *h;
         int balancer_index = balancer_table->balancers[i];
         balancer_storage->read_balancer(balancer_index, &h);
         balancer_table->balancer_info[i] = *h;
@@ -175,31 +179,33 @@ proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *
 {
     int i;
     int size;
-    proxy_node_table *node_table =  apr_palloc(pool, sizeof(proxy_node_table));
+    proxy_node_table *node_table = apr_palloc(pool, sizeof(proxy_node_table));
     size = node_storage->get_max_size_node();
-    if (size == 0) { 
+    if (size == 0) {
         node_table->sizenode = 0;
         node_table->nodes = NULL;
         node_table->node_info = NULL;
         return node_table;
     }
-    node_table->nodes =  apr_palloc(pool, sizeof(int) * size);
+    node_table->nodes = apr_palloc(pool, sizeof(int) * size);
     node_table->sizenode = node_storage->get_ids_used_node(node_table->nodes);
     if (for_cache) {
         node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * size);
         node_table->ptr_node = apr_palloc(pool, sizeof(char *) * size);
-    } else {
+    }
+    else {
         node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * node_table->sizenode);
         node_table->ptr_node = apr_palloc(pool, sizeof(char *) * node_table->sizenode);
     }
     for (i = 0; i < node_table->sizenode; i++) {
-        nodeinfo_t* h;
+        nodeinfo_t *h;
         int node_index = node_table->nodes[i];
         apr_status_t rv = node_storage->read_node(node_index, &h);
         if (rv == APR_SUCCESS) {
             node_table->node_info[i] = *h;
-            node_table->ptr_node[i] = (char *) h;
-        } else {
+            node_table->ptr_node[i] = (char *)h;
+        }
+        else {
             /* we can't read the node! */
             node_table->ptr_node[i] = NULL;
             memset(&node_table->node_info[i], 0, sizeof(nodeinfo_t));
@@ -222,13 +228,14 @@ proxy_node_table *update_node_table_cached(proxy_node_table *node_table, struct 
     }
     node_table->sizenode = node_storage->get_ids_used_node(node_table->nodes);
     for (i = 0; i < node_table->sizenode; i++) {
-        nodeinfo_t* h;
+        nodeinfo_t *h;
         int node_index = node_table->nodes[i];
         apr_status_t rv = node_storage->read_node(node_index, &h);
         if (rv == APR_SUCCESS) {
             node_table->node_info[i] = *h;
-            node_table->ptr_node[i] = (char *) h;
-        } else {
+            node_table->ptr_node[i] = (char *)h;
+        }
+        else {
             /* we can't read the node! */
             node_table->ptr_node[i] = NULL;
             memset(&node_table->node_info[i], 0, sizeof(nodeinfo_t));
@@ -257,9 +264,7 @@ char *get_cookie_param(request_rec *r, const char *name, int in)
         for (start_cookie = ap_strstr_c(cookies, name); start_cookie;
              start_cookie = ap_strstr_c(start_cookie + 1, name)) {
             if (start_cookie == cookies ||
-                start_cookie[-1] == ';' ||
-                start_cookie[-1] == ',' ||
-                isspace(start_cookie[-1])) {
+                start_cookie[-1] == ';' || start_cookie[-1] == ',' || isspace(start_cookie[-1])) {
 
                 start_cookie += strlen(name);
                 while (*start_cookie && isspace(*start_cookie))
@@ -295,8 +300,7 @@ char *get_cookie_param(request_rec *r, const char *name, int in)
  *
  * TODO: Should use the mod_proxy_balancer one
  */
-char *get_path_param(apr_pool_t *pool, char *url,
-                            const char *name)
+char *get_path_param(apr_pool_t *pool, char *url, const char *name)
 {
     char *path = NULL;
     char *pathdelims = ";?&";
@@ -339,7 +343,7 @@ char *cluster_get_sessionid(request_rec *r, const char *stickyval, char *uri, ch
     sticky = sticky_path = apr_pstrdup(r->pool, stickyval);
     if ((path = strchr(sticky, '|'))) {
         *path++ = '\0';
-         sticky_path = path;
+        sticky_path = path;
     }
     *sticky_used = sticky_path;
     route = get_cookie_param(r, sticky, 1);
@@ -377,7 +381,7 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, proxy_node_
     /* read the node */
     node = table_get_node(node_table, nodeid);
     if (node == NULL)
-        return 0; /* failed */
+        return 0;               /* failed */
 
     conf = (proxy_server_conf *) ap_get_module_config(r->server->module_config, &proxy_module);
     sizeb = conf->balancers->elt_size;
@@ -408,8 +412,7 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, proxy_node_
     sessionid = cluster_get_sessionid(r, sticky, uri, &sticky_used);
     if (sessionid) {
 #if HAVE_CLUSTER_EX_DEBUG
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "mod_proxy_cluster: found sessionid %s", sessionid);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "mod_proxy_cluster: found sessionid %s", sessionid);
 #endif
         return 1;
     }
@@ -424,7 +427,9 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, proxy_node_
  * @param use_alias compare alias with server_name
  * @return a pointer to a list of nodes.
  */
-node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, const char *route, int use_alias, proxy_vhost_table* vhost_table, proxy_context_table* context_table, proxy_node_table *node_table)
+node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, const char *route, int use_alias,
+                                     proxy_vhost_table *vhost_table, proxy_context_table *context_table,
+                                     proxy_node_table *node_table)
 {
     int sizecontext = context_table->sizecontext;
     int *contexts;
@@ -443,35 +448,34 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
             luri = ap_strchr_c(scheme + 3, '/');
     }
     if (!luri)
-       luri = r->uri;
+        luri = r->uri;
     uri = ap_strchr_c(luri, '?');
     if (uri)
-       uri = apr_pstrndup(r->pool, luri, uri - luri);
+        uri = apr_pstrndup(r->pool, luri, uri - luri);
     else {
-       uri = ap_strchr_c(luri, ';');
-       if (uri)
-          uri = apr_pstrndup(r->pool, luri, uri - luri);
-       else
-          uri = luri;
+        uri = ap_strchr_c(luri, ';');
+        if (uri)
+            uri = apr_pstrndup(r->pool, luri, uri - luri);
+        else
+            uri = luri;
     }
 
     /* read the contexts */
     if (sizecontext == 0)
         return NULL;
-    contexts =  apr_palloc(r->pool, sizeof(int)*sizecontext);
+    contexts = apr_palloc(r->pool, sizeof(int) * sizecontext);
     for (i = 0; i < sizecontext; i++)
         contexts[i] = i;
-    length =  apr_pcalloc(r->pool, sizeof(int)*sizecontext);
-    status =  apr_palloc(r->pool, sizeof(int)*sizecontext);
+    length = apr_pcalloc(r->pool, sizeof(int) * sizecontext);
+    status = apr_palloc(r->pool, sizeof(int) * sizecontext);
     /* Check the virtual host */
     if (use_alias) {
         /* read the hosts */
         int sizevhost;
-        int *contextsok = apr_pcalloc(r->pool, sizeof(int)*sizecontext);
+        int *contextsok = apr_pcalloc(r->pool, sizeof(int) * sizecontext);
         const char *hostname = ap_get_server_name(r);
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "find_node_context_host: Host: %s", hostname);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "find_node_context_host: Host: %s", hostname);
 #endif
         sizevhost = vhost_table->sizevhost;
         for (i = 0; i < sizevhost; i++) {
@@ -493,11 +497,12 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
 #if HAVE_CLUSTER_EX_DEBUG
     for (j = 0; j < sizecontext; j++) {
         contextinfo_t *context;
-        if (contexts[j] == -1) continue;
-        context = &context_table->context_info[j]; 
+        if (contexts[j] == -1)
+            continue;
+        context = &context_table->context_info[j];
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "find_node_context_host: %s node: %d vhost: %d context: %s",
-                          uri, context->node, context->vhost, context->context);
+                     "find_node_context_host: %s node: %d vhost: %d context: %s",
+                     uri, context->node, context->vhost, context->context);
     }
 #endif
 
@@ -506,13 +511,14 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
     for (j = 0; j < sizecontext; j++) {
         contextinfo_t *context;
         int len;
-        if (contexts[j] == -1) continue;
+        if (contexts[j] == -1)
+            continue;
         context = &context_table->context_info[j];
 
         /* keep only the contexts corresponding to our balancer */
         if (balancer != NULL) {
 
-            nodeinfo_t *node =  table_get_node(node_table, context->node);
+            nodeinfo_t *node = table_get_node(node_table, context->node);
             if (node == NULL)
                 continue;
             if (strlen(balancer->s->name) > 11 && strcasecmp(&balancer->s->name[11], node->mess.balancer) != 0)
@@ -525,7 +531,7 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
                 length[j] = len;
                 if (len > max) {
                     max = len;
-                } 
+                }
             }
         }
     }
@@ -538,7 +544,7 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
     for (j = 0; j < sizecontext; j++)
         if (length[j] == max)
             nbest++;
-    best  = apr_palloc(r->pool, sizeof(node_context) * nbest);
+    best = apr_palloc(r->pool, sizeof(node_context) * nbest);
     nbest = 0;
     for (j = 0; j < sizecontext; j++)
         if (length[j] == max) {
@@ -547,15 +553,15 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
             context = &context_table->context_info[j];
             /* Check status */
             switch (status[j]) {
-                case ENABLED:
+            case ENABLED:
+                ok = -1;
+                break;
+            case DISABLED:
+                /* Only the request with sessionid ok for it */
+                if (hassession_byname(r, context->node, route, node_table)) {
                     ok = -1;
-                    break;
-                case DISABLED:
-                    /* Only the request with sessionid ok for it */
-                    if (hassession_byname(r, context->node, route, node_table)) {
-                        ok = -1;
-                    }
-                    break;
+                }
+                break;
             }
             if (ok) {
                 best[nbest].node = context->node;
@@ -566,23 +572,23 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
     if (nbest == 0)
         return NULL;
     best[nbest].node = -1;
-    return best; 
+    return best;
 }
 
 /* Given the route find the corresponding domain (if there is a domain) */
-static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, const char *balancer, proxy_node_table *node_table)
+static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, const char *balancer,
+                                    proxy_node_table *node_table)
 {
     int i;
-    (void) r;
+    (void)r;
 
     /* XXX JFCLERE!!!! domaininfo_t *dom; */
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                 "find_nodedomain: finding node for %s: %s", route, balancer);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "find_nodedomain: finding node for %s: %s", route, balancer);
 #endif
     for (i = 0; i < node_table->sizenode; i++) {
         if (strcmp(node_table->node_info[i].mess.JVMRoute, route) == 0) {
-            nodeinfo_t* ou = &node_table->node_info[i];
+            nodeinfo_t *ou = &node_table->node_info[i];
             if (!strcasecmp(balancer, ou->mess.balancer)) {
                 if (ou->mess.Domain[0] != '\0') {
                     *domain = ou->mess.Domain;
@@ -593,16 +599,15 @@ static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, 
     }
 
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                 "find_nodedomain: finding domain for %s: %s", route, balancer);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "find_nodedomain: finding domain for %s: %s", route, balancer);
 #endif
     /* We can't find the node, because it was removed... */
     /* XXX: we need a proxy_node_domain for that too!!!
-    if (domain_storage->find_domain(&dom, route, balancer ) == APR_SUCCESS) {
-        *domain = dom->domain;
-        return APR_SUCCESS;
-    }
-    */
+       if (domain_storage->find_domain(&dom, route, balancer ) == APR_SUCCESS) {
+       *domain = dom->domain;
+       return APR_SUCCESS;
+       }
+     */
     return APR_NOTFOUND;
 }
 
@@ -610,11 +615,9 @@ static apr_status_t find_nodedomain(request_rec *r, char **domain, char *route, 
  * Find the balancer corresponding to the node information
  */
 const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
-                                      proxy_vhost_table *vhost_table,
-                                      proxy_context_table *context_table,
-                                      proxy_balancer_table *balancer_table,
-                                      proxy_node_table *node_table,
-                                      int use_alias)
+                               proxy_vhost_table *vhost_table,
+                               proxy_context_table *context_table,
+                               proxy_balancer_table *balancer_table, proxy_node_table *node_table, int use_alias)
 {
     char *route = NULL;
     char *sessionid = NULL;
@@ -623,14 +626,14 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
     int i;
     char *ptr = conf->balancers->elts;
     int sizeb = conf->balancers->elt_size;
-    (void) balancer_table;
+    (void)balancer_table;
 
-    for (i = 0; i < conf->balancers->nelts; i++, ptr= ptr + sizeb) {
+    for (i = 0; i < conf->balancers->nelts; i++, ptr = ptr + sizeb) {
         proxy_balancer *balancer = (proxy_balancer *) ptr;
 
         if (balancer->s->sticky[0] == '\0' || balancer->s->sticky_path[0] == '\0')
             continue;
-        if (strlen(balancer->s->name)<=11)
+        if (strlen(balancer->s->name) <= 11)
             continue;
         sticky = apr_psprintf(r->pool, "%s|%s", balancer->s->sticky, balancer->s->sticky_path);
         /* XXX ; that looks fishy, lb needs to start with MC? */
@@ -640,29 +643,26 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
         sessionid = cluster_get_sessionid(r, sticky, r->uri, &sticky_used);
         if (sessionid) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "cluster: %s Found value %s for "
-                         "stickysession %s",
-                         balancer->s->name, sessionid, sticky);
+                         "cluster: %s Found value %s for " "stickysession %s", balancer->s->name, sessionid, sticky);
             apr_table_setn(r->notes, "session-id", sessionid);
-            if ((route = strchr(sessionid, '.')) != NULL )
+            if ((route = strchr(sessionid, '.')) != NULL)
                 route++;
             if (route && *route) {
                 /* Nice we have a route, but make sure we have to serve it */
-                node_context *nodes = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
+                node_context *nodes =
+                    find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
                 if (nodes == NULL)
-                    continue; /* we can't serve context/host for the request with this balancer*/
+                    continue;   /* we can't serve context/host for the request with this balancer */
             }
             if (route && *route) {
                 char *domain = NULL;
 #if HAVE_CLUSTER_EX_DEBUG
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                          "cluster: Found route %s", route);
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "cluster: Found route %s", route);
 #endif
                 if (find_nodedomain(r, &domain, route, &balancer->s->name[11], node_table) == APR_SUCCESS) {
 #if HAVE_CLUSTER_EX_DEBUG
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                "cluster: Found balancer %s for %s",
-                                 &balancer->s->name[11], route);
+                                 "cluster: Found balancer %s for %s", &balancer->s->name[11], route);
 #endif
                     /* here we have the route and domain for find_session_route ... */
                     apr_table_setn(r->notes, "session-sticky", sticky_used);
@@ -673,7 +673,7 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
                     if (domain) {
 #if HAVE_CLUSTER_EX_DEBUG
                         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                    "cluster: Found domain %s for %s", domain, route);
+                                     "cluster: Found domain %s for %s", domain, route);
 #endif
                         apr_table_setn(r->notes, "CLUSTER_DOMAIN", domain);
                     }
@@ -686,7 +686,7 @@ const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
 }
 
 /* Read a node from the table using its it */
-nodeinfo_t* table_get_node(proxy_node_table *node_table, int id)
+nodeinfo_t *table_get_node(proxy_node_table *node_table, int id)
 {
     int i;
     for (i = 0; i < node_table->sizenode; i++) {
@@ -695,8 +695,9 @@ nodeinfo_t* table_get_node(proxy_node_table *node_table, int id)
     }
     return NULL;
 }
+
 /* Read a node from the table using the route */
-nodeinfo_t* table_get_node_route(proxy_node_table *node_table, char *route, int *id)
+nodeinfo_t *table_get_node_route(proxy_node_table *node_table, char *route, int *id)
 {
     int i;
     for (i = 0; i < node_table->sizenode; i++) {
@@ -714,20 +715,21 @@ nodeinfo_t* table_get_node_route(proxy_node_table *node_table, char *route, int 
  * @vhost_table table of host virtual hosts.
  * @context_table table of contexts.
  * @return the balancer name or NULL if not found.
- */ 
+ */
 const char *get_context_host_balancer(request_rec *r,
-        proxy_vhost_table *vhost_table, proxy_context_table *context_table, proxy_node_table *node_table, int use_alias)
+                                      proxy_vhost_table *vhost_table, proxy_context_table *context_table,
+                                      proxy_node_table *node_table, int use_alias)
 {
     void *sconf = r->server->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)
         ap_get_module_config(sconf, &proxy_module);
 
-    node_context *nodes =  find_node_context_host(r, NULL, NULL, use_alias, vhost_table, context_table, node_table);
+    node_context *nodes = find_node_context_host(r, NULL, NULL, use_alias, vhost_table, context_table, node_table);
     if (nodes == NULL)
         return NULL;
-    while ((*nodes).node != -1) {
+    while (nodes->node != -1) {
         /* look for the node information */
-        nodeinfo_t *node = table_get_node(node_table, (*nodes).node);
+        nodeinfo_t *node = table_get_node(node_table, nodes->node);
         if (node != NULL) {
             if (node->mess.balancer[0] != '\0') {
                 /* Check that it is in our proxy_server_conf */
@@ -736,7 +738,7 @@ const char *get_context_host_balancer(request_rec *r,
                 if (balancer)
                     return node->mess.balancer;
                 else
-                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                                  "get_context_host_balancer: balancer %s not found", name);
             }
         }
@@ -752,9 +754,10 @@ const char *get_context_host_balancer(request_rec *r,
  * The id of the worker is used to find the (slot) node in the shared
  * memory.
  * (See get_context_host_balancer too).
- */ 
+ */
 node_context *context_host_ok(request_rec *r, proxy_balancer *balancer, int node, int use_alias,
-                             proxy_vhost_table *vhost_table, proxy_context_table *context_table, proxy_node_table *node_table)
+                              proxy_vhost_table *vhost_table, proxy_context_table *context_table,
+                              proxy_node_table *node_table)
 {
     const char *route;
     node_context *best;
@@ -762,11 +765,12 @@ node_context *context_host_ok(request_rec *r, proxy_balancer *balancer, int node
     best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
     if (best == NULL)
         return NULL;
-    while ((*best).node != -1) {
-        if ((*best).node == node) break;
+    while (best->node != -1) {
+        if (best->node == node)
+            break;
         best++;
     }
-    if ((*best).node == -1)
-        return NULL; /* not found */
+    if (best->node == -1)
+        return NULL;            /* not found */
     return best;
 }

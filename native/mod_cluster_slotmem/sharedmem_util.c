@@ -43,7 +43,7 @@
 #endif
 
 #if APR_HAVE_UNISTD_H
-#include <unistd.h>         /* for getpid() */
+#include <unistd.h>             /* for getpid() */
 #endif
 
 #if HAVE_SYS_SEM_H
@@ -57,22 +57,24 @@
 #endif
 
 /* The description of the slots to reuse the slotmem */
-struct sharedslotdesc {
+struct sharedslotdesc
+{
     apr_size_t item_size;
     int item_num;
-    unsigned int version; /* integer updated each time we make a change through the API */
+    unsigned int version;       /* integer updated each time we make a change through the API */
 };
 
-struct ap_slotmem {
+struct ap_slotmem
+{
     char *name;
     apr_shm_t *shm;
-    int *ident; /* integer table to process a fast alloc/free */
-    unsigned int *version; /* address of version */
+    int *ident;                 /* integer table to process a fast alloc/free */
+    unsigned int *version;      /* address of version */
     void *base;
     apr_size_t size;
     int num;
     apr_pool_t *globalpool;
-    apr_file_t *global_lock; /* file used for the locks */
+    apr_file_t *global_lock;    /* file used for the locks */
     struct ap_slotmem *next;
 };
 
@@ -83,7 +85,7 @@ static apr_thread_mutex_t *globalmutex_lock = NULL;
 
 static apr_status_t unixd_set_shm_perms(const char *fname)
 {
-    (void) fname;
+    (void)fname;
 
 #ifdef AP_NEED_SET_MUTEX_PERMS
 #if APR_USE_SHMEM_SHMGET || APR_USE_SHMEM_SHMGET_ANON
@@ -92,18 +94,18 @@ static apr_status_t unixd_set_shm_perms(const char *fname)
     int shmid;
 
     shmkey = ftok(fname, 1);
-    if (shmkey == (key_t)-1) {
+    if (shmkey == (key_t) - 1) {
         return errno;
     }
     if ((shmid = shmget(shmkey, 0, SHM_R | SHM_W)) == -1) {
         return errno;
     }
 #if MODULE_MAGIC_NUMBER_MAJOR > 20081212
-    shmbuf.shm_perm.uid  = ap_unixd_config.user_id;
-    shmbuf.shm_perm.gid  = ap_unixd_config.group_id;
+    shmbuf.shm_perm.uid = ap_unixd_config.user_id;
+    shmbuf.shm_perm.gid = ap_unixd_config.group_id;
 #else
-    shmbuf.shm_perm.uid  = unixd_config.user_id;
-    shmbuf.shm_perm.gid  = unixd_config.group_id;
+    shmbuf.shm_perm.uid = unixd_config.user_id;
+    shmbuf.shm_perm.gid = unixd_config.group_id;
 #endif
     shmbuf.shm_perm.mode = 0600;
     if (shmctl(shmid, IPC_SET, &shmbuf) == -1) {
@@ -130,9 +132,10 @@ static apr_status_t unixd_set_shm_perms(const char *fname)
 static const char *store_filename(apr_pool_t *pool, const char *slotmemname)
 {
     const char *storename;
-    storename = apr_pstrcat(pool, slotmemname , ".slotmem", NULL); 
+    storename = apr_pstrcat(pool, slotmemname, ".slotmem", NULL);
     return storename;
 }
+
 static void store_slotmem(ap_slotmem_t *slotmem)
 {
     apr_file_t *fp;
@@ -142,10 +145,10 @@ static void store_slotmem(ap_slotmem_t *slotmem)
 
     storename = store_filename(slotmem->globalpool, slotmem->name);
 
-    rv = apr_file_open(&fp, storename,  APR_CREATE | APR_READ | APR_WRITE, APR_OS_DEFAULT, slotmem->globalpool);
+    rv = apr_file_open(&fp, storename, APR_CREATE | APR_READ | APR_WRITE, APR_OS_DEFAULT, slotmem->globalpool);
     if (APR_STATUS_IS_EEXIST(rv)) {
         apr_file_remove(storename, slotmem->globalpool);
-        rv = apr_file_open(&fp, storename,  APR_CREATE | APR_READ | APR_WRITE, APR_OS_DEFAULT, slotmem->globalpool);
+        rv = apr_file_open(&fp, storename, APR_CREATE | APR_READ | APR_WRITE, APR_OS_DEFAULT, slotmem->globalpool);
     }
     if (rv != APR_SUCCESS) {
         return;
@@ -154,6 +157,7 @@ static void store_slotmem(ap_slotmem_t *slotmem)
     apr_file_write(fp, slotmem->ident, &nbytes);
     apr_file_close(fp);
 }
+
 static void restore_slotmem(void *ptr, const char *name, apr_size_t item_size, int item_num, apr_pool_t *pool)
 {
     const char *storename;
@@ -164,7 +168,7 @@ static void restore_slotmem(void *ptr, const char *name, apr_size_t item_size, i
     item_size = APR_ALIGN_DEFAULT(item_size);
     nbytes = item_size * item_num + sizeof(int) * (item_num + 1);
     storename = store_filename(pool, name);
-    rv = apr_file_open(&fp, storename,  APR_READ | APR_WRITE, APR_OS_DEFAULT, pool);
+    rv = apr_file_open(&fp, storename, APR_READ | APR_WRITE, APR_OS_DEFAULT, pool);
     if (rv == APR_SUCCESS) {
         apr_finfo_t fi;
         if (apr_file_info_get(&fi, APR_FINFO_SIZE, fp) == APR_SUCCESS) {
@@ -225,13 +229,14 @@ static apr_status_t ap_slotmem_do(ap_slotmem_t *mem, mc_slotmem_callback_fn_t *f
         if (!isfree) {
             rv = func((void *)ptr, data, i, pool);
             if (rv == APR_SUCCESS) {
-                return(rv);
+                return rv;
             }
         }
         ptr = ptr + mem->size;
     }
     return APR_NOTFOUND;
 }
+
 /* Lock the file lock (between processes) and then the mutex */
 static apr_status_t ap_slotmem_lock(ap_slotmem_t *s)
 {
@@ -244,14 +249,16 @@ static apr_status_t ap_slotmem_lock(ap_slotmem_t *s)
         apr_file_unlock(s->global_lock);
     return rv;
 }
+
 static apr_status_t ap_slotmem_unlock(ap_slotmem_t *s)
 {
     apr_thread_mutex_unlock(globalmutex_lock);
-    return(apr_file_unlock(s->global_lock));
+    return apr_file_unlock(s->global_lock);
 }
 
 /* Create the whole slotmem array */
-static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_size_t item_size, int item_num, int persist, apr_pool_t *pool)
+static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_size_t item_size, int item_num,
+                                      int persist, apr_pool_t *pool)
 {
     char *ptr;
     struct sharedslotdesc desc, *new_desc;
@@ -293,8 +300,8 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
 
     /* create the lock file and the global mutex */
     res = (ap_slotmem_t *) apr_pcalloc(globalpool, sizeof(ap_slotmem_t));
-    filename = apr_pstrcat(pool, fname , ".lock", NULL);
-    rv = apr_file_open(&res->global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, globalpool);
+    filename = apr_pstrcat(pool, fname, ".lock", NULL);
+    rv = apr_file_open(&res->global_lock, filename, APR_WRITE | APR_CREATE, APR_OS_DEFAULT, globalpool);
     if (rv != APR_SUCCESS) {
         return rv;
     }
@@ -326,10 +333,10 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
             ap_slotmem_unlock(res);
             return APR_EINVAL;
         }
-        new_desc = (struct sharedslotdesc *) ptr;
-        ptr = ptr +  dsize;
+        new_desc = (struct sharedslotdesc *)ptr;
+        ptr = ptr + dsize;
     }
-    else  {
+    else {
         if (name) {
             int try = 0;
             rv = APR_EEXIST;
@@ -337,7 +344,7 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
                 rv = apr_shm_remove(fname, globalpool);
                 rv = apr_shm_create(&res->shm, nbytes, fname, globalpool);
                 if (rv == APR_EEXIST) {
-                     apr_sleep(apr_time_from_sec(1));
+                    apr_sleep(apr_time_from_sec(1));
                 }
                 try++;
             }
@@ -359,11 +366,11 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
         ptr = apr_shm_baseaddr_get(res->shm);
         desc.item_size = item_size;
         desc.item_num = item_num;
-        new_desc = (struct sharedslotdesc *) ptr;
+        new_desc = (struct sharedslotdesc *)ptr;
         memcpy(ptr, &desc, sizeof(desc));
-        ptr = ptr +  dsize;
+        ptr = ptr + dsize;
         /* write the idents table */
-        ident = (int *) ptr;
+        ident = (int *)ptr;
         for (i = 0; i < item_num + 1; i++) {
             ident[i] = i + 1;
         }
@@ -376,7 +383,7 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
 
     /* For the chained slotmem stuff */
     res->name = apr_pstrdup(globalpool, fname);
-    res->ident = (int *) ptr;
+    res->ident = (int *)ptr;
     res->base = ptr + tsize;
     res->size = item_size;
     res->num = item_num;
@@ -394,7 +401,9 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
     ap_slotmem_unlock(res);
     return APR_SUCCESS;
 }
-static apr_status_t ap_slotmem_attach(ap_slotmem_t **new, const char *name, apr_size_t *item_size, int *item_num, apr_pool_t *pool)
+
+static apr_status_t ap_slotmem_attach(ap_slotmem_t **new, const char *name, apr_size_t *item_size, int *item_num,
+                                      apr_pool_t *pool)
 {
     char *ptr;
     ap_slotmem_t *res;
@@ -441,8 +450,8 @@ static apr_status_t ap_slotmem_attach(ap_slotmem_t **new, const char *name, apr_
         return rv;
     }
     /* get the corresponding lock */
-    filename = apr_pstrcat(pool, fname , ".lock", NULL);
-    rv = apr_file_open(&res->global_lock, filename, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, globalpool);
+    filename = apr_pstrcat(pool, fname, ".lock", NULL);
+    rv = apr_file_open(&res->global_lock, filename, APR_WRITE | APR_CREATE, APR_OS_DEFAULT, globalpool);
     if (rv != APR_SUCCESS) {
         return rv;
     }
@@ -474,7 +483,8 @@ static apr_status_t ap_slotmem_attach(ap_slotmem_t **new, const char *name, apr_
     *item_num = desc.item_num;
     return APR_SUCCESS;
 }
-static apr_status_t ap_slotmem_mem(ap_slotmem_t *score, int id, void**mem)
+
+static apr_status_t ap_slotmem_mem(ap_slotmem_t *score, int id, void **mem)
 {
 
     char *ptr;
@@ -493,9 +503,9 @@ static apr_status_t ap_slotmem_mem(ap_slotmem_t *score, int id, void**mem)
     for (i = 0; i < score->num + 1; i++) {
         if (ident[i] == id)
             return APR_NOTFOUND;
-    } 
+    }
 
-    ptr = (char *) score->base + score->size * (id - 1);
+    ptr = (char *)score->base + score->size * (id - 1);
     if (!ptr) {
         return APR_ENOSHMAVAIL;
     }
@@ -513,36 +523,39 @@ static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void **m
     if (*item_id != 0) {
         /* we want a specific id, not a new one */
         ff = ident[id];
-        while (ff < score->num && ff!=*item_id) {
+        while (ff < score->num && ff != *item_id) {
             id++;
             ff = ident[id];
         }
-        if (ff!=*item_id)
-            return APR_ENOMEM; /* already in use!!! */
-    } 
+        if (ff != *item_id)
+            return APR_ENOMEM;  /* already in use!!! */
+    }
     ff = ident[id];
     if (ff > score->num) {
         rv = APR_ENOMEM;
-    } else {
+    }
+    else {
         ident[id] = ident[ff];
         ident[ff] = 0;
         *item_id = ff;
-        *mem = (char *) score->base + score->size * (ff - 1);
+        *mem = (char *)score->base + score->size * (ff - 1);
         (*score->version)++;
         rv = APR_SUCCESS;
     }
-    
+
     return rv;
 }
+
 static apr_status_t ap_slotmem_free(ap_slotmem_t *score, int item_id, void *mem)
 {
     int ff;
     int *ident;
-    (void) mem;
+    (void)mem;
 
-    if (item_id > score->num || item_id <=0) {
+    if (item_id > score->num || item_id <= 0) {
         return APR_EINVAL;
-    } else {
+    }
+    else {
         ap_slotmem_lock(score);
         ident = score->ident;
         if (ident[item_id]) {
@@ -558,6 +571,7 @@ static apr_status_t ap_slotmem_free(ap_slotmem_t *score, int item_id, void *mem)
         return APR_SUCCESS;
     }
 }
+
 static int ap_slotmem_get_used(ap_slotmem_t *score, int *ids)
 {
     int i, ret = 0;
@@ -573,12 +587,14 @@ static int ap_slotmem_get_used(ap_slotmem_t *score, int *ids)
     }
     return ret;
 }
+
 static int ap_slotmem_get_max_size(ap_slotmem_t *score)
 {
     if (score == NULL)
         return 0;
     return score->num;
 }
+
 static const slotmem_storage_method storage = {
     &ap_slotmem_do,
     &ap_slotmem_create,
@@ -596,21 +612,23 @@ static const slotmem_storage_method storage = {
  * and initialise the global pool */
 const slotmem_storage_method *mem_getstorage(apr_pool_t *p, char *type)
 {
-    (void) type;
+    (void)type;
 
     if (globalpool == NULL && p != NULL)
         globalpool = p;
-    return(&storage);
+    return &storage;
 }
+
 /* Add the pool_clean routine */
 void sharedmem_initialize_cleanup(apr_pool_t *p)
 {
-    (void) p;
+    (void)p;
     apr_pool_cleanup_register(p, &globallistmem, cleanup_slotmem, apr_pool_cleanup_null);
 }
+
 /* Create the mutex for insert/remove logic */
 apr_status_t sharedmem_initialize_child(apr_pool_t *p)
 {
-    (void) p;
-    return (apr_thread_mutex_create(&globalmutex_lock, APR_THREAD_MUTEX_DEFAULT, globalpool));
+    (void)p;
+    return apr_thread_mutex_create(&globalmutex_lock, APR_THREAD_MUTEX_DEFAULT, globalpool);
 }

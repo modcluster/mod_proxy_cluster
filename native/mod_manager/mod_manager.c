@@ -55,7 +55,7 @@
 #define DEFMAXCONTEXT   100
 #define DEFMAXNODE      20
 #define DEFMAXHOST      20
-#define DEFMAXSESSIONID 0 /* it has performance/security impact */
+#define DEFMAXSESSIONID 0       /* it has performance/security impact */
 #define MAXMESSSIZE     1024
 
 /* Warning messages */
@@ -116,7 +116,8 @@
 #define TEXT_XML 2
 
 /* Data structure for shared memory block */
-typedef struct version_data {
+typedef struct version_data
+{
     apr_uint64_t counter;
 } version_data;
 
@@ -177,7 +178,7 @@ typedef struct mod_manager_config
     /* allow command logic */
     int allow_cmd;
     /* don't context in first status page */
-    int reduce_display;  
+    int reduce_display;
     /* maximum message size */
     int maxmesssize;
     /* Enable MCPM receiver */
@@ -193,31 +194,30 @@ typedef struct mod_manager_config
 
 } mod_manager_config;
 
-/*
- * routines for the node_storage_method
- */
+/* routines for the node_storage_method */
 static apr_status_t loc_read_node(int ids, nodeinfo_t **node)
 {
-    return (get_node(nodestatsmem, node, ids));
+    return get_node(nodestatsmem, node, ids);
 }
+
 static int loc_get_ids_used_node(int *ids)
 {
-    return(get_ids_used_node(nodestatsmem, ids)); 
+    return get_ids_used_node(nodestatsmem, ids);
 }
+
 static int loc_get_max_size_node(void)
 {
-    if (nodestatsmem)
-        return(get_max_size_node(nodestatsmem));
-    else
-        return 0;
+    return nodestatsmem ? get_max_size_node(nodestatsmem) : 0;
 }
+
 static apr_status_t loc_remove_node(int id)
 {
-    return (remove_node(nodestatsmem, id));
+    return remove_node(nodestatsmem, id);
 }
+
 static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
 {
-    return (find_node(nodestatsmem, node, route));
+    return find_node(nodestatsmem, node, route);
 }
 
 /*
@@ -226,7 +226,7 @@ static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
 static void inc_version_node(void)
 {
     version_data *base;
-    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    base = (version_data *) apr_shm_baseaddr_get(versionipc_shm);
     base->counter++;
 }
 
@@ -243,49 +243,49 @@ static unsigned int loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
     unsigned int last = 0;
     version_data *base;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
-    (void) pool;
+    (void)pool;
 
     size = loc_get_max_size_node();
     if (size == 0)
-        return 0; /* broken */
+        return 0;               /* broken */
 
-    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    base = (version_data *) apr_shm_baseaddr_get(versionipc_shm);
     last = base->counter;
 
     if (last != mconf->tableversion)
         return last;
-    return (0);
+    return 0;
 }
+
 /* Store the last version update in the proccess config */
 static int loc_worker_nodes_are_updated(void *data, unsigned int last)
 {
     server_rec *s = (server_rec *) data;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
     mconf->tableversion = last;
-    return (0);
+    return 0;
 }
+
 static apr_status_t loc_lock_nodes(void)
 {
-    return(apr_global_mutex_lock(node_mutex));
+    return apr_global_mutex_lock(node_mutex);
 }
+
 static apr_status_t loc_unlock_nodes(void)
 {
-    return(apr_global_mutex_unlock(node_mutex));
+    return apr_global_mutex_unlock(node_mutex);
 }
+
 static int loc_get_max_size_context(void)
 {
-    if (contextstatsmem)
-        return(get_max_size_context(contextstatsmem));
-    else
-        return 0;
+    return contextstatsmem ? get_max_size_context(contextstatsmem) : 0;
 }
+
 static int loc_get_max_size_host(void)
 {
-    if (hoststatsmem)
-        return(get_max_size_host(hoststatsmem));
-    else
-        return 0;
+    return hoststatsmem ? get_max_size_host(hoststatsmem) : 0;
 }
+
 /* Remove the virtual hosts and contexts corresponding the node */
 static void loc_remove_host_context(int node, apr_pool_t *pool)
 {
@@ -319,8 +319,8 @@ static void loc_remove_host_context(int node, apr_pool_t *pool)
             remove_context(contextstatsmem, context);
     }
 }
-static const struct node_storage_method node_storage =
-{
+
+static const struct node_storage_method node_storage = {
     loc_read_node,
     loc_get_ids_used_node,
     loc_get_max_size_node,
@@ -338,24 +338,25 @@ static const struct node_storage_method node_storage =
  */
 static apr_status_t loc_read_context(int ids, contextinfo_t **context)
 {
-    return (get_context(contextstatsmem, context, ids));
+    return get_context(contextstatsmem, context, ids);
 }
+
 static int loc_get_ids_used_context(int *ids)
 {
-    return(get_ids_used_context(contextstatsmem, ids)); 
+    return get_ids_used_context(contextstatsmem, ids);
 }
 
 static apr_status_t loc_lock_contexts(void)
 {
-    return(apr_global_mutex_lock(context_mutex));
-}
-static apr_status_t loc_unlock_contexts(void)
-{
-    return(apr_global_mutex_unlock(context_mutex));
+    return apr_global_mutex_lock(context_mutex);
 }
 
-static const struct context_storage_method context_storage =
+static apr_status_t loc_unlock_contexts(void)
 {
+    return apr_global_mutex_unlock(context_mutex);
+}
+
+static const struct context_storage_method context_storage = {
     loc_read_context,
     loc_get_ids_used_context,
     loc_get_max_size_context,
@@ -368,14 +369,15 @@ static const struct context_storage_method context_storage =
  */
 static apr_status_t loc_read_host(int ids, hostinfo_t **host)
 {
-    return (get_host(hoststatsmem, host, ids));
+    return get_host(hoststatsmem, host, ids);
 }
+
 static int loc_get_ids_used_host(int *ids)
 {
-    return(get_ids_used_host(hoststatsmem, ids)); 
+    return get_ids_used_host(hoststatsmem, ids);
 }
-static const struct host_storage_method host_storage =
-{
+
+static const struct host_storage_method host_storage = {
     loc_read_host,
     loc_get_ids_used_host,
     loc_get_max_size_host
@@ -386,53 +388,54 @@ static const struct host_storage_method host_storage =
  */
 static apr_status_t loc_read_balancer(int ids, balancerinfo_t **balancer)
 {
-    return (get_balancer(balancerstatsmem, balancer, ids));
+    return get_balancer(balancerstatsmem, balancer, ids);
 }
+
 static int loc_get_ids_used_balancer(int *ids)
 {
-    return(get_ids_used_balancer(balancerstatsmem, ids)); 
+    return get_ids_used_balancer(balancerstatsmem, ids);
 }
+
 static int loc_get_max_size_balancer(void)
 {
-    if (balancerstatsmem)
-        return(get_max_size_balancer(balancerstatsmem));
-    else
-        return 0;
+    return balancerstatsmem ? get_max_size_balancer(balancerstatsmem) : 0;
 }
-static const struct balancer_storage_method balancer_storage =
-{
+
+static const struct balancer_storage_method balancer_storage = {
     loc_read_balancer,
     loc_get_ids_used_balancer,
     loc_get_max_size_balancer
 };
+
 /*
  * routines for the sessionid_storage_method
  */
 static apr_status_t loc_read_sessionid(int ids, sessionidinfo_t **sessionid)
 {
-    return (get_sessionid(sessionidstatsmem, sessionid, ids));
+    return get_sessionid(sessionidstatsmem, sessionid, ids);
 }
+
 static int loc_get_ids_used_sessionid(int *ids)
 {
-    return(get_ids_used_sessionid(sessionidstatsmem, ids)); 
+    return get_ids_used_sessionid(sessionidstatsmem, ids);
 }
+
 static int loc_get_max_size_sessionid(void)
 {
-    if (sessionidstatsmem)
-        return(get_max_size_sessionid(sessionidstatsmem));
-    else
-        return 0;
+    return sessionidstatsmem ? get_max_size_sessionid(sessionidstatsmem) : 0;
 }
+
 static apr_status_t loc_remove_sessionid(sessionidinfo_t *sessionid)
 {
-    return (remove_sessionid(sessionidstatsmem, sessionid));
+    return remove_sessionid(sessionidstatsmem, sessionid);
 }
+
 static apr_status_t loc_insert_update_sessionid(sessionidinfo_t *sessionid)
 {
-    return (insert_update_sessionid(sessionidstatsmem, sessionid));
+    return insert_update_sessionid(sessionidstatsmem, sessionid);
 }
-static const struct  sessionid_storage_method sessionid_storage =
-{
+
+static const struct sessionid_storage_method sessionid_storage = {
     loc_read_sessionid,
     loc_get_ids_used_sessionid,
     loc_get_max_size_sessionid,
@@ -445,33 +448,35 @@ static const struct  sessionid_storage_method sessionid_storage =
  */
 static apr_status_t loc_read_domain(int ids, domaininfo_t **domain)
 {
-    return (get_domain(domainstatsmem, domain, ids));
+    return get_domain(domainstatsmem, domain, ids);
 }
+
 static int loc_get_ids_used_domain(int *ids)
 {
-    return(get_ids_used_domain(domainstatsmem, ids)); 
+    return get_ids_used_domain(domainstatsmem, ids);
 }
+
 static int loc_get_max_size_domain(void)
 {
-    if (domainstatsmem)
-        return(get_max_size_domain(domainstatsmem));
-    else
-        return 0;
+    return domainstatsmem ? get_max_size_domain(domainstatsmem) : 0;
 }
+
 static apr_status_t loc_remove_domain(domaininfo_t *domain)
 {
-    return (remove_domain(domainstatsmem, domain));
+    return remove_domain(domainstatsmem, domain);
 }
+
 static apr_status_t loc_insert_update_domain(domaininfo_t *domain)
 {
-    return (insert_update_domain(domainstatsmem, domain));
+    return insert_update_domain(domainstatsmem, domain);
 }
+
 static apr_status_t loc_find_domain(domaininfo_t **domain, const char *route, const char *balancer)
 {
-    return (find_domain(domainstatsmem, domain, route, balancer));
+    return find_domain(domainstatsmem, domain, route, balancer);
 }
-static const struct  domain_storage_method domain_storage =
-{
+
+static const struct domain_storage_method domain_storage = {
     loc_read_domain,
     loc_get_ids_used_domain,
     loc_get_max_size_domain,
@@ -481,7 +486,8 @@ static const struct  domain_storage_method domain_storage =
 };
 
 /* helper for the handling of the Alias: host1,... Context: context1,... */
-struct cluster_host {
+struct cluster_host
+{
     char *host;
     char *context;
     struct cluster_host *next;
@@ -499,7 +505,7 @@ static apr_status_t cleanup_manager(void *param)
     balancerstatsmem = NULL;
     sessionidstatsmem = NULL;
     domainstatsmem = NULL;
-    (void) param;
+    (void)param;
 
     if (versionipc_shm) {
         apr_shm_destroy(versionipc_shm);
@@ -507,15 +513,16 @@ static apr_status_t cleanup_manager(void *param)
     }
     return APR_SUCCESS;
 }
+
 static void mc_initialize_cleanup(apr_pool_t *p)
 {
     apr_pool_cleanup_register(p, NULL, cleanup_manager, apr_pool_cleanup_null);
 }
 
-static void normalize_balancer_name(char* balancer_name, server_rec *s)
+static void normalize_balancer_name(char *balancer_name, server_rec *s)
 {
     int upper_case_char_found = 0;
-    char* balancer_name_start = balancer_name;
+    char *balancer_name_start = balancer_name;
     for (; *balancer_name; ++balancer_name) {
         if (!upper_case_char_found) {
             upper_case_char_found = apr_isupper(*balancer_name);
@@ -524,7 +531,7 @@ static void normalize_balancer_name(char* balancer_name, server_rec *s)
     }
     balancer_name = balancer_name_start;
     if (upper_case_char_found) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s, SBALBAD, balancer_name);
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, s, SBALBAD, balancer_name);
     }
 }
 
@@ -547,9 +554,8 @@ static APR_INLINE int is_child_process(void)
  * adjust the mutex settings using the Mutex directive.
  */
 
-static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog,
-                            apr_pool_t *ptemp)
-{   
+static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp)
+{
     ap_mutex_register(pconf, node_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
     ap_mutex_register(pconf, context_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
     return OK;
@@ -559,8 +565,7 @@ static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog,
  * call after parser the configuration.
  * create the shared memory.
  */
-static int manager_init(apr_pool_t *p, apr_pool_t *plog,
-                          apr_pool_t *ptemp, server_rec *s)
+static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
 {
     char *node;
     char *context;
@@ -573,7 +578,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     apr_uuid_t uuid;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
     apr_status_t rv;
-    (void) plog; /* unused variable */
+    (void)plog;                 /* unused variable */
 
     if (ap_state_query(AP_SQ_MAIN_STATE) == AP_SQ_MS_CREATE_PRE_CONFIG)
         return OK;
@@ -586,7 +591,8 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
         sessionid = apr_pstrcat(ptemp, mconf->basefilename, "/manager.sessionid", NULL);
         domain = apr_pstrcat(ptemp, mconf->basefilename, "/manager.domain", NULL);
         version = apr_pstrcat(ptemp, mconf->basefilename, "/manager.version", NULL);
-    } else {
+    }
+    else {
         node = ap_server_root_relative(ptemp, "logs/manager.node");
         context = ap_server_root_relative(ptemp, "logs/manager.context");
         host = ap_server_root_relative(ptemp, "logs/manager.host");
@@ -605,80 +611,80 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
     /* Get a provider to handle the shared memory */
     storage = ap_lookup_provider(SLOTMEM_STORAGE, "shared", "0");
     if (storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "ap_lookup_provider %s failed", SLOTMEM_STORAGE);
-        return  !OK;
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "ap_lookup_provider %s failed", SLOTMEM_STORAGE);
+        return !OK;
     }
     nodestatsmem = create_mem_node(node, &mconf->maxnode, mconf->persistent, p, storage);
     if (nodestatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_node %s failed", node);
-        return  !OK;
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_node %s failed", node);
+        return !OK;
     }
     if (get_last_mem_error(nodestatsmem) != APR_SUCCESS) {
         char buf[120];
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_node %s failed: %s",
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_node %s failed: %s",
                      node, apr_strerror(get_last_mem_error(nodestatsmem), buf, sizeof(buf)));
-        return  !OK;
+        return !OK;
     }
 
     contextstatsmem = create_mem_context(context, &mconf->maxcontext, mconf->persistent, p, storage);
     if (contextstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_context failed");
-        return  !OK;
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_context failed");
+        return !OK;
     }
 
     hoststatsmem = create_mem_host(host, &mconf->maxhost, mconf->persistent, p, storage);
     if (hoststatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_host failed");
-        return  !OK;
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_host failed");
+        return !OK;
     }
 
     balancerstatsmem = create_mem_balancer(balancer, &mconf->maxhost, mconf->persistent, p, storage);
     if (balancerstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_balancer failed");
-        return  !OK;
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_balancer failed");
+        return !OK;
     }
 
     if (mconf->maxsessionid) {
         /* Only create sessionid stuff if required */
         sessionidstatsmem = create_mem_sessionid(sessionid, &mconf->maxsessionid, mconf->persistent, p, storage);
         if (sessionidstatsmem == NULL) {
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_sessionid failed");
-            return  !OK;
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_sessionid failed");
+            return !OK;
         }
     }
 
     domainstatsmem = create_mem_domain(domain, &mconf->maxnode, mconf->persistent, p, storage);
     if (domainstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "create_mem_domain failed");
-        return  !OK;
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_domain failed");
+        return !OK;
     }
 
     if (is_child_process()) {
-        rv = apr_shm_attach(&versionipc_shm, (const char *) version, p);
-    } else {
+        rv = apr_shm_attach(&versionipc_shm, (const char *)version, p);
+    }
+    else {
         /* Use anonymous shm by default, fall back on name-based. */
         rv = apr_shm_create(&versionipc_shm, sizeof(version_data), NULL, p);
-        if (rv == APR_ENOTIMPL) 
-        {
+        if (rv == APR_ENOTIMPL) {
             /* For a name-based segment, remove it first in case of a
-            * previous unclean shutdown. */
-            apr_shm_remove((const char *) version, p);
+             * previous unclean shutdown. */
+            apr_shm_remove((const char *)version, p);
             /* Now create that segment */
-            rv = apr_shm_create(&versionipc_shm, sizeof(version_data), (const char *) version, p);
+            rv = apr_shm_create(&versionipc_shm, sizeof(version_data), (const char *)version, p);
         }
     }
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, rv, s, "create_share_version failed");
-        return  !OK;
+        return !OK;
     }
-    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
+    base = (version_data *) apr_shm_baseaddr_get(versionipc_shm);
     base->counter = 0;
 
     /* Get a provider to ping/pong logics */
 
     balancerhandler = ap_lookup_provider("proxy_cluster", "balancer", "0");
     if (balancerhandler == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s, "can't find a ping/pong logic");
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, s, "can't find a ping/pong logic");
     }
 
     advertise_info = ap_lookup_provider("advertise", "info", "0");
@@ -697,16 +703,19 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog,
 
     /* Create global mutex */
     if (ap_global_mutex_create(&node_mutex, NULL, node_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create %s failed", node_mutex_type);
+        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s, "manager_init: ap_global_mutex_create %s failed",
+                     node_mutex_type);
         return !OK;
     }
     if (ap_global_mutex_create(&context_mutex, NULL, context_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,"manager_init: ap_global_mutex_create %s failed", node_mutex_type);
+        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s, "manager_init: ap_global_mutex_create %s failed",
+                     node_mutex_type);
         return !OK;
     }
 
     return OK;
 }
+
 static apr_status_t decodeenc(char **ptr);
 static char **process_buff(request_rec *r, char *buff)
 {
@@ -741,15 +750,16 @@ static char **process_buff(request_rec *r, char *buff)
 
     return ptr;
 }
+
 /*
  * Insert the hosts from Alias information
  */
-static apr_status_t  insert_update_hosts(mem_t *mem, char *str, int node, int vhost)
+static apr_status_t insert_update_hosts(mem_t *mem, char *str, int node, int vhost)
 {
     char *ptr = str;
     char *previous = str;
     hostinfo_t info;
-    char empty[1] = {'\0'};
+    char empty[1] = { '\0' };
     apr_status_t status;
 
     info.node = node;
@@ -762,7 +772,7 @@ static apr_status_t  insert_update_hosts(mem_t *mem, char *str, int node, int vh
         if (*ptr == ',') {
             *ptr = '\0';
             strncpy(info.host, previous, HOSTALIASZ);
-            status = insert_update_host(mem, &info); 
+            status = insert_update_host(mem, &info);
             if (status != APR_SUCCESS)
                 return status;
             previous = ptr + 1;
@@ -770,8 +780,9 @@ static apr_status_t  insert_update_hosts(mem_t *mem, char *str, int node, int vh
         ptr++;
     }
     strncpy(info.host, previous, sizeof(info.host));
-    return insert_update_host(mem, &info); 
+    return insert_update_host(mem, &info);
 }
+
 /*
  * Insert the context from Context information
  * Note:
@@ -779,13 +790,13 @@ static apr_status_t  insert_update_hosts(mem_t *mem, char *str, int node, int vh
  * 2 - return codes of REMOVE are ignored (always success).
  *
  */
-static apr_status_t  insert_update_contexts(mem_t *mem, char *str, int node, int vhost, int status)
+static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int vhost, int status)
 {
     char *ptr = str;
     char *previous = str;
     apr_status_t ret = APR_SUCCESS;
     contextinfo_t info;
-    char empty[2] = {'/','\0'};
+    char empty[2] = { '/', '\0' };
 
     info.node = node;
     info.vhost = vhost;
@@ -803,7 +814,8 @@ static apr_status_t  insert_update_contexts(mem_t *mem, char *str, int node, int
                 ret = insert_update_context(mem, &info);
                 if (ret != APR_SUCCESS)
                     return ret;
-            } else
+            }
+            else
                 remove_context(mem, &info);
 
             previous = ptr + 1;
@@ -813,20 +825,22 @@ static apr_status_t  insert_update_contexts(mem_t *mem, char *str, int node, int
     info.id = 0;
     strncpy(info.context, previous, sizeof(info.context));
     if (status != REMOVE)
-        ret = insert_update_context(mem, &info); 
+        ret = insert_update_context(mem, &info);
     else
         remove_context(mem, &info);
     return ret;
 }
+
 /*
  * Check that the node could be handle as is there were the same.
  */
-static int  is_same_node(nodeinfo_t *nodeinfo, nodeinfo_t *node) {
-    if (strcmp(nodeinfo->mess.balancer,node->mess.balancer))
+static int is_same_node(nodeinfo_t *nodeinfo, nodeinfo_t *node)
+{
+    if (strcmp(nodeinfo->mess.balancer, node->mess.balancer))
         return 0;
     if (strcmp(nodeinfo->mess.Host, node->mess.Host))
         return 0;
-    if (strcmp(nodeinfo->mess.Port,node->mess.Port))
+    if (strcmp(nodeinfo->mess.Port, node->mess.Port))
         return 0;
     if (strcmp(nodeinfo->mess.Type, node->mess.Type))
         return 0;
@@ -834,7 +848,7 @@ static int  is_same_node(nodeinfo_t *nodeinfo, nodeinfo_t *node) {
         return 0;
 
     /* Those means the reslist has to be changed */
-    if (nodeinfo->mess.smax !=  node->mess.smax)
+    if (nodeinfo->mess.smax != node->mess.smax)
         return 0;
     if (nodeinfo->mess.ttl != node->mess.ttl)
         return 0;
@@ -842,10 +856,12 @@ static int  is_same_node(nodeinfo_t *nodeinfo, nodeinfo_t *node) {
     /* All other fields can be modified without causing problems */
     return -1;
 }
+
 /*
  * Check if another node has the same worker.
  */
-static int  is_same_worker_existing(request_rec *r, nodeinfo_t *node) {
+static int is_same_worker_existing(request_rec *r, nodeinfo_t *node)
+{
     int size, i;
     int *id;
     size = loc_get_max_size_node();
@@ -859,16 +875,17 @@ static int  is_same_worker_existing(request_rec *r, nodeinfo_t *node) {
             continue;
         if (is_same_node(ou, node)) {
             /* we have a node that corresponds to the same worker */
-            if (!strcmp(ou->mess.JVMRoute,node->mess.JVMRoute))
-                return 0; /* well it is the same */
+            if (!strcmp(ou->mess.JVMRoute, node->mess.JVMRoute))
+                return 0;       /* well it is the same */
             if (ou->mess.remove) {
                 if (strcmp(ou->mess.JVMRoute, "REMOVED") == 0) {
                     /* Look in remove_removed_node, only "REMOVED" have cleaned the contexts/hosts */
-                    return 0; /* well it marked removed */
+                    return 0;   /* well it marked removed */
                 }
             }
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "process_config: node %s and %s correspond to the same worker!", node->mess.JVMRoute, ou->mess.JVMRoute);
+                         "process_config: node %s and %s correspond to the same worker!", node->mess.JVMRoute,
+                         ou->mess.JVMRoute);
             return -1;
         }
     }
@@ -878,27 +895,30 @@ static int  is_same_worker_existing(request_rec *r, nodeinfo_t *node) {
 /*
  * Builds the parameter for mod_balancer
  */
-static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, balancerinfo_t *bal) {
+static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, balancerinfo_t *bal)
+{
     apr_table_t *params;
     params = apr_table_make(r->pool, 10);
     /* balancer */
-    apr_table_set(params, "b" , node->mess.balancer);
+    apr_table_set(params, "b", node->mess.balancer);
     apr_table_set(params, "b_lbm", "cluster");
     apr_table_set(params, "b_tmo", apr_psprintf(r->pool, "%d", bal->Timeout));
     apr_table_set(params, "b_max", apr_psprintf(r->pool, "%d", bal->Maxattempts));
     apr_table_set(params, "b_ss", apr_pstrcat(r->pool, bal->StickySessionCookie, "|", bal->StickySessionPath, NULL));
 
     /* and new worker */
-    apr_table_set(params, "b_wyes" , "1");
-    apr_table_set(params, "b_nwrkr" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
+    apr_table_set(params, "b_wyes", "1");
+    apr_table_set(params, "b_nwrkr",
+                  apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
     balancer_manage(r, params);
     apr_table_clear(params);
 
     /* now process the worker */
-    apr_table_set(params, "b" , node->mess.balancer);
-    apr_table_set(params, "w" , apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
+    apr_table_set(params, "b", node->mess.balancer);
+    apr_table_set(params, "w",
+                  apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
     apr_table_set(params, "w_wr", node->mess.JVMRoute);
-    apr_table_set(params, "w_status_D", "0"); /* Not Dissabled */
+    apr_table_set(params, "w_status_D", "0");   /* Not Dissabled */
 
     /* set the health check (requires mod_proxy_hcheck) */
     /* CPING for AJP and OPTIONS for HTTP/1.1 */
@@ -918,17 +938,21 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
 static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, int *id, proxy_server_conf **the_conf)
 {
     if (balancerhandler != NULL) {
-        return (balancerhandler->proxy_node_getid(r, nodeinfo->mess.balancer, nodeinfo->mess.Type, nodeinfo->mess.Host, nodeinfo->mess.Port, id, the_conf));
+        return balancerhandler->
+               proxy_node_getid(r, nodeinfo->mess.balancer, nodeinfo->mess.Type, nodeinfo->mess.Host,
+                                nodeinfo->mess.Port, id, the_conf);
     }
     return NULL;
 }
 
-static void reenable_proxy_worker(request_rec *r, nodeinfo_t *node, proxy_worker *worker, nodeinfo_t *nodeinfo, proxy_server_conf *the_conf)
+static void reenable_proxy_worker(request_rec *r, nodeinfo_t *node, proxy_worker *worker, nodeinfo_t *nodeinfo,
+                                  proxy_server_conf *the_conf)
 {
     if (balancerhandler != NULL) {
         balancerhandler->reenable_proxy_worker(r->server, node, worker, nodeinfo, the_conf);
     }
 }
+
 static int proxy_node_get_free_id(request_rec *r, int node_table_size)
 {
     if (balancerhandler != NULL) {
@@ -956,19 +980,19 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
  * Context corresponding to the applications.
  * Context: <context list>
  */
-static char * process_config(request_rec *r, char **ptr, int *errtype)
+static char *process_config(request_rec *r, char **ptr, int *errtype)
 {
     /* Process the node/balancer description */
     nodeinfo_t nodeinfo;
     nodeinfo_t *node;
     balancerinfo_t balancerinfo;
-    
-    struct cluster_host *vhost; 
-    struct cluster_host *phost; 
+
+    struct cluster_host *vhost;
+    struct cluster_host *phost;
 
     int i = 0;
     int id;
-    int vid = 1; /* zero and "" is empty */
+    int vid = 1;                /* zero and "" is empty */
     int removed = 0;
     void *sconf = r->server->module_config;
     mod_manager_config *mconf = ap_get_module_config(sconf, &manager_module);
@@ -990,8 +1014,9 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     if (mconf->balancername != NULL) {
         normalize_balancer_name(mconf->balancername, r->server);
         strncpy(nodeinfo.mess.balancer, mconf->balancername, sizeof(nodeinfo.mess.balancer));
-        nodeinfo.mess.balancer[sizeof(nodeinfo.mess.balancer) -1] = '\0';
-    } else {
+        nodeinfo.mess.balancer[sizeof(nodeinfo.mess.balancer) - 1] = '\0';
+    }
+    else {
         strcpy(nodeinfo.mess.balancer, "mycluster");
     }
     strcpy(nodeinfo.mess.Host, "localhost");
@@ -1000,11 +1025,11 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     nodeinfo.mess.Upgrade[0] = '\0';
     nodeinfo.mess.AJPSecret[0] = '\0';
     nodeinfo.mess.reversed = 0;
-    nodeinfo.mess.remove = 0; /* not marked as removed */
-    nodeinfo.mess.flushpackets = flush_off; /* FLUSH_OFF; See enum flush_packets in proxy.h flush_off */
+    nodeinfo.mess.remove = 0;   /* not marked as removed */
+    nodeinfo.mess.flushpackets = flush_off;     /* FLUSH_OFF; See enum flush_packets in proxy.h flush_off */
     nodeinfo.mess.flushwait = PROXY_FLUSH_WAIT;
     nodeinfo.mess.ping = apr_time_from_sec(10);
-    nodeinfo.mess.smax = -1; /* let mod_proxy logic get the right one */
+    nodeinfo.mess.smax = -1;    /* let mod_proxy logic get the right one */
     nodeinfo.mess.ttl = apr_time_from_sec(60);
     nodeinfo.mess.timeout = 0;
     nodeinfo.mess.id = 0;
@@ -1016,7 +1041,8 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         normalize_balancer_name(mconf->balancername, r->server);
         strncpy(balancerinfo.balancer, mconf->balancername, sizeof(balancerinfo.balancer));
         balancerinfo.balancer[sizeof(balancerinfo.balancer) - 1] = '\0';
-    } else {
+    }
+    else {
         strcpy(balancerinfo.balancer, "mycluster");
     }
     balancerinfo.StickySession = 1;
@@ -1066,7 +1092,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             if (strcasecmp(ptr[i + 1], "no") == 0)
                 balancerinfo.StickySessionForce = 0;
         }
-        /* Note that it is workerTimeout (set/getWorkerTimeout in java code) */ 
+        /* Note that it is workerTimeout (set/getWorkerTimeout in java code) */
         if (strcasecmp(ptr[i], "WaitWorker") == 0) {
             balancerinfo.Timeout = apr_time_from_sec(atoi(ptr[i + 1]));
         }
@@ -1091,7 +1117,7 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             strcpy(nodeinfo.mess.Domain, ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "Host") == 0) {
-            char *p_read = ptr[i+1], *p_write = ptr[i + 1];
+            char *p_read = ptr[i + 1], *p_write = ptr[i + 1];
             int flag = 0;
             if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Host)) {
                 *errtype = TYPESYNTAX;
@@ -1104,7 +1130,8 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                     *p_write = *p_read++;
                     if ((*p_write == '%' || flag) && *p_write != ']') {
                         flag = 1;
-                    } else {
+                    }
+                    else {
                         p_write++;
                     }
                 }
@@ -1125,11 +1152,11 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                 *errtype = TYPESYNTAX;
                 return STYPBIG;
             }
-            strcpy(nodeinfo.mess.Type, ptr[i+1]);
+            strcpy(nodeinfo.mess.Type, ptr[i + 1]);
         }
         if (strcasecmp(ptr[i], "Reversed") == 0) {
             if (strcasecmp(ptr[i + 1], "yes") == 0) {
-            nodeinfo.mess.reversed = 1;
+                nodeinfo.mess.reversed = 1;
             }
         }
         if (strcasecmp(ptr[i], "flushpackets") == 0) {
@@ -1163,13 +1190,14 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
                 return SALIBAD;
             }
             if (phost->host) {
-               phost->next = apr_palloc(r->pool, sizeof(struct cluster_host));
-               phost = phost->next;
-               phost->next = NULL;
-               phost->host = ptr[i + 1];
-               phost->context = NULL;
-            } else {
-               phost->host = ptr[i + 1];
+                phost->next = apr_palloc(r->pool, sizeof(struct cluster_host));
+                phost = phost->next;
+                phost->next = NULL;
+                phost->host = ptr[i + 1];
+                phost->context = NULL;
+            }
+            else {
+                phost->host = ptr[i + 1];
             }
         }
         if (strcasecmp(ptr[i], "Context") == 0) {
@@ -1195,18 +1223,20 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         if (!strcmp(nodeinfo.mess.Type, "https"))
             strcpy(nodeinfo.mess.Type, "wss");
         if (mconf->ws_upgrade_header) {
-            strncpy(nodeinfo.mess.Upgrade,mconf->ws_upgrade_header, sizeof(nodeinfo.mess.Upgrade));
+            strncpy(nodeinfo.mess.Upgrade, mconf->ws_upgrade_header, sizeof(nodeinfo.mess.Upgrade));
             nodeinfo.mess.Upgrade[sizeof(nodeinfo.mess.Upgrade) - 1] = '\0';
-        } else {
-            strcpy(nodeinfo.mess.Upgrade,"websocket");
         }
-    } else {
+        else {
+            strcpy(nodeinfo.mess.Upgrade, "websocket");
+        }
+    }
+    else {
         nodeinfo.mess.Upgrade[0] = '\0';
     }
 
     if (strcmp(nodeinfo.mess.Type, "ajp") == 0) {
         if (mconf->ajp_secret) {
-            strncpy(nodeinfo.mess.AJPSecret,mconf->ajp_secret, sizeof(nodeinfo.mess.AJPSecret));
+            strncpy(nodeinfo.mess.AJPSecret, mconf->ajp_secret, sizeof(nodeinfo.mess.AJPSecret));
             nodeinfo.mess.AJPSecret[sizeof(nodeinfo.mess.AJPSecret) - 1] = '\0';
         }
     }
@@ -1231,7 +1261,8 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
             /* Here we can't update it because the old one is still in */
             char *mess = apr_psprintf(r->pool, MNODERM, node->mess.JVMRoute);
             ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-                         "process_config: node %s %d %s : %s  %s already exist removing...", node->mess.JVMRoute, node->mess.id, node->mess.Port, nodeinfo.mess.JVMRoute,  nodeinfo.mess.Port);
+                         "process_config: node %s %d %s : %s  %s already exist removing...", node->mess.JVMRoute,
+                         node->mess.id, node->mess.Port, nodeinfo.mess.JVMRoute, nodeinfo.mess.Port);
             strcpy(node->mess.JVMRoute, "REMOVED");
             node->mess.remove = 1;
             node->updatetime = apr_time_now();
@@ -1253,83 +1284,93 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
     /* Check for corresponding proxy_worker */
     worker = proxy_node_getid(r, &nodeinfo, &id, &the_conf);
     if (id != 0) {
-       /* Same node should be OK, different nodes will bring problems */
-       if (node != NULL && node->mess.id==id) {
-          ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                       "process_config: proxy_node_getid() worker exist and should be OK");
-       } else {
-          /* Here that is the tricky part, we will insert_update the whole node including proxy_worker_shared */
-          char *pptr;
-          unsigned long offset;
-          
-          ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                       "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT OK!!!", id, nodeinfo.mess.JVMRoute);
-          if (node == NULL) {
-              /* try to read the node */
-              nodeinfo_t workernodeinfo;
-              nodeinfo_t *workernode;
-              workernodeinfo.mess.id = id;
-              workernode = read_node(nodestatsmem, &workernodeinfo);
-              if (workernode != NULL) {
-                  if (strcmp(workernode->mess.JVMRoute, "REMOVED")==0) {
-                      /* We are in the remove process */
-                      /* Something to clean ? */
-                      removed = -1;
-                      strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
-                  } else {
-                      /* if the workernode->mess is zeroed we are going to reinsert it */
-                      if (workernode->mess.JVMRoute[0] == '\0') {
-                          removed = -1;
-                      } else {
-                          ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-                                       "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT %s!!!", id, workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
-                          ap_assert(0); /* we are in trouble */
-                      }
-                  }
-              }
-              ap_assert(the_conf);
-          }
-          clean = 0;
-          ap_assert(worker->s->port != 0);
-          pptr = (char *) &nodeinfo;
-          offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int); /* nodeinfo.offset doesn't contain the information */
-          offset = APR_ALIGN_DEFAULT(offset);
-          pptr = pptr + offset;
-          memcpy(pptr, worker->s, sizeof(proxy_worker_shared)); /* restore the information we are going to reuse */
-          ap_assert(the_conf);
-       }
-    } else {
-          nodeinfo_t *workernode;
-          rv = find_node_byhostport(nodestatsmem, &workernode, nodeinfo.mess.Host, nodeinfo.mess.Port);
-          if (rv == APR_SUCCESS) {
-              /* Normally the node is just being removed, so no host/context but some other child might have a worker */
-              ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                           "process_config: NOT NEW (%d %s) %s %s (%s)", workernode->mess.id, workernode->mess.JVMRoute, workernode->mess.Host, workernode->mess.Port, nodeinfo.mess.JVMRoute);
-              if (strcmp(workernode->mess.JVMRoute, "REMOVED") == 0) {
-                  id = workernode->mess.id; /* we are reusing it */
-                  strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
-                  workernode->mess.remove = 0;
-                  workernode->mess.num_remove_check = 0;
-              } else {
-                  ap_assert(0); /* we need to figure out what to do... */
-              }
-          } else {
-                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                              "process_config: NEW (%s) %s", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port);
-          }
+        /* Same node should be OK, different nodes will bring problems */
+        if (node != NULL && node->mess.id == id) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: proxy_node_getid() worker exist and should be OK");
+        }
+        else {
+            /* Here that is the tricky part, we will insert_update the whole node including proxy_worker_shared */
+            char *pptr;
+            unsigned long offset;
+
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT OK!!!", id,
+                         nodeinfo.mess.JVMRoute);
+            if (node == NULL) {
+                /* try to read the node */
+                nodeinfo_t workernodeinfo;
+                nodeinfo_t *workernode;
+                workernodeinfo.mess.id = id;
+                workernode = read_node(nodestatsmem, &workernodeinfo);
+                if (workernode != NULL) {
+                    if (strcmp(workernode->mess.JVMRoute, "REMOVED") == 0) {
+                        /* We are in the remove process */
+                        /* Something to clean ? */
+                        removed = -1;
+                        strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
+                    }
+                    else {
+                        /* if the workernode->mess is zeroed we are going to reinsert it */
+                        if (workernode->mess.JVMRoute[0] == '\0') {
+                            removed = -1;
+                        }
+                        else {
+                            ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
+                                         "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT %s!!!",
+                                         id, workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
+                            ap_assert(0);       /* we are in trouble */
+                        }
+                    }
+                }
+                ap_assert(the_conf);
+            }
+            clean = 0;
+            ap_assert(worker->s->port != 0);
+            pptr = (char *)&nodeinfo;
+            offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int);     /* nodeinfo.offset doesn't contain the information */
+            offset = APR_ALIGN_DEFAULT(offset);
+            pptr = pptr + offset;
+            memcpy(pptr, worker->s, sizeof(proxy_worker_shared));       /* restore the information we are going to reuse */
+            ap_assert(the_conf);
+        }
+    }
+    else {
+        nodeinfo_t *workernode;
+        rv = find_node_byhostport(nodestatsmem, &workernode, nodeinfo.mess.Host, nodeinfo.mess.Port);
+        if (rv == APR_SUCCESS) {
+            /* Normally the node is just being removed, so no host/context but some other child might have a worker */
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: NOT NEW (%d %s) %s %s (%s)", workernode->mess.id, workernode->mess.JVMRoute,
+                         workernode->mess.Host, workernode->mess.Port, nodeinfo.mess.JVMRoute);
+            if (strcmp(workernode->mess.JVMRoute, "REMOVED") == 0) {
+                id = workernode->mess.id;       /* we are reusing it */
+                strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
+                workernode->mess.remove = 0;
+                workernode->mess.num_remove_check = 0;
+            }
+            else {
+                ap_assert(0);   /* we need to figure out what to do... */
+            }
+        }
+        else {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: NEW (%s) %s", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port);
+        }
     }
     if (id == 0) {
         /* make sure we insert in a "free" node according to the worker logic */
         id = proxy_node_get_free_id(r, node_storage.get_max_size_node());
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "process_config: NEW (%s) %s %s in %d", nodeinfo.mess.JVMRoute, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
+                     "process_config: NEW (%s) %s %s in %d", nodeinfo.mess.JVMRoute, nodeinfo.mess.Host,
+                     nodeinfo.mess.Port, id);
     }
 
     /* Insert or update node description */
     if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
         loc_unlock_nodes();
         if (removed)
-            ap_assert(0); /* troubles */
+            ap_assert(0);       /* troubles */
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
     }
@@ -1353,13 +1394,17 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "process_config: reenable_proxy_worker... scheme %s hostname %s port %d route %s name %s id: %d",
 #if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
-                     worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex, worker->s->index);
+                     worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex,
+                     worker->s->index);
 #else
-                     worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name, worker->s->index);
+                     worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name,
+                     worker->s->index);
 #endif
-    } else {
-          ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                       "process_config: NEW (%s) %s inserted in worker %d", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port, id);
+    }
+    else {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: NEW (%s) %s inserted in worker %d", nodeinfo.mess.JVMRoute, nodeinfo.mess.Port,
+                     id);
     }
     inc_version_node();
 
@@ -1370,13 +1415,12 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         /* if using mod_balancer create or update the worker */
         if (balancer_manage) {
             apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "process_config: balancer-manager returned %d", rv);
-        } else {
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "process_config: NO balancer-manager");
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: balancer-manager returned %d", rv);
         }
-        return NULL; /* Alias and Context missing */
+        else {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
+        }
+        return NULL;            /* Alias and Context missing */
     }
     while (phost) {
         if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
@@ -1390,49 +1434,49 @@ static char * process_config(request_rec *r, char **ptr, int *errtype)
         phost = phost->next;
         vid++;
     }
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                 "process_config: DONE!!!");
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: DONE!!!");
     loc_unlock_nodes();
 
     /* if using mod_balancer create or update the worker */
     if (balancer_manage) {
         apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "process_config: balancer-manager returned %d", rv);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: balancer-manager returned %d", rv);
 
-    } else {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "process_config: NO balancer-manager");
+    }
+    else {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
     }
 
     return NULL;
 }
+
 /*
  * Process a DUMP command.
  */
-static char * process_dump(request_rec *r, int *errtype)
+static char *process_dump(request_rec *r, int *errtype)
 {
     int size, i;
     int *id;
     unsigned char type;
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
-    (void) errtype;
+    (void)errtype;
 
-    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL )  {
+    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
         ap_set_content_type(r, "text/xml");
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
-    } else {
+    }
+    else {
         ap_set_content_type(r, "text/plain");
         type = TEXT_PLAIN;
     }
 
     size = loc_get_max_size_balancer();
     if (size == 0)
-       return NULL;
+        return NULL;
 
     if (type == TEXT_XML) {
-       ap_rprintf(r, "<Dump><Balancers>");
+        ap_rprintf(r, "<Dump><Balancers>");
     }
 
     id = apr_palloc(r->pool, sizeof(int) * size);
@@ -1443,42 +1487,36 @@ static char * process_dump(request_rec *r, int *errtype)
             continue;
 
         switch (type) {
-            case TEXT_XML:
-            {
-                ap_rprintf(r, "<Balancer id=\"%d\" name=\"%.*s\">\
-                                <StickySession>\
-                                    <Enabled>%d</Enabled>\
-                                    <Cookie>%.*s</Cookie>\
-                                    <Path>%.*s</Path>\
-                                    <Remove>%d</Remove>\
-                                    <Force>%d</Force>\
-                                </StickySession>\
-                                <Timeout>%d</Timeout>\
-                                <MaxAttempts>%d</MaxAttempts>\
-                                </Balancer>",
-                           id[i], (int) sizeof(ou->balancer), ou->balancer, ou->StickySession,
-                           (int) sizeof(ou->StickySessionCookie), ou->StickySessionCookie, (int) sizeof(ou->StickySessionPath), ou->StickySessionPath,
-                           ou->StickySessionRemove, ou->StickySessionForce,
-                           (int) apr_time_sec(ou->Timeout),
-                           ou->Maxattempts);
-                           break;
-            }
-            case TEXT_PLAIN:
-            default: {
-
-                ap_rprintf(r, "balancer: [%d] Name: %.*s Sticky: %d [%.*s]/[%.*s] remove: %d force: %d Timeout: %d maxAttempts: %d\n",
-                           id[i], (int) sizeof(ou->balancer), ou->balancer, ou->StickySession,
-                           (int) sizeof(ou->StickySessionCookie), ou->StickySessionCookie, (int) sizeof(ou->StickySessionPath), ou->StickySessionPath,
-                           ou->StickySessionRemove, ou->StickySessionForce,
-                           (int) apr_time_sec(ou->Timeout),
-                           ou->Maxattempts);
-                break;
-            }
-
+        case TEXT_XML:
+            ap_rprintf(r, "<Balancer id=\"%d\" name=\"%.*s\">\
+                           <StickySession>\
+                               <Enabled>%d</Enabled>\
+                               <Cookie>%.*s</Cookie>\
+                               <Path>%.*s</Path>\
+                               <Remove>%d</Remove>\
+                               <Force>%d</Force>\
+                           </StickySession>\
+                           <Timeout>%d</Timeout>\
+                           <MaxAttempts>%d</MaxAttempts>\
+                           </Balancer>",
+                       id[i], (int)sizeof(ou->balancer), ou->balancer, ou->StickySession,
+                       (int)sizeof(ou->StickySessionCookie), ou->StickySessionCookie,
+                       (int)sizeof(ou->StickySessionPath), ou->StickySessionPath, ou->StickySessionRemove,
+                       ou->StickySessionForce, (int)apr_time_sec(ou->Timeout), ou->Maxattempts);
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r,
+                       "balancer: [%d] Name: %.*s Sticky: %d [%.*s]/[%.*s] remove: %d force: %d Timeout: %d maxAttempts: %d\n",
+                       id[i], (int)sizeof(ou->balancer), ou->balancer, ou->StickySession,
+                       (int)sizeof(ou->StickySessionCookie), ou->StickySessionCookie,
+                       (int)sizeof(ou->StickySessionPath), ou->StickySessionPath, ou->StickySessionRemove,
+                       ou->StickySessionForce, (int)apr_time_sec(ou->Timeout), ou->Maxattempts);
+            break;
         }
     }
     if (type == TEXT_XML) {
-       ap_rprintf(r, "</Balancers>");
+        ap_rprintf(r, "</Balancers>");
     }
 
     size = loc_get_max_size_node();
@@ -1486,62 +1524,51 @@ static char * process_dump(request_rec *r, int *errtype)
     size = get_ids_used_node(nodestatsmem, id);
 
     if (type == TEXT_XML) {
-       ap_rprintf(r, "<Nodes>");
+        ap_rprintf(r, "<Nodes>");
     }
     for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
 
-        switch(type) {
-            case TEXT_XML:
-            {
-                ap_rprintf(r, "<Node id=\"%d\">\
-                                    <Balancer>%.*s</Balancer>\
-                                    <JVMRoute>%.*s</JVMRoute>\
-                                    <LBGroup>%.*s</LBGroup>\
-                                    <Host>%.*s</Host>\
-                                    <Port>%.*s</Port>\
-                                    <Type>%.*s</Type>\
-                                    <FlushPackets>%d</FlushPackets>\
-                                    <FlushWait>%d</FlushWait>\
-                                    <Ping>%d</Ping>\
-                                    <Smax>%d</Smax>\
-                                    <Ttl>%d</Ttl>\
-                                    <Timeout>%d</Timeout>\
-                                </Node>",
-                            ou->mess.id,
-                           (int) sizeof(ou->mess.balancer), ou->mess.balancer,
-                           (int) sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
-                           (int) sizeof(ou->mess.Domain), ou->mess.Domain,
-                           (int) sizeof(ou->mess.Host), ou->mess.Host,
-                           (int) sizeof(ou->mess.Port), ou->mess.Port,
-                           (int) sizeof(ou->mess.Type), ou->mess.Type,
-                           ou->mess.flushpackets, ou->mess.flushwait/1000, (int) apr_time_sec(ou->mess.ping), ou->mess.smax,
-                           (int) apr_time_sec(ou->mess.ttl), (int) apr_time_sec(ou->mess.timeout));
+        switch (type) {
+        case TEXT_XML:
+            ap_rprintf(r, "<Node id=\"%d\">\
+                               <Balancer>%.*s</Balancer>\
+                               <JVMRoute>%.*s</JVMRoute>\
+                               <LBGroup>%.*s</LBGroup>\
+                               <Host>%.*s</Host>\
+                               <Port>%.*s</Port>\
+                               <Type>%.*s</Type>\
+                               <FlushPackets>%d</FlushPackets>\
+                               <FlushWait>%d</FlushWait>\
+                               <Ping>%d</Ping>\
+                               <Smax>%d</Smax>\
+                               <Ttl>%d</Ttl>\
+                               <Timeout>%d</Timeout>\
+                           </Node>",
+                       ou->mess.id, (int)sizeof(ou->mess.balancer), ou->mess.balancer, (int)sizeof(ou->mess.JVMRoute),
+                       ou->mess.JVMRoute, (int)sizeof(ou->mess.Domain), ou->mess.Domain, (int)sizeof(ou->mess.Host),
+                       ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port, (int)sizeof(ou->mess.Type),
+                       ou->mess.Type, ou->mess.flushpackets, ou->mess.flushwait / 1000, (int)apr_time_sec(ou->mess.ping),
+                       ou->mess.smax, (int)apr_time_sec(ou->mess.ttl), (int)apr_time_sec(ou->mess.timeout));
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, "node: [%d:%d],Balancer: %.*s,JVMRoute: %.*s,LBGroup: [%.*s],Host: %.*s,Port: %.*s,\
+                           Type: %.*s,flushpackets: %d,flushwait: %d,ping: %d,smax: %d,ttl: %d,timeout: %d\n",
+                       id[i], ou->mess.id, (int)sizeof(ou->mess.balancer), ou->mess.balancer,
+                       (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute, (int)sizeof(ou->mess.Domain),
+                       ou->mess.Domain, (int)sizeof(ou->mess.Host), ou->mess.Host, (int)sizeof(ou->mess.Port),
+                       ou->mess.Port, (int)sizeof(ou->mess.Type), ou->mess.Type, ou->mess.flushpackets,
+                       ou->mess.flushwait / 1000, (int)apr_time_sec(ou->mess.ping), ou->mess.smax,
+                       (int)apr_time_sec(ou->mess.ttl), (int)apr_time_sec(ou->mess.timeout));
                 break;
-            }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, "node: [%d:%d],Balancer: %.*s,JVMRoute: %.*s,LBGroup: [%.*s],Host: %.*s,Port: %.*s,Type: %.*s,flushpackets: %d,flushwait: %d,ping: %d,smax: %d,ttl: %d,timeout: %d\n",
-                           id[i], ou->mess.id,
-                           (int) sizeof(ou->mess.balancer), ou->mess.balancer,
-                           (int) sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
-                           (int) sizeof(ou->mess.Domain), ou->mess.Domain,
-                           (int) sizeof(ou->mess.Host), ou->mess.Host,
-                           (int) sizeof(ou->mess.Port), ou->mess.Port,
-                           (int) sizeof(ou->mess.Type), ou->mess.Type,
-                           ou->mess.flushpackets, ou->mess.flushwait/1000, (int) apr_time_sec(ou->mess.ping), ou->mess.smax,
-                           (int) apr_time_sec(ou->mess.ttl), (int) apr_time_sec(ou->mess.timeout));
-
-                break;
-            }
         }
     }
 
     if (type == TEXT_XML) {
-       ap_rprintf(r, "</Nodes><Hosts>");
+        ap_rprintf(r, "</Nodes><Hosts>");
     }
 
     size = loc_get_max_size_host();
@@ -1553,27 +1580,21 @@ static char * process_dump(request_rec *r, int *errtype)
             continue;
 
         switch (type) {
-            case TEXT_XML:
-            {
-                ap_rprintf(r, "<Host id=\"%d\" alias=\"%.*s\">\
-                                    <Vhost>%d</Vhost>\
-                                    <Node>%d</Node>\
-                                </Host>",
-                 id[i], (int) sizeof(ou->host), ou->host, ou->vhost,ou->node);
-                 break;
-            }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, "host: %d [%.*s] vhost: %d node: %d\n", id[i], (int) sizeof(ou->host), ou->host, ou->vhost,
-                          ou->node);
-                break;
-
-            }
+        case TEXT_XML:
+            ap_rprintf(r, "<Host id=\"%d\" alias=\"%.*s\">\
+                               <Vhost>%d</Vhost>\
+                               <Node>%d</Node>\
+                           </Host>", id[i], (int)sizeof(ou->host), ou->host, ou->vhost, ou->node);
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, "host: %d [%.*s] vhost: %d node: %d\n", id[i], (int)sizeof(ou->host), ou->host, ou->vhost,
+                       ou->node);
+            break;
         }
     }
     if (type == TEXT_XML) {
-       ap_rprintf(r, "</Hosts><Contexts>");
+        ap_rprintf(r, "</Hosts><Contexts>");
     }
 
     size = loc_get_max_size_context();
@@ -1584,64 +1605,60 @@ static char * process_dump(request_rec *r, int *errtype)
         if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
 
-        switch ( type ) {
-            case TEXT_XML:
-            {
-                char *status;
-                status = "REMOVED";
-                switch (ou->status) {
-                    case ENABLED:
-                        status = "ENABLED";
-                        break;
-                    case DISABLED:
-                        status = "DISABLED";
-                        break;
-                    case STOPPED:
-                        status = "STOPPED";
-                        break;
-                }
-                ap_rprintf(r, "<Context id=\"%d\" path=\"%.*s\">\
-                                <Vhost>%d</Vhost>\
-                                <Node>%d</Node>\
-                                <Status id=\"%d\">%s</Status>\
-                               </Context>",
-                    id[i], (int) sizeof(ou->context), ou->context, ou->vhost, ou->node,ou->status, status);        
-                    break;
-                }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, "context: %d [%.*s] vhost: %d node: %d status: %d\n", id[i],
-                           (int) sizeof(ou->context), ou->context,
-                           ou->vhost, ou->node,
-                           ou->status);
+        switch (type) {
+        case TEXT_XML:
+            char *status;
+            status = "REMOVED";
+            switch (ou->status) {
+            case ENABLED:
+                status = "ENABLED";
+                break;
+            case DISABLED:
+                status = "DISABLED";
+                break;
+            case STOPPED:
+                status = "STOPPED";
                 break;
             }
+            ap_rprintf(r, "<Context id=\"%d\" path=\"%.*s\">\
+                            <Vhost>%d</Vhost>\
+                            <Node>%d</Node>\
+                            <Status id=\"%d\">%s</Status>\
+                           </Context>", id[i], (int)sizeof(ou->context), ou->context, ou->vhost, ou->node, ou->status,
+                       status);
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, "context: %d [%.*s] vhost: %d node: %d status: %d\n", id[i], (int)sizeof(ou->context),
+                       ou->context, ou->vhost, ou->node, ou->status);
+            break;
         }
     }
 
     if (type == TEXT_XML) {
-       ap_rprintf(r, "</Contexts></Dump>");
+        ap_rprintf(r, "</Contexts></Dump>");
     }
     return NULL;
 }
+
 /*
  * Process a INFO command.
  * Statics informations ;-)
  */
-static char * process_info(request_rec *r, int *errtype)
+static char *process_info(request_rec *r, int *errtype)
 {
     int size, i;
     int *id;
     unsigned char type;
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
-    (void) errtype;
+    (void)errtype;
 
-    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL )  {
+    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
         ap_set_content_type(r, "text/xml");
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
-    } else {
+    }
+    else {
         ap_set_content_type(r, "text/plain");
         type = TEXT_PLAIN;
     }
@@ -1653,7 +1670,7 @@ static char * process_info(request_rec *r, int *errtype)
     size = get_ids_used_node(nodestatsmem, id);
 
     if (type == TEXT_XML) {
-       ap_rprintf(r, "<Info><Nodes>");
+        ap_rprintf(r, "<Info><Nodes>");
     }
 
     for (i = 0; i < size; i++) {
@@ -1664,101 +1681,81 @@ static char * process_info(request_rec *r, int *errtype)
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
 
-        switch ( type ) {
-            case TEXT_XML:
-            {
-                ap_rprintf(r, "<Node id=\"%d\" name=\"%.*s\">\
-                    <Balancer>%.*s</Balancer>\
-                    <LBGroup>%.*s</LBGroup>\
-                    <Host>%.*s</Host>\
-                    <Port>%.*s</Port>\
-                    <Type>%.*s</Type>", 
+        switch (type) {
+        case TEXT_XML:
+            ap_rprintf(r, "<Node id=\"%d\" name=\"%.*s\">\
+                           <Balancer>%.*s</Balancer>\
+                           <LBGroup>%.*s</LBGroup>\
+                           <Host>%.*s</Host>\
+                           <Port>%.*s</Port>\
+                           <Type>%.*s</Type>",
+                       id[i], (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute, (int)sizeof(ou->mess.balancer),
+                       ou->mess.balancer, (int)sizeof(ou->mess.Domain), ou->mess.Domain, (int)sizeof(ou->mess.Host),
+                       ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port, (int)sizeof(ou->mess.Type),
+                       ou->mess.Type);
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, "Node: [%d],Name: %.*s,Balancer: %.*s,LBGroup: %.*s,Host: %.*s,Port: %.*s,Type: %.*s",
                        id[i],
-                       (int) sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
-                       (int) sizeof(ou->mess.balancer), ou->mess.balancer,
-                       (int) sizeof(ou->mess.Domain), ou->mess.Domain,
-                       (int) sizeof(ou->mess.Host), ou->mess.Host,
-                       (int) sizeof(ou->mess.Port), ou->mess.Port,
-                       (int) sizeof(ou->mess.Type), ou->mess.Type);
-                break;
-            }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, "Node: [%d],Name: %.*s,Balancer: %.*s,LBGroup: %.*s,Host: %.*s,Port: %.*s,Type: %.*s",
-                           id[i],
-                           (int) sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
-                           (int) sizeof(ou->mess.balancer), ou->mess.balancer,
-                           (int) sizeof(ou->mess.Domain), ou->mess.Domain,
-                           (int) sizeof(ou->mess.Host), ou->mess.Host,
-                           (int) sizeof(ou->mess.Port), ou->mess.Port,
-                           (int) sizeof(ou->mess.Type), ou->mess.Type);
-                break;
-            }
+                       (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
+                       (int)sizeof(ou->mess.balancer), ou->mess.balancer,
+                       (int)sizeof(ou->mess.Domain), ou->mess.Domain,
+                       (int)sizeof(ou->mess.Host), ou->mess.Host,
+                       (int)sizeof(ou->mess.Port), ou->mess.Port, (int)sizeof(ou->mess.Type), ou->mess.Type);
+            break;
         }
 
         flushpackets = "Off";
         switch (ou->mess.flushpackets) {
-            case flush_on:
-                flushpackets = "On";
-                break;
-            case flush_auto:
-                flushpackets = "Auto";
+        case flush_on:
+            flushpackets = "On";
+            break;
+        case flush_auto:
+            flushpackets = "Auto";
         }
 
-        switch ( type ) {
-            case TEXT_XML:
-            {
-                ap_rprintf(r, "<Flushpackets>%s</Flushpackets>\
-                              <Flushwait>%d</Flushwait>\
-                              <Ping>%d</Ping>\
-                              <Smax>%d</Smax>\
-                              <Ttl>%d</Ttl>",
-                           flushpackets, ou->mess.flushwait/1000,
-                           (int) apr_time_sec(ou->mess.ping),
-                           ou->mess.smax,
-                           (int) apr_time_sec(ou->mess.ttl));
-                break;
-            }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, ",Flushpackets: %s,Flushwait: %d,Ping: %d,Smax: %d,Ttl: %d",
-                           flushpackets, ou->mess.flushwait/1000,
-                           (int) apr_time_sec(ou->mess.ping),
-                           ou->mess.smax,
-                           (int) apr_time_sec(ou->mess.ttl));
-                break;
-            }
+        switch (type) {
+        case TEXT_XML:
+            ap_rprintf(r, "<Flushpackets>%s</Flushpackets>\
+                           <Flushwait>%d</Flushwait>\
+                           <Ping>%d</Ping>\
+                           <Smax>%d</Smax>\
+                           <Ttl>%d</Ttl>",
+                       flushpackets, ou->mess.flushwait / 1000, (int)apr_time_sec(ou->mess.ping), ou->mess.smax,
+                       (int)apr_time_sec(ou->mess.ttl));
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, ",Flushpackets: %s,Flushwait: %d,Ping: %d,Smax: %d,Ttl: %d",
+                       flushpackets, ou->mess.flushwait / 1000,
+                       (int)apr_time_sec(ou->mess.ping), ou->mess.smax, (int)apr_time_sec(ou->mess.ttl));
+            break;
         }
 
-        pptr = (char *) ou;
+        pptr = (char *)ou;
         pptr = pptr + ou->offset;
-        proxystat  = (proxy_worker_shared *) pptr;
+        proxystat = (proxy_worker_shared *) pptr;
 
-        switch ( type ) {
-            case TEXT_XML:  
-            {
-                ap_rprintf(r, "<Elected>%d</Elected>\
-                                <Read>%d</Read>\
-                                <Transfered>%d</Transfered>\
-                                <Connected>%d</Connected>\
-                                <Load>%d</Load>\
-                                </Node>",
-                           (int) proxystat->elected, (int) proxystat->read, (int) proxystat->transferred,
-                           (int) proxystat->busy, proxystat->lbfactor);
-                break;
-            }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, ",Elected: %d,Read: %d,Transfered: %d,Connected: %d,Load: %d\n",
-                           (int) proxystat->elected, (int) proxystat->read, (int) proxystat->transferred,
-                           (int) proxystat->busy, proxystat->lbfactor);
-                break;
-            }
+        switch (type) {
+        case TEXT_XML:
+            ap_rprintf(r, "<Elected>%d</Elected>\
+                           <Read>%d</Read>\
+                           <Transfered>%d</Transfered>\
+                           <Connected>%d</Connected>\
+                           <Load>%d</Load>\
+                           </Node>",
+                       (int)proxystat->elected, (int)proxystat->read, (int)proxystat->transferred,
+                       (int)proxystat->busy, proxystat->lbfactor);
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, ",Elected: %d,Read: %d,Transfered: %d,Connected: %d,Load: %d\n",
+                       (int)proxystat->elected, (int)proxystat->read, (int)proxystat->transferred,
+                       (int)proxystat->busy, proxystat->lbfactor);
+            break;
         }
-        
+
     }
 
     if (type == TEXT_XML) {
@@ -1777,23 +1774,18 @@ static char * process_info(request_rec *r, int *errtype)
         if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
 
-        switch ( type ) {
-            case TEXT_XML:
-            {
-                ap_rprintf(r, "<Vhost id=\"%d\" alias=\"%.*s\">\
-                                <Node id=\"%d\"/>\
-                                </Vhost>\
-                ",
-                    ou->vhost, (int ) sizeof(ou->host), ou->host, ou->node);
-                break;
-            }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, "Vhost: [%d:%d:%d], Alias: %.*s\n",
-                           ou->node, ou->vhost, id[i], (int ) sizeof(ou->host), ou->host);
-                break;
-            }
+        switch (type) {
+        case TEXT_XML:
+            ap_rprintf(r, "<Vhost id=\"%d\" alias=\"%.*s\">\
+                           <Node id=\"%d\"/>\
+                           </Vhost>",
+                       ou->vhost, (int)sizeof(ou->host), ou->host, ou->node);
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, "Vhost: [%d:%d:%d], Alias: %.*s\n",
+                       ou->node, ou->vhost, id[i], (int)sizeof(ou->host), ou->host);
+            break;
         }
     }
 
@@ -1817,38 +1809,32 @@ static char * process_info(request_rec *r, int *errtype)
             continue;
         status = "REMOVED";
         switch (ou->status) {
-            case ENABLED:
-                status = "ENABLED";
-                break;
-            case DISABLED:
-                status = "DISABLED";
-                break;
-            case STOPPED:
-                status = "STOPPED";
-                break;
+        case ENABLED:
+            status = "ENABLED";
+            break;
+        case DISABLED:
+            status = "DISABLED";
+            break;
+        case STOPPED:
+            status = "STOPPED";
+            break;
         }
 
-        switch ( type ) {
-            case TEXT_XML:
-            {
-                ap_rprintf(r, "<Context id=\"%d\">\
-                                 <Status id=\"%d\">%s</Status>\
-                                 <Context>%.*s</Context>\
-                                 <Node id=\"%d\"/>\
-                                 <Vhost id=\"%d\"/>\
-                                </Context>",
-                                id[i], ou->status, status, (int) sizeof(ou->context), ou->context, ou->node, ou->vhost);
-                break;
-            }
-            case TEXT_PLAIN:
-            default:
-            {
-                ap_rprintf(r, "Context: [%d:%d:%d], Context: %.*s, Status: %s\n",
-                           ou->node, ou->vhost, id[i],
-                           (int) sizeof(ou->context), ou->context,
-                           status);
-                break;
-            }
+        switch (type) {
+        case TEXT_XML:
+            ap_rprintf(r, "<Context id=\"%d\">\
+                           <Status id=\"%d\">%s</Status>\
+                           <Context>%.*s</Context>\
+                           <Node id=\"%d\"/>\
+                           <Vhost id=\"%d\"/>\
+                           </Context>",
+                       id[i], ou->status, status, (int)sizeof(ou->context), ou->context, ou->node, ou->vhost);
+            break;
+        case TEXT_PLAIN:
+        default:
+            ap_rprintf(r, "Context: [%d:%d:%d], Context: %.*s, Status: %s\n",
+                       ou->node, ou->vhost, id[i], (int)sizeof(ou->context), ou->context, status);
+            break;
         }
     }
 
@@ -1859,16 +1845,16 @@ static char * process_info(request_rec *r, int *errtype)
 }
 
 /* Process a *-APP command that applies to the node NOTE: the node is locked */
-static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo_t *node)
+static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo_t *node)
 {
     /* for read the hosts */
-    int i,j;
+    int i, j;
     int size = loc_get_max_size_host();
     int *id;
-    (void) errtype;
+    (void)errtype;
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                "process_node_cmd %d processing node: %d", status, node->mess.id);
+                 "process_node_cmd %d processing node: %d", status, node->mess.id);
     if (size == 0)
         return NULL;
     id = apr_palloc(r->pool, sizeof(int) * size);
@@ -1890,14 +1876,15 @@ static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinf
             contextinfo_t *context;
             if (get_context(contextstatsmem, &context, idcontext[j]) != APR_SUCCESS)
                 continue;
-            if (context->vhost == ou->vhost &&
-                context->node == ou->node) {
+            if (context->vhost == ou->vhost && context->node == ou->node) {
                 /* Process the context */
                 if (status != REMOVE) {
                     context->status = status;
                     insert_update_context(contextstatsmem, context);
-                } else
+                }
+                else {
                     remove_context(contextstatsmem, context);
+                }
 
             }
         }
@@ -1917,7 +1904,7 @@ static char * process_node_cmd(request_rec *r, int status, int *errtype, nodeinf
 }
 
 /* Process an enable/disable/stop/remove application message */
-static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errtype, int global, int fromnode)
+static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errtype, int global, int fromnode)
 {
     nodeinfo_t nodeinfo;
     nodeinfo_t *node;
@@ -1988,7 +1975,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     if (node == NULL) {
         loc_unlock_nodes();
         if (status == REMOVE)
-            return NULL; /* Already done */
+            return NULL;        /* Already done */
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODERD, nodeinfo.mess.JVMRoute);
     }
@@ -1997,7 +1984,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
     if (node->mess.remove) {
         loc_unlock_nodes();
         if (status == REMOVE)
-            return NULL; /* Already done */
+            return NULL;        /* Already done */
         else {
             /* Act has if the node wasn't found */
             *errtype = TYPEMEM;
@@ -2021,13 +2008,14 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         unsigned j = 1;
         strncpy(hostinfo.host, vhost->host, HOSTALIASZ);
         while (*s != ',' && j < sizeof(hostinfo.host)) {
-           j++;
-           s++;
+            j++;
+            s++;
         }
         *s = '\0';
-    } else
+    }
+    else {
         hostinfo.host[0] = '\0';
-
+    }
     hostinfo.id = 0;
     host = read_host(hoststatsmem, &hostinfo);
     if (host == NULL) {
@@ -2035,7 +2023,8 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         if (status == REMOVE) {
             loc_unlock_nodes();
             return NULL;
-        } else {
+        }
+        else {
             int vid, size, *id;
             /* Find the first available vhost id */
             vid = 0;
@@ -2047,10 +2036,10 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
                 if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
                     continue;
 
-            if (ou->node == node->mess.id && ou->vhost > vid)
-                vid = ou->vhost;
+                if (ou->node == node->mess.id && ou->vhost > vid)
+                    vid = ou->vhost;
             }
-            vid++; /* Use next one. */
+            vid++;              /* Use next one. */
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: adding vhost: %d node: %d",
                          vid, node->mess.id);
 
@@ -2065,7 +2054,8 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             if (vhost->host != NULL) {
                 strncpy(hostinfo.host, vhost->host, sizeof(hostinfo.host));
                 hostinfo.host[sizeof(hostinfo.host) - 1] = '\0';
-            } else {
+            }
+            else {
                 hostinfo.host[0] = '\0';
             }
             host = read_host(hoststatsmem, &hostinfo);
@@ -2093,9 +2083,9 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
                     continue;
                 if (strcmp(hisnode->mess.balancer, node->mess.balancer)) {
                     /* the same context would be on 2 different balancer */
-                    ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, r->server,
                                  "ENABLE: context %s is in balancer %s and %s", vhost->context,
-                                  node->mess.balancer, hisnode->mess.balancer);
+                                 node->mess.balancer, hisnode->mess.balancer);
                 }
             }
         }
@@ -2117,8 +2107,7 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             contextinfo_t *ou;
             if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
                 continue;
-            if (ou->vhost == host->vhost &&
-                ou->node == node->mess.id)
+            if (ou->vhost == host->vhost && ou->node == node->mess.id)
                 break;
         }
         if (i == size) {
@@ -2126,15 +2115,16 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
             int *id = apr_palloc(r->pool, sizeof(int) * size);
             size = get_ids_used_host(hoststatsmem, id);
             for (i = 0; i < size; i++) {
-                 hostinfo_t *ou;
+                hostinfo_t *ou;
 
-                 if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
-                     continue;
-                 if (ou->vhost == host->vhost && ou->node == node->mess.id)
-                     remove_host(hoststatsmem, ou);
+                if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
+                    continue;
+                if (ou->vhost == host->vhost && ou->node == node->mess.id)
+                    remove_host(hoststatsmem, ou);
             }
         }
-    } else if (status == STOPPED) {
+    }
+    else if (status == STOPPED) {
         /* insert_update_contexts in fact makes that vhost->context corresponds only to the first context... */
         contextinfo_t in;
         contextinfo_t *ou;
@@ -2144,36 +2134,41 @@ static char * process_appl_cmd(request_rec *r, char **ptr, int status, int *errt
         in.node = node->mess.id;
         ou = read_context(contextstatsmem, &in);
         if (ou != NULL) {
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP nbrequests %d", ou->nbrequests);
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP nbrequests %d",
+                         ou->nbrequests);
             if (fromnode) {
                 ap_set_content_type(r, "text/plain");
                 ap_rprintf(r, "Type=STOP-APP-RSP&JvmRoute=%.*s&Alias=%.*s&Context=%.*s&Requests=%d",
-                           (int) sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute,
-                           (int) sizeof(vhost->host), vhost->host,
-                           (int) sizeof(vhost->context), vhost->context,
-                           ou->nbrequests);
+                           (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute,
+                           (int)sizeof(vhost->host), vhost->host,
+                           (int)sizeof(vhost->context), vhost->context, ou->nbrequests);
                 ap_rprintf(r, "\n");
             }
-        } else {
+        }
+        else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP can't read_context");
         }
-    } 
+    }
     loc_unlock_nodes();
     return NULL;
 }
-static char * process_enable(request_rec *r, char **ptr, int *errtype, int global)
+
+static char *process_enable(request_rec *r, char **ptr, int *errtype, int global)
 {
     return process_appl_cmd(r, ptr, ENABLED, errtype, global, 0);
 }
-static char * process_disable(request_rec *r, char **ptr, int *errtype, int global)
+
+static char *process_disable(request_rec *r, char **ptr, int *errtype, int global)
 {
     return process_appl_cmd(r, ptr, DISABLED, errtype, global, 0);
 }
-static char * process_stop(request_rec *r, char **ptr, int *errtype, int global, int fromnode)
+
+static char *process_stop(request_rec *r, char **ptr, int *errtype, int global, int fromnode)
 {
     return process_appl_cmd(r, ptr, STOPPED, errtype, global, fromnode);
 }
-static char * process_remove(request_rec *r, char **ptr, int *errtype, int global)
+
+static char *process_remove(request_rec *r, char **ptr, int *errtype, int global)
 {
     return process_appl_cmd(r, ptr, REMOVE, errtype, global, 0);
 }
@@ -2184,29 +2179,25 @@ static char * process_remove(request_rec *r, char **ptr, int *errtype, int globa
  */
 static int isnode_up(request_rec *r, int id, int Load)
 {
-    if (balancerhandler != NULL) {
-        return (balancerhandler->proxy_node_isup(r, id, Load));
-    }
-    return OK;
+    return balancerhandler != NULL ? balancerhandler->proxy_node_isup(r, id, Load) : OK;
 }
+
 /*
  * Call the ping/pong logic using scheme://host:port
  * Do a ping/png request to the node and set the load factor.
  */
 static int ishost_up(request_rec *r, char *scheme, char *host, char *port)
 {
-    if (balancerhandler != NULL) {
-        return (balancerhandler->proxy_host_isup(r, scheme, host, port));
-    }
-    return OK;
+    return balancerhandler != NULL ? balancerhandler->proxy_host_isup(r, scheme, host, port) : OK;
 }
+
 /*
  * Process the STATUS command
  * Load -1 : Broken
  * Load 0  : Standby.
  * Load 1-100 : Load factor.
  */
-static char * process_status(request_rec *r, char **ptr, int *errtype)
+static char *process_status(request_rec *r, char **ptr, int *errtype)
 {
     int Load = -1;
     nodeinfo_t nodeinfo;
@@ -2221,7 +2212,7 @@ static char * process_status(request_rec *r, char **ptr, int *errtype)
                 *errtype = TYPESYNTAX;
                 return SROUBIG;
             }
-            strcpy(nodeinfo.mess.JVMRoute, ptr[i+1]);
+            strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = 0;
         }
         else if (strcasecmp(ptr[i], "Load") == 0) {
@@ -2249,13 +2240,13 @@ static char * process_status(request_rec *r, char **ptr, int *errtype)
      * and update the worker status and load factor acccording to the test result.
      */
     ap_set_content_type(r, "text/plain");
-    ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", (int) sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
+    ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
     if (isnode_up(r, node->mess.id, Load) != OK)
         ap_rprintf(r, "&State=NOTOK");
     else
         ap_rprintf(r, "&State=OK");
-    ap_rprintf(r, "&id=%d", (int) ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "&id=%d", (int)ap_scoreboard_image->global->restart_time);
 
     ap_rprintf(r, "\n");
     return NULL;
@@ -2264,22 +2255,26 @@ static char * process_status(request_rec *r, char **ptr, int *errtype)
 /*
  * Process the VERSION command
  */
-static char * process_version(request_rec *r, char **ptr, int *errtype)
+static char *process_version(request_rec *r, char **ptr, int *errtype)
 {
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
-    (void) ptr; (void) errtype;
+    (void)ptr;
+    (void)errtype;
 
-    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL )  {
+    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
         ap_set_content_type(r, "text/xml");
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
-        ap_rprintf(r, "<version><release>%s</release><protocol>%s</protocol></version>", MOD_CLUSTER_EXPOSED_VERSION, VERSION_PROTOCOL);
-    } else {
+        ap_rprintf(r, "<version><release>%s</release><protocol>%s</protocol></version>", MOD_CLUSTER_EXPOSED_VERSION,
+                   VERSION_PROTOCOL);
+    }
+    else {
         ap_set_content_type(r, "text/plain");
         ap_rprintf(r, "release: %s, protocol: %s", MOD_CLUSTER_EXPOSED_VERSION, VERSION_PROTOCOL);
     }
     ap_rprintf(r, "\n");
     return NULL;
 }
+
 /*
  * Process the PING command
  * With a JVMRoute does a cping/cpong in the node.
@@ -2287,7 +2282,7 @@ static char * process_version(request_rec *r, char **ptr, int *errtype)
  * NOTE: It is hard to cping/cpong a host + port but CONFIG + PING + REMOVE_APP *
  *       would do the same.
  */
-static char * process_ping(request_rec *r, char **ptr, int *errtype)
+static char *process_ping(request_rec *r, char **ptr, int *errtype)
 {
     nodeinfo_t nodeinfo;
     nodeinfo_t *node;
@@ -2309,7 +2304,7 @@ static char * process_ping(request_rec *r, char **ptr, int *errtype)
             nodeinfo.mess.id = 0;
         }
         else if (strcasecmp(ptr[i], "Scheme") == 0)
-            scheme = apr_pstrdup(r->pool, ptr[i+1]);
+            scheme = apr_pstrdup(r->pool, ptr[i + 1]);
         else if (strcasecmp(ptr[i], "Host") == 0)
             host = apr_pstrdup(r->pool, ptr[i + 1]);
         else if (strcasecmp(ptr[i], "Port") == 0)
@@ -2326,7 +2321,8 @@ static char * process_ping(request_rec *r, char **ptr, int *errtype)
         if (scheme == NULL && host == NULL && port == NULL) {
             ap_set_content_type(r, "text/plain");
             ap_rprintf(r, "Type=PING-RSP&State=OK");
-        }  else {
+        }
+        else {
             if (scheme == NULL || host == NULL || port == NULL) {
                 *errtype = TYPESYNTAX;
                 return apr_psprintf(r->pool, SMISFLD);
@@ -2339,7 +2335,8 @@ static char * process_ping(request_rec *r, char **ptr, int *errtype)
             else
                 ap_rprintf(r, "&State=OK");
         }
-    } else {
+    }
+    else {
 
         /* Read the node */
         loc_lock_nodes();
@@ -2355,14 +2352,14 @@ static char * process_ping(request_rec *r, char **ptr, int *errtype)
          * and update the worker status and load factor acccording to the test result.
          */
         ap_set_content_type(r, "text/plain");
-        ap_rprintf(r, "Type=PING-RSP&JVMRoute=%.*s", (int) sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
+        ap_rprintf(r, "Type=PING-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
         if (isnode_up(r, node->mess.id, -2) != OK)
             ap_rprintf(r, "&State=NOTOK");
         else
             ap_rprintf(r, "&State=OK");
     }
-    ap_rprintf(r, "&id=%d", (int) ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "&id=%d", (int)ap_scoreboard_image->global->restart_time);
 
     ap_rprintf(r, "\n");
     return NULL;
@@ -2403,7 +2400,7 @@ static int mod_manager_hex2c(const char *x)
         i += ch - ('a' - 10);
     }
     return i;
-#else /*APR_CHARSET_EBCDIC*/
+#else /*APR_CHARSET_EBCDIC */
     /*
      * we assume that the hex value refers to an ASCII character
      * so convert to EBCDIC so that it makes sense locally;
@@ -2426,7 +2423,7 @@ static int mod_manager_hex2c(const char *x)
     else {
         return 0;
     }
-#endif /*APR_CHARSET_EBCDIC*/
+#endif /*APR_CHARSET_EBCDIC */
 }
 
 /* Processing of decoded characters */
@@ -2437,13 +2434,13 @@ static apr_status_t decodeenc(char **ptr)
     val = 0;
     while (NULL != ptr[val]) {
         if (ptr[val][0] == '\0') {
-            return APR_SUCCESS;   /* special case for no characters */
+            return APR_SUCCESS; /* special case for no characters */
         }
         for (i = 0, j = 0; ptr[val][i] != '\0'; i++, j++) {
             /* decode it if not already done */
             ch = ptr[val][i];
             if (ch == '%' && apr_isxdigit(ptr[val][i + 1]) && apr_isxdigit(ptr[val][i + 2])) {
-                ch = (char) mod_manager_hex2c(&(ptr[val][i + 1]));
+                ch = (char)mod_manager_hex2c(&(ptr[val][i + 1]));
                 i += 2;
             }
 
@@ -2499,6 +2496,7 @@ static int check_method(request_rec *r)
         ours = 1;
     return ours;
 }
+
 /*
  * This routine is called before mod_proxy translate name.
  * This allows us to make decisions before mod_proxy
@@ -2507,14 +2505,12 @@ static int check_method(request_rec *r)
 static int manager_trans(request_rec *r)
 {
     int ours = 0;
-    core_dir_config *conf =
-        (core_dir_config *)ap_get_module_config(r->per_dir_config,
-                                                &core_module);
+    core_dir_config *conf = (core_dir_config *) ap_get_module_config(r->per_dir_config,
+                                                                     &core_module);
     mod_manager_config *mconf = ap_get_module_config(r->server->module_config,
                                                      &manager_module);
- 
-    if (conf && conf->handler && r->method_number == M_GET &&
-        strcmp(conf->handler, "mod_cluster-manager") == 0) {
+
+    if (conf && conf->handler && r->method_number == M_GET && strcmp(conf->handler, "mod_cluster-manager") == 0) {
         r->handler = "mod_cluster-manager";
         r->filename = apr_pstrdup(r->pool, r->uri);
         return OK;
@@ -2522,24 +2518,24 @@ static int manager_trans(request_rec *r)
     if (r->method_number != M_INVALID)
         return DECLINED;
     if (!mconf->enable_mcpm_receive)
-        return DECLINED; /* Not allowed to receive MCMP */
+        return DECLINED;        /* Not allowed to receive MCMP */
 
-    ours = check_method(r); 
+    ours = check_method(r);
     if (ours) {
         int i;
         /* The method one of ours */
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                    "manager_trans %s (%s)", r->method, r->uri);
-        r->handler = "mod-cluster"; /* that hack doesn't work on httpd-2.4.x */
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_trans %s (%s)", r->method, r->uri);
+        r->handler = "mod-cluster";     /* that hack doesn't work on httpd-2.4.x */
         i = strlen(r->uri);
         if (strcmp(r->uri, "*") == 0 || (i >= 2 && r->uri[i - 1] == '*' && r->uri[i - 2] == '/')) {
             r->filename = apr_pstrdup(r->pool, NODE_COMMAND);
-        } else {
+        }
+        else {
             r->filename = apr_pstrdup(r->pool, r->uri);
         }
         return OK;
     }
-    
+
     return DECLINED;
 }
 
@@ -2552,21 +2548,20 @@ static int manager_map_to_storage(request_rec *r)
     if (r->method_number != M_INVALID)
         return DECLINED;
     if (!mconf->enable_mcpm_receive)
-        return DECLINED; /* Not allowed to receive MCMP */
+        return DECLINED;        /* Not allowed to receive MCMP */
 
-    ours = check_method(r); 
+    ours = check_method(r);
     if (ours) {
         /* The method one of ours */
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                    "manager_map_to_storage %s (%s)", r->method, r->uri);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_map_to_storage %s (%s)", r->method, r->uri);
         return OK;
     }
-    
+
     return DECLINED;
 }
 
 /* Create the commands that are possible on the context */
-static char*context_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
+static char *context_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
 {
     char context[CONTEXTSZ + 1];
     char *raw;
@@ -2574,6 +2569,7 @@ static char*context_string(request_rec *r, contextinfo_t *ou, char *Alias, char 
     raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
     return raw;
 }
+
 static char *balancer_nonce_string(request_rec *r)
 {
     char *ret = "";
@@ -2583,6 +2579,7 @@ static char *balancer_nonce_string(request_rec *r)
         ret = apr_psprintf(r->pool, "nonce=%s&", balancer_nonce);
     return ret;
 }
+
 static void context_command_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
 {
     if (ou->status == DISABLED) {
@@ -2604,12 +2601,14 @@ static void context_command_string(request_rec *r, contextinfo_t *ou, char *Alia
                    r->uri, balancer_nonce_string(r), context_string(r, ou, Alias, JVMRoute));
     }
 }
+
 /* Create the commands that are possible on the node */
-static char*node_string(request_rec *r, char *JVMRoute)
+static char *node_string(request_rec *r, char *JVMRoute)
 {
     char *raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, NULL);
     return raw;
 }
+
 static void node_command_string(request_rec *r, char *JVMRoute)
 {
     ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=NODE&%s\">Enable Contexts</a> ",
@@ -2619,6 +2618,7 @@ static void node_command_string(request_rec *r, char *JVMRoute)
     ap_rprintf(r, "<a href=\"%s?%sCmd=STOP-APP&Range=NODE&%s\">Stop Contexts</a>",
                r->uri, balancer_nonce_string(r), node_string(r, JVMRoute));
 }
+
 static void domain_command_string(request_rec *r, char *Domain)
 {
     ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=DOMAIN&Domain=%s\">Enable Nodes</a> ",
@@ -2632,7 +2632,8 @@ static void domain_command_string(request_rec *r, char *Domain)
 /*
  * Process the parameters and display corresponding informations.
  */
-static void manager_info_contexts(request_rec *r, int reduce_display, int allow_cmd, int node, int host, char *Alias, char *JVMRoute)
+static void manager_info_contexts(request_rec *r, int reduce_display, int allow_cmd, int node, int host, char *Alias,
+                                  char *JVMRoute)
 {
     int size, i;
     int *id;
@@ -2654,23 +2655,24 @@ static void manager_info_contexts(request_rec *r, int reduce_display, int allow_
             continue;
         status = "REMOVED";
         switch (ou->status) {
-            case ENABLED:
-                status = "ENABLED";
-                break;
-            case DISABLED:
-                status = "DISABLED";
-                break;
-            case STOPPED:
-                status = "STOPPED";
-                break;
+        case ENABLED:
+            status = "ENABLED";
+            break;
+        case DISABLED:
+            status = "DISABLED";
+            break;
+        case STOPPED:
+            status = "STOPPED";
+            break;
         }
-        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int) sizeof(ou->context), ou->context, status, ou->nbrequests);
+        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int)sizeof(ou->context), ou->context, status, ou->nbrequests);
         if (allow_cmd)
             context_command_string(r, ou, Alias, JVMRoute);
         ap_rprintf(r, "\n");
     }
     ap_rprintf(r, "</pre>");
 }
+
 static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd, int node, char *JVMRoute)
 {
     int size, i, j;
@@ -2706,14 +2708,14 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
                 ap_rprintf(r, "<pre>");
             }
             vhost = ou->vhost;
-        
+
             if (reduce_display)
-                ap_rprintf(r, "%.*s ", (int) sizeof(ou->host), ou->host);
+                ap_rprintf(r, "%.*s ", (int)sizeof(ou->host), ou->host);
             else
-                ap_rprintf(r, "%.*s\n", (int) sizeof(ou->host), ou->host);
-            
+                ap_rprintf(r, "%.*s\n", (int)sizeof(ou->host), ou->host);
+
             /* Go ahead and check for any other later alias entries for this vhost and print them now */
-            for (j = i+1; j < size; j++) {
+            for (j = i + 1; j < size; j++) {
                 hostinfo_t *pv;
                 if (get_host(hoststatsmem, &pv, id[j]) != APR_SUCCESS)
                     continue;
@@ -2728,9 +2730,9 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
                 if (i == j - 1)
                     i++;
                 if (reduce_display)
-                    ap_rprintf(r, "%.*s ", (int) sizeof(pv->host), pv->host);
+                    ap_rprintf(r, "%.*s ", (int)sizeof(pv->host), pv->host);
                 else
-                    ap_rprintf(r, "%.*s\n", (int) sizeof(pv->host), pv->host);
+                    ap_rprintf(r, "%.*s\n", (int)sizeof(pv->host), pv->host);
             }
         }
     }
@@ -2738,6 +2740,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
         ap_rprintf(r, "</pre>");
 
 }
+
 static void manager_sessionid(request_rec *r)
 {
     int size, i;
@@ -2757,7 +2760,8 @@ static void manager_sessionid(request_rec *r)
         sessionidinfo_t *ou;
         if (get_sessionid(sessionidstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
-        ap_rprintf(r, "id: %.*s route: %.*s\n", (int) sizeof(ou->sessionid), ou->sessionid, (int) sizeof(ou->JVMRoute), ou->JVMRoute);
+        ap_rprintf(r, "id: %.*s route: %.*s\n", (int)sizeof(ou->sessionid), ou->sessionid, (int)sizeof(ou->JVMRoute),
+                   ou->JVMRoute);
     }
     ap_rprintf(r, "</pre>");
 
@@ -2786,8 +2790,7 @@ static void manager_domain(request_rec *r, int reduce_display)
             continue;
         ap_rprintf(r, "dom: %.*s route: %.*s balancer: %.*s\n",
                    sizeof(ou->domain), ou->domain,
-                   sizeof(ou->JVMRoute), ou->JVMRoute,
-                   sizeof(ou->balancer), ou->balancer);
+                   sizeof(ou->JVMRoute), ou->JVMRoute, sizeof(ou->balancer), ou->balancer);
     }
     ap_rprintf(r, "</pre>");
 
@@ -2811,29 +2814,31 @@ static int count_sessionid(request_rec *r, char *route)
         if (get_sessionid(sessionidstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
         if (strcmp(route, ou->JVMRoute) == 0)
-            count++; 
+            count++;
     }
     return count;
 }
+
 static void process_error(request_rec *r, char *errstring, int errtype)
 {
     r->status_line = apr_psprintf(r->pool, "ERROR");
     apr_table_setn(r->err_headers_out, "Version", VERSION_PROTOCOL);
     switch (errtype) {
-      case TYPESYNTAX:
-         apr_table_setn(r->err_headers_out, "Type", "SYNTAX");
-         break;
-      case TYPEMEM:
-         apr_table_setn(r->err_headers_out, "Type", "MEM");
-         break;
-      default:
-         apr_table_setn(r->err_headers_out, "Type", "GENERAL");
-         break;
+    case TYPESYNTAX:
+        apr_table_setn(r->err_headers_out, "Type", "SYNTAX");
+        break;
+    case TYPEMEM:
+        apr_table_setn(r->err_headers_out, "Type", "MEM");
+        break;
+    default:
+        apr_table_setn(r->err_headers_out, "Type", "GENERAL");
+        break;
     }
     apr_table_setn(r->err_headers_out, "Mess", errstring);
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r->server,
-            "manager_handler %s error: %s", r->method, errstring);
+    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, r->server,
+                 "manager_handler %s error: %s", r->method, errstring);
 }
+
 static void sort_nodes(nodeinfo_t *nodes, int nbnodes)
 {
     int i;
@@ -2843,7 +2848,7 @@ static void sort_nodes(nodeinfo_t *nodes, int nbnodes)
     while (changed) {
         changed = 0;
         for (i = 0; i < nbnodes - 1; i++) {
-            if (strcmp(nodes[i].mess.Domain, nodes[i + 1].mess.Domain)> 0) {
+            if (strcmp(nodes[i].mess.Domain, nodes[i + 1].mess.Domain) > 0) {
                 nodeinfo_t node;
                 node = nodes[i + 1];
                 nodes[i + 1] = nodes[i];
@@ -2853,6 +2858,7 @@ static void sort_nodes(nodeinfo_t *nodes, int nbnodes)
         }
     }
 }
+
 static char *process_domain(request_rec *r, char **ptr, int *errtype, const char *cmd, const char *domain)
 {
     int size, i;
@@ -2865,12 +2871,12 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_node(nodestatsmem, id);
 
-    for (pos = 0; ptr[pos] != NULL && ptr[pos + 1] != NULL; pos = pos + 2) ;
+    for (pos = 0; ptr[pos] != NULL && ptr[pos + 1] != NULL; pos = pos + 2);
 
     ptr[pos] = apr_pstrdup(r->pool, "JVMRoute");
     ptr[pos + 2] = NULL;
     ptr[pos + 3] = NULL;
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, r->server, "process_domain");
+    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, r->server, "process_domain");
     for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
@@ -2890,6 +2896,7 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
     }
     return errstring;
 }
+
 /* XXX: move to mod_proxy_cluster as a provider ? */
 static void printproxy_stat(request_rec *r, int reduce_display, proxy_worker_shared *proxystat)
 {
@@ -2902,10 +2909,11 @@ static void printproxy_stat(request_rec *r, int reduce_display, proxy_worker_sha
         ap_rprintf(r, " %s ", status);
     else
         ap_rprintf(r, ",Status: %s,Elected: %d,Read: %d,Transferred: %d,Connected: %d,Load: %d",
-               status,
-               (int) proxystat->elected, (int) proxystat->read, (int) proxystat->transferred,
-               (int) proxystat->busy, proxystat->lbfactor);
+                   status,
+                   (int)proxystat->elected, (int)proxystat->read, (int)proxystat->transferred,
+                   (int)proxystat->busy, proxystat->lbfactor);
 }
+
 /* Display module information */
 static void modules_info(request_rec *r)
 {
@@ -2922,9 +2930,9 @@ static void modules_info(request_rec *r)
     ap_rputs("Protocol supported: ", r);
     if (ap_find_linked_module("mod_proxy_http.c") != NULL)
         ap_rputs("http ", r);
-    if (ap_find_linked_module("mod_proxy_ajp.c") != NULL) 
+    if (ap_find_linked_module("mod_proxy_ajp.c") != NULL)
         ap_rputs("AJP ", r);
-    if (ap_find_linked_module("mod_ssl.c") != NULL) 
+    if (ap_find_linked_module("mod_ssl.c") != NULL)
         ap_rputs("https", r);
     ap_rputs("<br/>", r);
 
@@ -2934,6 +2942,7 @@ static void modules_info(request_rec *r)
         ap_rputs("mod_advertise.c: not loaded<br/>", r);
 
 }
+
 /* Process INFO message and mod_cluster_manager pages generation */
 static int manager_info(request_rec *r)
 {
@@ -2961,7 +2970,7 @@ static int manager_info(request_rec *r)
                  * Special case: contexts contain path information
                  */
                 if ((access_status = ap_unescape_url(val)) != OK)
-                    if (strcmp(args, "Context") || (access_status !=  HTTP_NOT_FOUND))
+                    if (strcmp(args, "Context") || (access_status != HTTP_NOT_FOUND))
                         return access_status;
                 apr_table_setn(params, args, val);
                 args = tok;
@@ -2969,16 +2978,14 @@ static int manager_info(request_rec *r)
             else
                 return HTTP_BAD_REQUEST;
         }
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                "manager_info request:%s", r->args);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_info request:%s", r->args);
     }
 
     /*
      * Check that the supplied nonce matches this server's nonce;
      * otherwise ignore all parameters, to prevent a CSRF attack.
      */
-    if (mconf->nonce && ((name = apr_table_get(params, "nonce")) == NULL
-        || strcmp(balancer_nonce, name) != 0)) {
+    if (mconf->nonce && ((name = apr_table_get(params, "nonce")) == NULL || strcmp(balancer_nonce, name) != 0)) {
         apr_table_clear(params);
     }
 
@@ -2991,7 +2998,7 @@ static int manager_info(request_rec *r)
         /* Process the Refresh parameter */
         if (val) {
             long t = atol(val);
-            apr_table_set(r->headers_out, "Refresh", apr_ltoa(r->pool,t < 1 ? 10 : t));
+            apr_table_set(r->headers_out, "Refresh", apr_ltoa(r->pool, t < 1 ? 10 : t));
         }
         /* Process INFO and DUMP */
         if (cmd != NULL) {
@@ -3000,7 +3007,8 @@ static int manager_info(request_rec *r)
                 errstring = process_dump(r, &errtype);
                 if (!errstring)
                     return OK;
-            } else if (strcasecmp(cmd, "INFO") == 0) {
+            }
+            else if (strcasecmp(cmd, "INFO") == 0) {
                 errstring = process_info(r, &errtype);
                 if (!errstring)
                     return OK;
@@ -3018,9 +3026,9 @@ static int manager_info(request_rec *r)
             const apr_array_header_t *arr = apr_table_elts(params);
             const apr_table_entry_t *elts = (const apr_table_entry_t *)arr->elts;
 
-            if (strcasecmp(typ,"NODE") == 0)
+            if (strcasecmp(typ, "NODE") == 0)
                 global = RANGENODE;
-            else if (strcasecmp(typ,"DOMAIN") == 0)
+            else if (strcasecmp(typ, "DOMAIN") == 0)
                 global = RANGEDOMAIN;
 
             if (global == RANGEDOMAIN)
@@ -3033,7 +3041,7 @@ static int manager_info(request_rec *r)
             }
             ptr[arr->nelts * 2] = NULL;
             ptr[arr->nelts * 2 + 1] = NULL;
-             
+
             if (global == RANGEDOMAIN)
                 errstring = process_domain(r, ptr, &errtype, cmd, domain);
             else if (strcasecmp(cmd, "ENABLE-APP") == 0)
@@ -3053,15 +3061,13 @@ static int manager_info(request_rec *r)
             }
         }
     }
-    
+
     ap_set_content_type(r, "text/html; charset=ISO-8859-1");
-    ap_rputs(DOCTYPE_HTML_3_2
-             "<html><head>\n<title>Mod_cluster Status</title>\n</head><body>\n",
-             r);
+    ap_rputs(DOCTYPE_HTML_3_2 "<html><head>\n<title>Mod_cluster Status</title>\n</head><body>\n", r);
     ap_rvputs(r, "<h1>", MOD_CLUSTER_EXPOSED_VERSION, "</h1>", NULL);
 
     if (errstring) {
-        ap_rvputs(r, "<h1> Command failed: ", errstring , "</h1>\n", NULL);
+        ap_rvputs(r, "<h1> Command failed: ", errstring, "</h1>\n", NULL);
         ap_rvputs(r, " <a href=\"", r->uri, "\">Continue</a>\n", NULL);
         ap_rputs("</body></html>\n", r);
         return OK;
@@ -3069,24 +3075,20 @@ static int manager_info(request_rec *r)
 
     /* Advertise information */
     if (mconf->allow_display) {
-        ap_rputs("start of \"httpd.conf\" configuration<br/>", r); 
+        ap_rputs("start of \"httpd.conf\" configuration<br/>", r);
         modules_info(r);
         if (advertise_info != NULL)
             advertise_info(r);
         ap_rputs("end of \"httpd.conf\" configuration<br/><br/>", r);
     }
 
-    ap_rvputs(r, "<a href=\"", r->uri, "?", balancer_nonce_string(r),
-                 "refresh=10",
-                 "\">Auto Refresh</a>", NULL);
+    ap_rvputs(r, "<a href=\"", r->uri, "?", balancer_nonce_string(r), "refresh=10", "\">Auto Refresh</a>", NULL);
 
     ap_rvputs(r, " <a href=\"", r->uri, "?", balancer_nonce_string(r),
-                 "Cmd=DUMP&Range=ALL",
-                 "\">show DUMP output</a>", NULL);
+              "Cmd=DUMP&Range=ALL", "\">show DUMP output</a>", NULL);
 
     ap_rvputs(r, " <a href=\"", r->uri, "?", balancer_nonce_string(r),
-                 "Cmd=INFO&Range=ALL",
-                 "\">show INFO output</a>", NULL);
+              "Cmd=INFO&Range=ALL", "\">show INFO output</a>", NULL);
 
     ap_rputs("\n", r);
 
@@ -3105,7 +3107,7 @@ static int manager_info(request_rec *r)
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
-        memcpy(&nodes[nbnodes],ou, sizeof(nodeinfo_t));
+        memcpy(&nodes[nbnodes], ou, sizeof(nodeinfo_t));
         nbnodes++;
     }
     sort_nodes(nodes, nbnodes);
@@ -3114,13 +3116,13 @@ static int manager_info(request_rec *r)
     for (i = 0; i < size; i++) {
         char *flushpackets;
         nodeinfo_t *ou = &nodes[i];
-        char *pptr = (char *) ou;
+        char *pptr = (char *)ou;
 
         if (strcmp(domain, ou->mess.Domain) != 0) {
             if (mconf->reduce_display)
-                ap_rprintf(r, "<br/><br/>LBGroup %.*s: ", (int) sizeof(ou->mess.Domain), ou->mess.Domain);
+                ap_rprintf(r, "<br/><br/>LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
             else
-                ap_rprintf(r, "<h1> LBGroup %.*s: ", (int) sizeof(ou->mess.Domain), ou->mess.Domain);
+                ap_rprintf(r, "<h1> LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
             domain = ou->mess.Domain;
             if (mconf->allow_cmd)
                 domain_command_string(r, domain);
@@ -3128,14 +3130,12 @@ static int manager_info(request_rec *r)
                 ap_rprintf(r, "</h1>\n");
         }
         if (mconf->reduce_display)
-            ap_rprintf(r, "<br/><br/>Node %.*s ",
-                   (int) sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute);
-        else 
+            ap_rprintf(r, "<br/><br/>Node %.*s ", (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute);
+        else
             ap_rprintf(r, "<h1> Node %.*s (%.*s://%.*s:%.*s): </h1>\n",
-                   (int) sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
-                   (int) sizeof(ou->mess.Type), ou->mess.Type,
-                   (int) sizeof(ou->mess.Host), ou->mess.Host,
-                   (int) sizeof(ou->mess.Port), ou->mess.Port);
+                       (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
+                       (int)sizeof(ou->mess.Type), ou->mess.Type,
+                       (int)sizeof(ou->mess.Host), ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port);
         pptr = pptr + ou->offset;
         if (mconf->reduce_display) {
             /* XXX: The logic depend on the proxy and should use shared memory directly */
@@ -3147,35 +3147,33 @@ static int manager_info(request_rec *r)
 
         if (!mconf->reduce_display) {
             ap_rprintf(r, "<br/>\n");
-            ap_rprintf(r, "Balancer: %.*s,LBGroup: %.*s", (int) sizeof(ou->mess.balancer), ou->mess.balancer,
-                   (int) sizeof(ou->mess.Domain), ou->mess.Domain);
+            ap_rprintf(r, "Balancer: %.*s,LBGroup: %.*s", (int)sizeof(ou->mess.balancer), ou->mess.balancer,
+                       (int)sizeof(ou->mess.Domain), ou->mess.Domain);
 
             flushpackets = "Off";
             switch (ou->mess.flushpackets) {
-                case flush_on:
-                    flushpackets = "On";
-                    break;
-                case flush_auto:
-                    flushpackets = "Auto";
+            case flush_on:
+                flushpackets = "On";
+                break;
+            case flush_auto:
+                flushpackets = "Auto";
             }
             ap_rprintf(r, ",Flushpackets: %s,Flushwait: %d,Ping: %d,Smax: %d,Ttl: %d",
-                   flushpackets, ou->mess.flushwait,
-                   (int) ou->mess.ping, ou->mess.smax, (int) ou->mess.ttl);
+                       flushpackets, ou->mess.flushwait, (int)ou->mess.ping, ou->mess.smax, (int)ou->mess.ttl);
         }
 
         if (mconf->reduce_display)
             ap_rprintf(r, "<br/>\n");
-        else {
+        else
             printproxy_stat(r, mconf->reduce_display, (proxy_worker_shared *) pptr);
-        }
 
         if (sizesessionid) {
-            ap_rprintf(r, ",Num sessions: %d",  count_sessionid(r, ou->mess.JVMRoute));
+            ap_rprintf(r, ",Num sessions: %d", count_sessionid(r, ou->mess.JVMRoute));
         }
         ap_rprintf(r, "\n");
 
         /* Process the Vhosts */
-        manager_info_hosts(r, mconf->reduce_display, mconf->allow_cmd, ou->mess.id, ou->mess.JVMRoute); 
+        manager_info_hosts(r, mconf->reduce_display, mconf->allow_cmd, ou->mess.id, ou->mess.JVMRoute);
     }
     /* Display the sessions */
     if (sizesessionid)
@@ -3183,7 +3181,6 @@ static int manager_info(request_rec *r)
 #if HAVE_CLUSTER_EX_DEBUG
     manager_domain(r, mconf->reduce_display);
 #endif
-
 
     ap_rputs("</body></html>\n", r);
     return OK;
@@ -3203,41 +3200,44 @@ static int manager_handler(request_rec *r)
     char **ptr;
     void *sconf = r->server->module_config;
     mod_manager_config *mconf;
-  
+
     if (strcmp(r->handler, "mod_cluster-manager") == 0) {
         /* Display the nodes information */
         if (r->method_number != M_GET)
             return DECLINED;
-        return(manager_info(r));
+        return manager_info(r);
     }
 
     mconf = ap_get_module_config(sconf, &manager_module);
     if (!mconf->enable_mcpm_receive)
-        return DECLINED; /* Not allowed to receive MCMP */
+        return DECLINED;        /* Not allowed to receive MCMP */
 
     ours = check_method(r);
     if (!ours)
         return DECLINED;
 
     /* Use a buffer to read the message */
-    if (mconf->maxmesssize)
-       maxbufsiz = mconf->maxmesssize;
-    else {
-       /* we calculate it */
-       maxbufsiz = 9 + JVMROUTESZ;
-       maxbufsiz = maxbufsiz + (mconf->maxhost * HOSTALIASZ) + 7;
-       maxbufsiz = maxbufsiz + (mconf->maxcontext * CONTEXTSZ) + 8;
+    if (mconf->maxmesssize) {
+        maxbufsiz = mconf->maxmesssize;
     }
-    if (maxbufsiz< MAXMESSSIZE)
-       maxbufsiz = MAXMESSSIZE;
+    else {
+        /* we calculate it */
+        maxbufsiz = 9 + JVMROUTESZ;
+        maxbufsiz = maxbufsiz + (mconf->maxhost * HOSTALIASZ) + 7;
+        maxbufsiz = maxbufsiz + (mconf->maxcontext * CONTEXTSZ) + 8;
+    }
+    if (maxbufsiz < MAXMESSSIZE)
+        maxbufsiz = MAXMESSSIZE;
     buff = apr_pcalloc(r->pool, maxbufsiz);
     input_brigade = apr_brigade_create(r->pool, r->connection->bucket_alloc);
     len = maxbufsiz;
-    while ((status = ap_get_brigade(r->input_filters, input_brigade, AP_MODE_READBYTES, APR_BLOCK_READ, len)) == APR_SUCCESS) {
+    while ((status =
+            ap_get_brigade(r->input_filters, input_brigade, AP_MODE_READBYTES, APR_BLOCK_READ, len)) == APR_SUCCESS) {
         apr_brigade_flatten(input_brigade, buff + bufsiz, &len);
         apr_brigade_cleanup(input_brigade);
         bufsiz += len;
-        if (bufsiz >= maxbufsiz || len == 0) break;
+        if (bufsiz >= maxbufsiz || len == 0)
+            break;
         len = maxbufsiz - bufsiz;
     }
 
@@ -3247,15 +3247,14 @@ static int manager_handler(request_rec *r)
         apr_table_setn(r->err_headers_out, "Version", VERSION_PROTOCOL);
         apr_table_setn(r->err_headers_out, "Type", "SYNTAX");
         apr_table_setn(r->err_headers_out, "Mess", errstring);
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                "manager_handler %s error: %s", r->method, errstring);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_handler %s error: %s", r->method, errstring);
         return 500;
     }
     buff[bufsiz] = '\0';
 
     /* XXX: Size limit it? */
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                "manager_handler %s (%s) processing: \"%s\"", r->method, r->filename, buff);
+                 "manager_handler %s (%s) processing: \"%s\"", r->method, r->filename, buff);
 
     ptr = process_buff(r, buff);
     if (ptr == NULL) {
@@ -3298,17 +3297,16 @@ static int manager_handler(request_rec *r)
         return 500;
     }
 
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                "manager_handler %s  OK", r->method);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_handler %s  OK", r->method);
 
     ap_rflush(r);
-    return (OK);
+    return OK;
 }
 
 /*
  *  Attach to the shared memory when the child is created.
  */
-static void  manager_child_init(apr_pool_t *p, server_rec *s)
+static void manager_child_init(apr_pool_t *p, server_rec *s)
 {
     char *node;
     char *context;
@@ -3319,20 +3317,18 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
 
     if (storage == NULL) {
         /* that happens when doing a gracefull restart for example after additing/changing the storage provider */
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "Fatal storage provider not initialized");
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "Fatal storage provider not initialized");
         return;
     }
 
     if (apr_global_mutex_child_init(&node_mutex, apr_global_mutex_lockfile(node_mutex), p) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(02994)
-                     "Failed to reopen mutex %s in child",
-                     node_mutex_type);
+                     "Failed to reopen mutex %s in child", node_mutex_type);
         exit(EXIT_FAILURE);
     }
     if (apr_global_mutex_child_init(&context_mutex, apr_global_mutex_lockfile(context_mutex), p) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(02994)
-                     "Failed to reopen mutex %s in child",
-                     context_mutex_type);
+                     "Failed to reopen mutex %s in child", context_mutex_type);
         exit(EXIT_FAILURE);
     }
 
@@ -3344,7 +3340,8 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
         host = apr_pstrcat(p, mconf->basefilename, "/manager.host", NULL);
         balancer = apr_pstrcat(p, mconf->basefilename, "/manager.balancer", NULL);
         sessionid = apr_pstrcat(p, mconf->basefilename, "/manager.sessionid", NULL);
-    } else {
+    }
+    else {
         node = ap_server_root_relative(p, "logs/manager.node");
         context = ap_server_root_relative(p, "logs/manager.context");
         host = ap_server_root_relative(p, "logs/manager.host");
@@ -3354,31 +3351,31 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
 
     nodestatsmem = get_mem_node(node, &mconf->maxnode, p, storage);
     if (nodestatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "get_mem_node %s failed", node);
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_node %s failed", node);
         return;
     }
     if (get_last_mem_error(nodestatsmem) != APR_SUCCESS) {
         char buf[120];
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "get_mem_node %s failed: %s",
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_node %s failed: %s",
                      node, apr_strerror(get_last_mem_error(nodestatsmem), buf, sizeof(buf)));
         return;
     }
 
     contextstatsmem = get_mem_context(context, &mconf->maxcontext, p, storage);
     if (contextstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "get_mem_context failed");
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_context failed");
         return;
     }
 
     hoststatsmem = get_mem_host(host, &mconf->maxhost, p, storage);
     if (hoststatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "get_mem_host failed");
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_host failed");
         return;
     }
 
     balancerstatsmem = get_mem_balancer(balancer, &mconf->maxhost, p, storage);
     if (balancerstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "get_mem_balancer failed");
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_balancer failed");
         return;
     }
 
@@ -3386,7 +3383,7 @@ static void  manager_child_init(apr_pool_t *p, server_rec *s)
         /*  Try to get sessionid stuff only if required */
         sessionidstatsmem = get_mem_sessionid(sessionid, &mconf->maxsessionid, p, storage);
         if (sessionidstatsmem == NULL) {
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_EMERG, 0, s, "get_mem_sessionid failed");
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_sessionid failed");
             return;
         }
     }
@@ -3399,7 +3396,7 @@ static const char *cmd_manager_maxcontext(cmd_parms *cmd, void *mconfig, const c
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
@@ -3407,11 +3404,12 @@ static const char *cmd_manager_maxcontext(cmd_parms *cmd, void *mconfig, const c
     mconf->maxcontext = atoi(word);
     return NULL;
 }
+
 static const char *cmd_manager_maxnode(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
@@ -3419,11 +3417,12 @@ static const char *cmd_manager_maxnode(cmd_parms *cmd, void *mconfig, const char
     mconf->maxnode = atoi(word);
     return NULL;
 }
+
 static const char *cmd_manager_maxhost(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
@@ -3431,11 +3430,12 @@ static const char *cmd_manager_maxhost(cmd_parms *cmd, void *mconfig, const char
     mconf->maxhost = atoi(word);
     return NULL;
 }
+
 static const char *cmd_manager_maxsessionid(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
@@ -3443,137 +3443,141 @@ static const char *cmd_manager_maxsessionid(cmd_parms *cmd, void *mconfig, const
     mconf->maxsessionid = atoi(word);
     return NULL;
 }
+
 static const char *cmd_manager_memmanagerfile(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
     }
     mconf->basefilename = ap_server_root_relative(cmd->pool, word);
     if (apr_dir_make_recursive(mconf->basefilename, APR_UREAD | APR_UWRITE | APR_UEXECUTE, cmd->pool) != APR_SUCCESS)
-        return  "Can't create directory corresponding to MemManagerFile";
+        return "Can't create directory corresponding to MemManagerFile";
     return NULL;
 }
+
 static const char *cmd_manager_balancername(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     mconf->balancername = apr_pstrdup(cmd->pool, word);
     normalize_balancer_name(mconf->balancername, cmd->server);
-    (void) mconfig; /* unused variable */
+    (void)mconfig;              /* unused variable */
     return NULL;
 }
-static const char*cmd_manager_pers(cmd_parms *cmd, void *dummy, const char *arg)
+
+static const char *cmd_manager_pers(cmd_parms *cmd, void *dummy, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) dummy;
+    (void)dummy;
 
     if (err != NULL) {
         return err;
     }
     if (strcasecmp(arg, "Off") == 0)
-       mconf->persistent = 0;
+        mconf->persistent = 0;
     else if (strcasecmp(arg, "On") == 0)
-       mconf->persistent = CREPER_SLOTMEM;
-    else {
-       return "PersistSlots must be one of: "
-              "off | on";
-    }
+        mconf->persistent = CREPER_SLOTMEM;
+    else
+        return "PersistSlots must be one of: " "off | on";
+
     return NULL;
 }
 
-static const char*cmd_manager_nonce(cmd_parms *cmd, void *dummy, const char *arg)
+static const char *cmd_manager_nonce(cmd_parms *cmd, void *dummy, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
-    (void) dummy;
+    (void)dummy;
 
     if (strcasecmp(arg, "Off") == 0)
-       mconf->nonce = 0;
+        mconf->nonce = 0;
     else if (strcasecmp(arg, "On") == 0)
-       mconf->nonce = -1;
-    else {
-       return "CheckNonce must be one of: "
-              "off | on";
-    }
+        mconf->nonce = -1;
+    else
+        return "CheckNonce must be one of: " "off | on";
+
     return NULL;
 }
-static const char*cmd_manager_allow_display(cmd_parms *cmd, void *dummy, const char *arg)
+
+static const char *cmd_manager_allow_display(cmd_parms *cmd, void *dummy, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
-    (void) dummy;
+    (void)dummy;
 
     if (strcasecmp(arg, "Off") == 0)
-       mconf->allow_display = 0;
+        mconf->allow_display = 0;
     else if (strcasecmp(arg, "On") == 0)
-       mconf->allow_display = -1;
-    else {
-       return "AllowDisplay must be one of: "
-              "off | on";
-    }
+        mconf->allow_display = -1;
+    else
+        return "AllowDisplay must be one of: " "off | on";
+
     return NULL;
 }
-static const char*cmd_manager_allow_cmd(cmd_parms *cmd, void *dummy, const char *arg)
+
+static const char *cmd_manager_allow_cmd(cmd_parms *cmd, void *dummy, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
-    (void) dummy;
+    (void)dummy;
 
     if (strcasecmp(arg, "Off") == 0)
-       mconf->allow_cmd = 0;
+        mconf->allow_cmd = 0;
     else if (strcasecmp(arg, "On") == 0)
-       mconf->allow_cmd = -1;
-    else {
-       return "AllowCmd must be one of: "
-              "off | on";
-    }
+        mconf->allow_cmd = -1;
+    else
+        return "AllowCmd must be one of: " "off | on";
+
     return NULL;
 }
-static const char*cmd_manager_reduce_display(cmd_parms *cmd, void *dummy, const char *arg)
+
+static const char *cmd_manager_reduce_display(cmd_parms *cmd, void *dummy, const char *arg)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
-    (void) dummy;
+    (void)dummy;
 
     if (strcasecmp(arg, "Off") == 0)
-       mconf->reduce_display = 0;
+        mconf->reduce_display = 0;
     else if (strcasecmp(arg, "On") == 0)
-       mconf->reduce_display = -1;
-    else {
-       return "ReduceDisplay must be one of: "
-              "off | on";
-    }
+        mconf->reduce_display = -1;
+    else
+        return "ReduceDisplay must be one of: " "off | on";
+
     return NULL;
 }
-static const char*cmd_manager_maxmesssize(cmd_parms *cmd, void *mconfig, const char *word)
+
+static const char *cmd_manager_maxmesssize(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
     }
     mconf->maxmesssize = atoi(word);
     if (mconf->maxmesssize < MAXMESSSIZE)
-       return "MaxMCMPMessSize must bigger than 1024";
+        return "MaxMCMPMessSize must bigger than 1024";
     return NULL;
 }
-static const char*cmd_manager_enable_mcpm_receive(cmd_parms *cmd, void *dummy)
+
+static const char *cmd_manager_enable_mcpm_receive(cmd_parms *cmd, void *dummy)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
-    (void) dummy;
+    (void)dummy;
 
     if (!cmd->server->is_virtual)
         return "EnableMCPMReceive must be in a VirtualHost";
     mconf->enable_mcpm_receive = -1;
     return NULL;
 }
-static const char*cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
+
+static const char *cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) dummy;
+    (void)dummy;
 
     if (err != NULL) {
         return err;
@@ -3581,16 +3585,17 @@ static const char*cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
     if (ap_find_linked_module("mod_proxy_wstunnel.c") != NULL) {
         mconf->enable_ws_tunnel = -1;
         return NULL;
-    } else {
+    }
+    else {
         return "EnableWsTunnel requires mod_proxy_wstunnel.c";
     }
 }
 
-static const char*cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
@@ -3603,38 +3608,39 @@ static const char*cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, c
         mconf->enable_ws_tunnel = -1;
         mconf->ws_upgrade_header = apr_pstrdup(cmd->pool, word);
         return NULL;
-    } else {
+    }
+    else {
         return "WSUpgradeHeader requires mod_proxy_wstunnel.c";
     }
 }
 
-static const char*cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
     }
     if (strlen(word) >= PROXY_WORKER_MAX_SECRET_SIZE) {
-        return apr_psprintf(cmd->temp_pool, "AJP secret length must be < %d characters",
-                            PROXY_WORKER_MAX_SECRET_SIZE);
+        return apr_psprintf(cmd->temp_pool, "AJP secret length must be < %d characters", PROXY_WORKER_MAX_SECRET_SIZE);
     }
     if (ap_find_linked_module("mod_proxy_ajp.c") != NULL) {
         mconf->ajp_secret = apr_pstrdup(cmd->pool, word);
         return NULL;
-    } else {
+    }
+    else {
         return "AJPsecret requires mod_proxy_ajp.c";
     }
 }
 
-static const char*cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, const char *word)
+static const char *cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, const char *word)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
     long s = atol(word);
-    (void) mconfig;
+    (void)mconfig;
 
     if (err != NULL) {
         return err;
@@ -3645,133 +3651,99 @@ static const char*cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, c
     if (ap_find_linked_module("mod_proxy_http.c") != NULL) {
         mconf->response_field_size = (s ? s : HUGE_STRING_LEN);
         return NULL;
-    } else {
+    }
+    else {
         return "ResponseFieldSize requires mod_proxy_http.c";
     }
 }
 
 
-static const command_rec  manager_cmds[] =
-{
-    AP_INIT_TAKE1(
-        "Maxcontext",
-        cmd_manager_maxcontext,
-        NULL,
-        OR_ALL,
-        "Maxcontext - number max context supported by mod_cluster"
-    ),
-    AP_INIT_TAKE1(
-        "Maxnode",
-        cmd_manager_maxnode,
-        NULL,
-        OR_ALL,
-        "Maxnode - number max node supported by mod_cluster"
-    ),
-    AP_INIT_TAKE1(
-        "Maxhost",
-        cmd_manager_maxhost,
-        NULL,
-        OR_ALL,
-        "Maxhost - number max host (Alias in virtual hosts) supported by mod_cluster"
-    ),
-    AP_INIT_TAKE1(
-        "Maxsessionid",
-        cmd_manager_maxsessionid,
-        NULL,
-        OR_ALL,
-        "Maxsessionid - number session (Used to track number of sessions per nodes) supported by mod_cluster"
-    ),
-    AP_INIT_TAKE1(
-        "MemManagerFile",
-        cmd_manager_memmanagerfile,
-        NULL,
-        OR_ALL,
-        "MemManagerFile - base name of the files used to create/attach to shared memory"
-    ),
-    AP_INIT_TAKE1(
-        "ManagerBalancerName",
-        cmd_manager_balancername,
-        NULL,
-        OR_ALL,
-        "ManagerBalancerName - name of a balancer corresponding to the manager"
-    ),
-    AP_INIT_TAKE1(
-        "PersistSlots",
-        cmd_manager_pers,
-        NULL,
-        OR_ALL,
-        "PersistSlots - Persist the slot mem elements on | off (Default: off No persistence)"
-    ),
-    AP_INIT_TAKE1(
-        "CheckNonce",
-        cmd_manager_nonce,
-        NULL,
-        OR_ALL,
-        "CheckNonce - Switch check of nonce when using mod_cluster-manager handler on | off (Default: on Nonce checked)"
-    ),
-    AP_INIT_TAKE1(
-        "AllowDisplay",
-        cmd_manager_allow_display,
-        NULL,
-        OR_ALL,
-        "AllowDisplay - Display additional information in the mod_cluster-manager page on | off (Default: off Only version displayed)"
-    ),
-    AP_INIT_TAKE1(
-        "AllowCmd",
-        cmd_manager_allow_cmd,
-        NULL,
-        OR_ALL,
-        "AllowCmd - Allow commands using mod_cluster-manager URL on | off (Default: on Commmands allowed)"
-    ),
-    AP_INIT_TAKE1(
-        "ReduceDisplay",
-        cmd_manager_reduce_display,
-        NULL,
-        OR_ALL,
-        "ReduceDisplay - Don't contexts in the main mod_cluster-manager page. on | off (Default: off Context displayed)"
-    ),
-    AP_INIT_TAKE1(
-        "MaxMCMPMessSize",
-        cmd_manager_maxmesssize,
-        NULL,
-        OR_ALL,
-        "MaxMCMPMaxMessSize - Maximum size of MCMP messages. (Default: calculated min value: 1024)"
-    ),
-    AP_INIT_NO_ARGS(
-        "EnableMCPMReceive",
-         cmd_manager_enable_mcpm_receive,
-         NULL,
-         OR_ALL,
-         "EnableMCPMReceive - Allow the VirtualHost to receive MCPM."
-    ),
-    AP_INIT_NO_ARGS(
-        "EnableWsTunnel",
-         cmd_manager_enable_ws_tunnel,
-         NULL,
-         OR_ALL,
-         "EnableWsTunnel - Use ws or wss instead http or https when creating nodes (Allow Websockets proxing)."
-    ),
-    AP_INIT_TAKE1(
-        "WSUpgradeHeader",
-         cmd_manager_ws_upgrade_header,
-         NULL,
-         OR_ALL,
-         "WSUpgradeHeader - Accepted upgrade headers, ONE bypass checks, ANY read it from request, other values: header value to check before using the WS tunnel."
-    ),
-    AP_INIT_TAKE1(
-        "AJPSecret",
-         cmd_manager_ajp_secret,
-         NULL,
-         OR_ALL,
-         "AJPSecret - secret for all mod_cluster node, not configued no secret."
-    ),
-    AP_INIT_TAKE1(
-        "ResponseFieldSize",
-        cmd_manager_responsefieldsize,
-        NULL,
-        OR_ALL,
-        "ResponseFieldSize - Adjust the size of the proxy response field buffer."
-    ),
+static const command_rec manager_cmds[] = {
+    AP_INIT_TAKE1("Maxcontext",
+                  cmd_manager_maxcontext,
+                  NULL,
+                  OR_ALL,
+                  "Maxcontext - number max context supported by mod_cluster"),
+    AP_INIT_TAKE1("Maxnode",
+                  cmd_manager_maxnode,
+                  NULL,
+                  OR_ALL,
+                  "Maxnode - number max node supported by mod_cluster"),
+    AP_INIT_TAKE1("Maxhost",
+                  cmd_manager_maxhost,
+                  NULL,
+                  OR_ALL,
+                  "Maxhost - number max host (Alias in virtual hosts) supported by mod_cluster"),
+    AP_INIT_TAKE1("Maxsessionid",
+                  cmd_manager_maxsessionid,
+                  NULL,
+                  OR_ALL,
+                  "Maxsessionid - number session (Used to track number of sessions per nodes) supported by mod_cluster"),
+    AP_INIT_TAKE1("MemManagerFile",
+                  cmd_manager_memmanagerfile,
+                  NULL,
+                  OR_ALL,
+                  "MemManagerFile - base name of the files used to create/attach to shared memory"),
+    AP_INIT_TAKE1("ManagerBalancerName",
+                  cmd_manager_balancername,
+                  NULL,
+                  OR_ALL,
+                  "ManagerBalancerName - name of a balancer corresponding to the manager"),
+    AP_INIT_TAKE1("PersistSlots",
+                  cmd_manager_pers,
+                  NULL,
+                  OR_ALL,
+                  "PersistSlots - Persist the slot mem elements on | off (Default: off No persistence)"),
+    AP_INIT_TAKE1("CheckNonce",
+                  cmd_manager_nonce,
+                  NULL,
+                  OR_ALL,
+                  "CheckNonce - Switch check of nonce when using mod_cluster-manager handler on | off (Default: on Nonce checked)"),
+    AP_INIT_TAKE1("AllowDisplay",
+                  cmd_manager_allow_display,
+                  NULL,
+                  OR_ALL,
+                  "AllowDisplay - Display additional information in the mod_cluster-manager page on | off (Default: off Only version displayed)"),
+    AP_INIT_TAKE1("AllowCmd",
+                  cmd_manager_allow_cmd,
+                  NULL,
+                  OR_ALL,
+                  "AllowCmd - Allow commands using mod_cluster-manager URL on | off (Default: on Commmands allowed)"),
+    AP_INIT_TAKE1("ReduceDisplay",
+                  cmd_manager_reduce_display,
+                  NULL,
+                  OR_ALL,
+                  "ReduceDisplay - Don't contexts in the main mod_cluster-manager page. on | off (Default: off Context displayed)"),
+    AP_INIT_TAKE1("MaxMCMPMessSize",
+                  cmd_manager_maxmesssize,
+                  NULL,
+                  OR_ALL,
+                  "MaxMCMPMaxMessSize - Maximum size of MCMP messages. (Default: calculated min value: 1024)"),
+    AP_INIT_NO_ARGS("EnableMCPMReceive",
+                    cmd_manager_enable_mcpm_receive,
+                    NULL,
+                    OR_ALL,
+                    "EnableMCPMReceive - Allow the VirtualHost to receive MCPM."),
+    AP_INIT_NO_ARGS("EnableWsTunnel",
+                    cmd_manager_enable_ws_tunnel,
+                    NULL,
+                    OR_ALL,
+                    "EnableWsTunnel - Use ws or wss instead http or https when creating nodes (Allow Websockets proxing)."),
+    AP_INIT_TAKE1("WSUpgradeHeader",
+                  cmd_manager_ws_upgrade_header,
+                  NULL,
+                  OR_ALL,
+                  "WSUpgradeHeader - Accepted upgrade headers, ONE bypass checks, ANY read it from request, other values: header value to check before using the WS tunnel."),
+    AP_INIT_TAKE1("AJPSecret",
+                  cmd_manager_ajp_secret,
+                  NULL,
+                  OR_ALL,
+                  "AJPSecret - secret for all mod_cluster node, not configued no secret."),
+    AP_INIT_TAKE1("ResponseFieldSize",
+                  cmd_manager_responsefieldsize,
+                  NULL,
+                  OR_ALL,
+                  "ResponseFieldSize - Adjust the size of the proxy response field buffer."),
     {NULL}
 };
 
@@ -3779,7 +3751,7 @@ static const command_rec  manager_cmds[] =
 
 static void manager_hooks(apr_pool_t *p)
 {
-    static const char * const aszSucc[] = { "mod_proxy.c", NULL };
+    static const char *const aszSucc[] = { "mod_proxy.c", NULL };
 
     /* For the lock */
     ap_hook_pre_config(manager_pre_config, NULL, NULL, APR_HOOK_MIDDLE);
@@ -3791,8 +3763,7 @@ static void manager_hooks(apr_pool_t *p)
     ap_hook_child_init(manager_child_init, NULL, NULL, APR_HOOK_FIRST);
 
     /* post read_request handling: to be handle to use ProxyPass / */
-    ap_hook_translate_name(manager_trans, NULL, aszSucc,
-                              APR_HOOK_FIRST);
+    ap_hook_translate_name(manager_trans, NULL, aszSucc, APR_HOOK_FIRST);
 
     /* Process the request from the ModClusterService */
     ap_hook_handler(manager_handler, NULL, NULL, APR_HOOK_REALLY_FIRST);
@@ -3801,12 +3772,12 @@ static void manager_hooks(apr_pool_t *p)
     ap_hook_map_to_storage(manager_map_to_storage, NULL, NULL, APR_HOOK_REALLY_FIRST);
 
     /* Register nodes/hosts/contexts table provider */
-    ap_register_provider(p, "manager" , "shared", "0", &node_storage);
-    ap_register_provider(p, "manager" , "shared", "1", &host_storage);
-    ap_register_provider(p, "manager" , "shared", "2", &context_storage);
-    ap_register_provider(p, "manager" , "shared", "3", &balancer_storage);
-    ap_register_provider(p, "manager" , "shared", "4", &sessionid_storage);
-    ap_register_provider(p, "manager" , "shared", "5", &domain_storage);
+    ap_register_provider(p, "manager", "shared", "0", &node_storage);
+    ap_register_provider(p, "manager", "shared", "1", &host_storage);
+    ap_register_provider(p, "manager", "shared", "2", &context_storage);
+    ap_register_provider(p, "manager", "shared", "3", &balancer_storage);
+    ap_register_provider(p, "manager", "shared", "4", &sessionid_storage);
+    ap_register_provider(p, "manager", "shared", "5", &domain_storage);
 }
 
 /*
@@ -3838,11 +3809,11 @@ static void *create_manager_config(apr_pool_t *p)
 
 static void *create_manager_server_config(apr_pool_t *p, server_rec *s)
 {
-    (void) s;
-    return(create_manager_config(p));
+    (void)s;
+    return create_manager_config(p);
 }
-static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf,
-                                         void *server2_conf)
+
+static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf, void *server2_conf)
 {
     mod_manager_config *mconf1 = (mod_manager_config *) server1_conf;
     mod_manager_config *mconf2 = (mod_manager_config *) server2_conf;
@@ -3950,7 +3921,7 @@ module AP_MODULE_DECLARE_DATA manager_module = {
     NULL,
     create_manager_server_config,
     merge_manager_server_config,
-    manager_cmds,       /* command table */
-    manager_hooks,      /* register hooks */
-    AP_MODULE_FLAG_NONE /* flags */
+    manager_cmds,               /* command table */
+    manager_hooks,              /* register hooks */
+    AP_MODULE_FLAG_NONE         /* flags */
 };

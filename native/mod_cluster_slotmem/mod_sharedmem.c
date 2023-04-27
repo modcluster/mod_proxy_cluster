@@ -46,12 +46,12 @@ static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp
 {
     void *data;
     const char *userdata_key = "mod_sharedmem_init";
-    (void) plog; (void) ptemp;
+    (void)plog;
+    (void)ptemp;
 
     apr_pool_userdata_get(&data, userdata_key, s->process->pool);
     if (!data) {
-        apr_pool_userdata_set((const void *)1, userdata_key,
-                               apr_pool_cleanup_null, s->process->pool);
+        apr_pool_userdata_set((const void *)1, userdata_key, apr_pool_cleanup_null, s->process->pool);
         return OK;
     }
 
@@ -63,17 +63,17 @@ static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp
  * that is to allow the resize the shared memory area using a graceful start
  * No sure that is a very good idea...
  */
-static int pre_config(apr_pool_t *p, apr_pool_t *plog,
-                             apr_pool_t *ptemp)
+static int pre_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp)
 {
     apr_pool_t *global_pool;
     apr_status_t rv;
-    (void) p; (void) plog; (void) ptemp;
+    (void)p;
+    (void)plog;
+    (void)ptemp;
 
     rv = apr_pool_create(&global_pool, NULL);
     if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, rv, NULL,
-                     "Fatal error: unable to create global pool for shared slotmem");
+        ap_log_error(APLOG_MARK, APLOG_CRIT, rv, NULL, "Fatal error: unable to create global pool for shared slotmem");
         return rv;
     }
     mem_getstorage(global_pool, "");
@@ -85,7 +85,7 @@ static int pre_config(apr_pool_t *p, apr_pool_t *plog,
  */
 static void child_init(apr_pool_t *p, server_rec *s)
 {
-    (void) s;
+    (void)s;
     sharedmem_initialize_child(p);
 }
 
@@ -101,11 +101,11 @@ static void ap_sharedmem_register_hook(apr_pool_t *p)
 
 module AP_MODULE_DECLARE_DATA cluster_slotmem_module = {
     STANDARD20_MODULE_STUFF,
-    NULL,       /* create per-directory config structure */
-    NULL,       /* merge per-directory config structures */
-    NULL,       /* create per-server config structure */
-    NULL,       /* merge per-server config structures */
-    NULL,       /* command apr_table_t */
+    NULL,                       /* create per-directory config structure */
+    NULL,                       /* merge per-directory config structures */
+    NULL,                       /* create per-server config structure */
+    NULL,                       /* merge per-server config structures */
+    NULL,                       /* command apr_table_t */
     ap_sharedmem_register_hook, /* register hooks */
     AP_MODULE_FLAG_NONE         /* flags */
 };
