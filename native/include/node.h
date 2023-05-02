@@ -146,6 +146,16 @@ apr_status_t remove_node(mem_t *s, int ids);
  */
 apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route);
 
+/**
+ * find a node record from the shared table using Host/Port
+ * @param pointer to the shared table.
+ * @param node address where the node is located in the shared table.
+ * @param host Host to search
+ * @param port Port to search
+ * @return APR_SUCCESS if all went well
+ */
+apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host, const char *port);
+
 /*
  *  * lock the nodes table
  */
