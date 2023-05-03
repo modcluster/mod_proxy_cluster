@@ -1,0 +1,34 @@
+Language: Cpp
+IndentWidth: 4
+PointerAlignment: Right
+ColumnLimit: 120
+AlignConsecutiveMacros: AcrossEmptyLinesAndComments
+AllowAllArgumentsOnNextLine: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  BeforeElse: true
+  AfterFunction: true
+  AfterStruct: true
+  AfterUnion: true
+IndentCaseLabels: false
+IndentExternBlock: false
+MaxEmptyLinesToKeep: 2
+QualifierAlignment: Left
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterFunctionDeclarationName: false
+  AfterFunctionDefinitionName: false
+  BeforeNonEmptyParentheses: false
+UseTab: Never
+IncludeBlocks: Preserve
+SortIncludes: Never
+SpacesBeforeTrailingComments: 8
+AllowShortFunctionsOnASingleLine: None
+TypenameMacros: ['APR_OPTIONAL_FN_TYPE']
+StatementMacros: ['AP_INIT_TAKE1', 'AP_INIT_TAKE12', 'AP_INIT_FLAG', 'AP_INIT_RAW_ARGS']
+

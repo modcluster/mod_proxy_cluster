@@ -744,7 +744,7 @@ static const command_rec cmd_table[] = {
                   NULL,                                           /* argument to include in call  */
                   RSRC_CONF,                                      /* where available              */
                   "Local adress to bind to for Multicast logic"),
-    {NULL}
+    {NULL},
 
 };
 
