@@ -39,15 +39,16 @@ static struct context_storage_method *context_storage = NULL;
 static struct balancer_storage_method *balancer_storage = NULL;
 static struct domain_storage_method *domain_storage = NULL;
 
-static int use_alias = 0;       /* 1 : Compare Alias with server_name */
-static apr_time_t lbstatus_recalc_time = apr_time_from_sec(5);  /* recalcul the lbstatus based on number of request in the time interval */
-static apr_time_t wait_for_remove = apr_time_from_sec(10);      /* wait until that before removing a removed node */
+static int use_alias = 0; /* 1 : Compare Alias with server_name */
+static apr_time_t lbstatus_recalc_time =
+    apr_time_from_sec(5); /* recalcul the lbstatus based on number of request in the time interval */
+static apr_time_t wait_for_remove = apr_time_from_sec(10); /* wait until that before removing a removed node */
 
 module AP_MODULE_DECLARE_DATA lbmethod_cluster_module;
 
 static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balancer *balancer,
-                                                   proxy_vhost_table *vhost_table,
-                                                   proxy_context_table *context_table, proxy_node_table *node_table)
+                                                   proxy_vhost_table *vhost_table, proxy_context_table *context_table,
+                                                   proxy_node_table *node_table)
 {
     char *ptr = balancer->workers->elts;
     int sizew = balancer->workers->elt_size;
@@ -57,7 +58,7 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
     for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
         nodeinfo_t *node;
         int id;
-        proxy_worker **run = (proxy_worker **) ptr;
+        proxy_worker **run = (proxy_worker **)ptr;
         proxy_worker *worker = *run;
 
         if (!PROXY_WORKER_IS_USABLE(worker))
@@ -94,12 +95,11 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
             char *ptr = balancer->workers->elts;
             int sizew = balancer->workers->elt_size;
             for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
-                proxy_worker **run = (proxy_worker **) ptr;
+                proxy_worker **run = (proxy_worker **)ptr;
                 proxy_worker *httpworker = *run;
                 if (!strcmp(httpworker->s->hostname, mycandidate->s->hostname)) {
                     /* They don't the shared memory another test is needed... */
-                    if (!memcmp(httpworker->s->scheme, "http", 4) &&
-                        httpworker->s->port == mycandidate->s->port &&
+                    if (!memcmp(httpworker->s->scheme, "http", 4) && httpworker->s->port == mycandidate->s->port &&
                         !strcmp(httpworker->s->route, mycandidate->s->route)) {
                         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
 #if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
@@ -122,9 +122,9 @@ static proxy_worker *find_best(proxy_balancer *balancer, request_rec *r)
 {
     proxy_worker *mycandidate = NULL;
 
-    proxy_vhost_table *vhost_table = (proxy_vhost_table *) apr_table_get(r->notes, "vhost-table");
-    proxy_context_table *context_table = (proxy_context_table *) apr_table_get(r->notes, "context-table");
-    proxy_node_table *node_table = (proxy_node_table *) apr_table_get(r->notes, "node-table");
+    proxy_vhost_table *vhost_table = (proxy_vhost_table *)apr_table_get(r->notes, "vhost-table");
+    proxy_context_table *context_table = (proxy_context_table *)apr_table_get(r->notes, "context-table");
+    proxy_node_table *node_table = (proxy_node_table *)apr_table_get(r->notes, "node-table");
 
     if (!vhost_table)
         vhost_table = read_vhost_table(r->pool, host_storage, 0);
@@ -162,14 +162,7 @@ static apr_status_t updatelbstatus(proxy_balancer *balancer, proxy_worker *elect
     return APR_SUCCESS;
 }
 
-static const proxy_balancer_method cluster = {
-    "cluster",
-    &find_best,
-    NULL,
-    &reset,
-    &age,
-    &updatelbstatus
-};
+static const proxy_balancer_method cluster = {"cluster", &find_best, NULL, &reset, &age, &updatelbstatus};
 
 /*
  * See if we could map the request.
@@ -180,16 +173,15 @@ static int lbmethod_cluster_trans(request_rec *r)
 {
     const char *balancer;
     void *sconf = r->server->module_config;
-    proxy_server_conf *conf = (proxy_server_conf *)
-        ap_get_module_config(sconf, &proxy_module);
+    proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
 
 #if HAVE_CLUSTER_EX_DEBUG
     ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server,
-                 "lbmethod_cluster_trans for %d %s %s uri: %s args: %s unparsed_uri: %s",
-                 r->proxyreq, r->filename, r->handler, r->uri, r->args, r->unparsed_uri);
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server,
-                 "lbmethod_cluster_trans for %d", conf->balancers->nelts);
+                 "lbmethod_cluster_trans for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
+                 r->handler, r->uri, r->args, r->unparsed_uri);
+    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server, "lbmethod_cluster_trans for %d",
+                 conf->balancers->nelts);
 #endif
 
     proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage, 0);
@@ -218,10 +210,10 @@ static int lbmethod_cluster_trans(request_rec *r)
         r->handler = "proxy-server";
         r->proxyreq = PROXYREQ_REVERSE;
 #if HAVE_CLUSTER_EX_DEBUG
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server,
-                     "proxy_cluster_trans using %s uri: %s", balancer, r->filename);
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server, "proxy_cluster_trans using %s uri: %s",
+                     balancer, r->filename);
 #endif
-        return OK;              /* Mod_proxy will process it */
+        return OK; /* Mod_proxy will process it */
     }
 
 #if HAVE_CLUSTER_EX_DEBUG
@@ -255,7 +247,7 @@ static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now,
 static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool)
 {
     apr_status_t rv = APR_SUCCESS;
-    server_rec *s = (server_rec *) data;
+    server_rec *s = (server_rec *)data;
     proxy_node_table *node_table;
     apr_time_t now;
     switch (state) {
@@ -270,8 +262,8 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
         if (s) {
             int i;
             void *sconf = s->module_config;
-            proxy_server_conf *conf = (proxy_server_conf *) ap_get_module_config(sconf, &proxy_module);
-            proxy_balancer *balancer = (proxy_balancer *) conf->balancers->elts;
+            proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
+            proxy_balancer *balancer = (proxy_balancer *)conf->balancers->elts;
 
             for (i = 0; i < conf->balancers->nelts; i++, balancer++) {
                 int n;
@@ -279,7 +271,7 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
                 proxy_worker *worker;
                 /* Have any new balancers or workers been added dynamically? */
                 ap_proxy_sync_balancer(balancer, s, conf);
-                workers = (proxy_worker **) balancer->workers->elts;
+                workers = (proxy_worker **)balancer->workers->elts;
                 for (n = 0; n < balancer->workers->nelts; n++) {
                     nodeinfo_t *node;
                     int id;
@@ -353,8 +345,8 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
 
 static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
 {
-    APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) * mc_watchdog_get_instance;
-    APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) * mc_watchdog_register_callback;
+    APR_OPTIONAL_FN_TYPE(ap_watchdog_get_instance) *mc_watchdog_get_instance;
+    APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
     (void)plog;
     (void)ptemp;
 
@@ -400,19 +392,18 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
     mc_watchdog_get_instance = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_get_instance);
     mc_watchdog_register_callback = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_register_callback);
     if (!mc_watchdog_get_instance || !mc_watchdog_register_callback) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03262)
-                     "mod_watchdog is required");
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03262) "mod_watchdog is required");
         return !OK;
     }
     if (mc_watchdog_get_instance(&watchdog, LB_CLUSTER_WATHCHDOG_NAME, 0, 1, p)) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263)
-                     "Failed to create watchdog instance (%s)", LB_CLUSTER_WATHCHDOG_NAME);
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263) "Failed to create watchdog instance (%s)",
+                     LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
     }
     while (s) {
         if (mc_watchdog_register_callback(watchdog, AP_WD_TM_SLICE, s, mc_watchdog_callback)) {
-            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03264)
-                         "Failed to register watchdog callback (%s)", LB_CLUSTER_WATHCHDOG_NAME);
+            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03264) "Failed to register watchdog callback (%s)",
+                         LB_CLUSTER_WATHCHDOG_NAME);
             return !OK;
         }
         s = s->next;
@@ -422,8 +413,8 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
 
 static void register_hooks(apr_pool_t *p)
 {
-    static const char *const aszPre[] = { "mod_manager.c", "mod_rewrite.c", NULL };
-    static const char *const aszSucc[] = { "mod_proxy.c", NULL };
+    static const char *const aszPre[] = {"mod_manager.c", "mod_rewrite.c", NULL};
+    static const char *const aszSucc[] = {"mod_proxy.c", NULL};
 
     ap_register_provider(p, PROXY_LBMETHOD, "cluster", "0", &cluster);
 
@@ -434,11 +425,11 @@ static void register_hooks(apr_pool_t *p)
 
 AP_DECLARE_MODULE(lbmethod_cluster) = {
     STANDARD20_MODULE_STUFF,
-    NULL,                       /* create per-directory config structure */
-    NULL,                       /* merge per-directory config structures */
-    NULL,                       /* create per-server config structure */
-    NULL,                       /* merge per-server config structures */
-    NULL,                       /* command apr_table_t */
-    register_hooks,             /* register hooks */
-    AP_MODULE_FLAG_NONE         /* flags */
+    NULL,               /* create per-directory config structure */
+    NULL,               /* merge per-directory config structures */
+    NULL,               /* create per-server config structure */
+    NULL,               /* merge per-server config structures */
+    NULL,               /* command apr_table_t */
+    register_hooks,     /* register hooks */
+    AP_MODULE_FLAG_NONE /* flags */
 };

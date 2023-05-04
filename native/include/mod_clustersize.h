@@ -4,7 +4,7 @@
  *  Copyright(c) 2008 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -28,23 +28,23 @@
 #define MOD_CLUSTERSIZE_H
 
 /* For host.h */
-#define HOSTALIASZ 100
+#define HOSTALIASZ  100
 
 /* For context.h */
-#define CONTEXTSZ 80
+#define CONTEXTSZ   80
 
 /* For node.h */
-#define BALANCERSZ 40
-#define JVMROUTESZ 64
-#define DOMAINNDSZ 20
-#define HOSTNODESZ 64
-#define PORTNODESZ 7
-#define SCHEMENDSZ 16
+#define BALANCERSZ  40
+#define JVMROUTESZ  64
+#define DOMAINNDSZ  20
+#define HOSTNODESZ  64
+#define PORTNODESZ  7
+#define SCHEMENDSZ  16
 #define AJPSECRETSZ 64
 
 /* For balancer.h */
-#define COOKNAMESZ 30
-#define PATHNAMESZ 30
+#define COOKNAMESZ  30
+#define PATHNAMESZ  30
 
 /* For sessionid.h */
 #define SESSIONIDSZ 128

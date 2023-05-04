@@ -4,7 +4,7 @@
  *  Copyright(c) 2009 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -79,8 +79,8 @@ static mem_t *create_attach_mem_domain(char *string, int *num, int type, apr_poo
  */
 static apr_status_t insert_update(void *mem, void **data, int id, apr_pool_t *pool)
 {
-    domaininfo_t *in = (domaininfo_t *) *data;
-    domaininfo_t *ou = (domaininfo_t *) mem;
+    domaininfo_t *in = (domaininfo_t *)*data;
+    domaininfo_t *ou = (domaininfo_t *)mem;
     (void)pool;
 
     if (strcmp(in->JVMRoute, ou->JVMRoute) == 0 && strcmp(in->balancer, ou->balancer) == 0) {
@@ -102,7 +102,7 @@ apr_status_t insert_update_domain(mem_t *s, domaininfo_t *domain)
     domain->id = 0;
     rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &domain, s->p);
     if (domain->id != 0 && rv == APR_SUCCESS) {
-        return APR_SUCCESS;     /* updated */
+        return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
@@ -125,8 +125,8 @@ apr_status_t insert_update_domain(mem_t *s, domaininfo_t *domain)
  */
 static apr_status_t loc_read_domain(void *mem, void **data, int id, apr_pool_t *pool)
 {
-    domaininfo_t *in = (domaininfo_t *) *data;
-    domaininfo_t *ou = (domaininfo_t *) mem;
+    domaininfo_t *in = (domaininfo_t *)*data;
+    domaininfo_t *ou = (domaininfo_t *)mem;
     (void)id;
     (void)pool;
 

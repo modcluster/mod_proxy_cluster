@@ -4,7 +4,7 @@
  *  Copyright(c) 2009 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -40,21 +40,22 @@
 #define SESSIONIDEXE ".sessionid"
 
 #ifndef MEM_T
-typedef struct mem mem_t; 
+typedef struct mem mem_t;
 #define MEM_T
 #endif
 
 #include "mod_clustersize.h"
 
 /* status of the sessionid as read/store in httpd. */
-struct sessionidinfo {
-    char sessionid[SESSIONIDSZ+1]; /* Sessionid value */
-    char JVMRoute[JVMROUTESZ+1];   /* corresponding node */
+struct sessionidinfo
+{
+    char sessionid[SESSIONIDSZ + 1]; /* Sessionid value */
+    char JVMRoute[JVMROUTESZ + 1];   /* corresponding node */
 
-    apr_time_t updatetime;    /* time of last received message */
-    int id;                      /* id in table */
+    apr_time_t updatetime; /* time of last received message */
+    int id;                /* id in table */
 };
-typedef struct sessionidinfo sessionidinfo_t; 
+typedef struct sessionidinfo sessionidinfo_t;
 
 
 /**
@@ -72,7 +73,7 @@ apr_status_t insert_update_sessionid(mem_t *s, sessionidinfo_t *sessionid);
  * @param sessionid sessionid to read from the shared table.
  * @return address of the read sessionid or NULL if error.
  */
-sessionidinfo_t * read_sessionid(mem_t *s, sessionidinfo_t *sessionid);
+sessionidinfo_t *read_sessionid(mem_t *s, sessionidinfo_t *sessionid);
 
 /**
  * get a sessionid record from the shared table
@@ -112,7 +113,7 @@ int get_max_size_sessionid(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t * get_mem_sessionid(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_sessionid(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared sessionid table
  * @param name to use to create the table.
@@ -121,36 +122,37 @@ mem_t * get_mem_sessionid(char *string, int *num, apr_pool_t *p, slotmem_storage
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t * create_mem_sessionid(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_sessionid(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.
  */
-struct sessionid_storage_method {
-/**
- * the sessionid corresponding to the ident
- * @param ids ident of the sessionid to read.
- * @param sessionid address of pointer to return the sessionid.
- * @return APR_SUCCESS if all went well
- */
-apr_status_t (* read_sessionid)(int ids, sessionidinfo_t **sessionid);
-/**
- * read the list of ident of used sessionids.
- * @param ids address to store the idents.
- * @return APR_SUCCESS if all went well
- */
-int (* get_ids_used_sessionid)(int *ids);
-/**
- * read the max number of sessionids in the shared table
- */
-int (*get_max_size_sessionid)(void);
-/*
- * Remove the sessionid from shared memory (free the slotmem)
- */
-apr_status_t (*remove_sessionid)(sessionidinfo_t *sessionid);
-/*
- * Insert a new sessionid or update existing one.
- */
-apr_status_t (*insert_update_sessionid)(sessionidinfo_t *sessionid);
+struct sessionid_storage_method
+{
+    /**
+     * the sessionid corresponding to the ident
+     * @param ids ident of the sessionid to read.
+     * @param sessionid address of pointer to return the sessionid.
+     * @return APR_SUCCESS if all went well
+     */
+    apr_status_t (*read_sessionid)(int ids, sessionidinfo_t **sessionid);
+    /**
+     * read the list of ident of used sessionids.
+     * @param ids address to store the idents.
+     * @return APR_SUCCESS if all went well
+     */
+    int (*get_ids_used_sessionid)(int *ids);
+    /**
+     * read the max number of sessionids in the shared table
+     */
+    int (*get_max_size_sessionid)(void);
+    /*
+     * Remove the sessionid from shared memory (free the slotmem)
+     */
+    apr_status_t (*remove_sessionid)(sessionidinfo_t *sessionid);
+    /*
+     * Insert a new sessionid or update existing one.
+     */
+    apr_status_t (*insert_update_sessionid)(sessionidinfo_t *sessionid);
 };
 #endif /*SESSIONID_H*/

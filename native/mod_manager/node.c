@@ -4,7 +4,7 @@
  *  Copyright(c) 2008 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -94,8 +94,8 @@ apr_status_t get_last_mem_error(mem_t *mem)
  */
 static apr_status_t insert_update(void *mem, void **data, int id, apr_pool_t *pool)
 {
-    nodeinfo_t *in = (nodeinfo_t *) *data;
-    nodeinfo_t *ou = (nodeinfo_t *) mem;
+    nodeinfo_t *in = (nodeinfo_t *)*data;
+    nodeinfo_t *ou = (nodeinfo_t *)mem;
     (void)pool;
 
     if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
@@ -128,7 +128,7 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
     rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &node, s->p);
     if (rv == APR_SUCCESS) {
         *id = node->mess.id;
-        return APR_SUCCESS;     /* updated */
+        return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
@@ -162,8 +162,8 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
  */
 static apr_status_t loc_read_node(void *mem, void **data, int id, apr_pool_t *pool)
 {
-    nodeinfo_t *in = (nodeinfo_t *) *data;
-    nodeinfo_t *ou = (nodeinfo_t *) mem;
+    nodeinfo_t *in = (nodeinfo_t *)*data;
+    nodeinfo_t *ou = (nodeinfo_t *)mem;
     (void)id;
     (void)pool;
 
@@ -293,8 +293,8 @@ mem_t *create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slotm
  */
 static apr_status_t loc_read_node_byhostport(void *mem, void **data, int id, apr_pool_t *pool)
 {
-    nodeinfo_t *in = (nodeinfo_t *) *data;
-    nodeinfo_t *ou = (nodeinfo_t *) mem;
+    nodeinfo_t *in = (nodeinfo_t *)*data;
+    nodeinfo_t *ou = (nodeinfo_t *)mem;
     (void)id;
     (void)pool;
 

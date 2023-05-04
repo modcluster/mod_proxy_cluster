@@ -4,7 +4,7 @@
  *  Copyright(c) 2009 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -80,8 +80,8 @@ static mem_t *create_attach_mem_sessionid(char *string, int *num, int type, apr_
  */
 static apr_status_t insert_update(void *mem, void **data, int id, apr_pool_t *pool)
 {
-    sessionidinfo_t *in = (sessionidinfo_t *) *data;
-    sessionidinfo_t *ou = (sessionidinfo_t *) mem;
+    sessionidinfo_t *in = (sessionidinfo_t *)*data;
+    sessionidinfo_t *ou = (sessionidinfo_t *)mem;
     (void)pool;
 
     if (strcmp(in->sessionid, ou->sessionid) == 0) {
@@ -103,7 +103,7 @@ apr_status_t insert_update_sessionid(mem_t *s, sessionidinfo_t *sessionid)
     sessionid->id = 0;
     rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &sessionid, s->p);
     if (sessionid->id != 0 && rv == APR_SUCCESS) {
-        return APR_SUCCESS;     /* updated */
+        return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
@@ -126,8 +126,8 @@ apr_status_t insert_update_sessionid(mem_t *s, sessionidinfo_t *sessionid)
  */
 static apr_status_t loc_read_sessionid(void *mem, void **data, int id, apr_pool_t *pool)
 {
-    sessionidinfo_t *in = (sessionidinfo_t *) *data;
-    sessionidinfo_t *ou = (sessionidinfo_t *) mem;
+    sessionidinfo_t *in = (sessionidinfo_t *)*data;
+    sessionidinfo_t *ou = (sessionidinfo_t *)mem;
     (void)id;
     (void)pool;
 

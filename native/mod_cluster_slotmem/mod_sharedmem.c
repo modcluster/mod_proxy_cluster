@@ -4,7 +4,7 @@
  *  Copyright(c) 2008 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -39,7 +39,7 @@
 #include "http_log.h"
 #include "ap_provider.h"
 
-#include  "slotmem.h"
+#include "slotmem.h"
 
 /* make sure the shared memory is cleaned */
 static int initialize_cleanup(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)

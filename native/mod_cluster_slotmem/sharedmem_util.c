@@ -4,7 +4,7 @@
  *  Copyright(c) 2008 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -43,7 +43,7 @@
 #endif
 
 #if APR_HAVE_UNISTD_H
-#include <unistd.h>             /* for getpid() */
+#include <unistd.h> /* for getpid() */
 #endif
 
 #if HAVE_SYS_SEM_H
@@ -61,20 +61,20 @@ struct sharedslotdesc
 {
     apr_size_t item_size;
     int item_num;
-    unsigned int version;       /* integer updated each time we make a change through the API */
+    unsigned int version; /* integer updated each time we make a change through the API */
 };
 
 struct ap_slotmem
 {
     char *name;
     apr_shm_t *shm;
-    int *ident;                 /* integer table to process a fast alloc/free */
-    unsigned int *version;      /* address of version */
+    int *ident;            /* integer table to process a fast alloc/free */
+    unsigned int *version; /* address of version */
     void *base;
     apr_size_t size;
     int num;
     apr_pool_t *globalpool;
-    apr_file_t *global_lock;    /* file used for the locks */
+    apr_file_t *global_lock; /* file used for the locks */
     struct ap_slotmem *next;
 };
 
@@ -94,7 +94,7 @@ static apr_status_t unixd_set_shm_perms(const char *fname)
     int shmid;
 
     shmkey = ftok(fname, 1);
-    if (shmkey == (key_t) - 1) {
+    if (shmkey == (key_t)-1) {
         return errno;
     }
     if ((shmid = shmget(shmkey, 0, SHM_R | SHM_W)) == -1) {
@@ -172,7 +172,7 @@ static void restore_slotmem(void *ptr, const char *name, apr_size_t item_size, i
     if (rv == APR_SUCCESS) {
         apr_finfo_t fi;
         if (apr_file_info_get(&fi, APR_FINFO_SIZE, fp) == APR_SUCCESS) {
-            if (fi.size == (apr_off_t) nbytes) {
+            if (fi.size == (apr_off_t)nbytes) {
                 apr_file_read(fp, ptr, &nbytes);
             }
             else {
@@ -299,7 +299,7 @@ static apr_status_t ap_slotmem_create(ap_slotmem_t **new, const char *name, apr_
     }
 
     /* create the lock file and the global mutex */
-    res = (ap_slotmem_t *) apr_pcalloc(globalpool, sizeof(ap_slotmem_t));
+    res = (ap_slotmem_t *)apr_pcalloc(globalpool, sizeof(ap_slotmem_t));
     filename = apr_pstrcat(pool, fname, ".lock", NULL);
     rv = apr_file_open(&res->global_lock, filename, APR_WRITE | APR_CREATE, APR_OS_DEFAULT, globalpool);
     if (rv != APR_SUCCESS) {
@@ -444,7 +444,7 @@ static apr_status_t ap_slotmem_attach(ap_slotmem_t **new, const char *name, apr_
     }
 
     /* first try to attach to existing shared memory */
-    res = (ap_slotmem_t *) apr_pcalloc(globalpool, sizeof(ap_slotmem_t));
+    res = (ap_slotmem_t *)apr_pcalloc(globalpool, sizeof(ap_slotmem_t));
     rv = apr_shm_attach(&res->shm, fname, globalpool);
     if (rv != APR_SUCCESS) {
         return rv;
@@ -528,7 +528,7 @@ static apr_status_t ap_slotmem_alloc(ap_slotmem_t *score, int *item_id, void **m
             ff = ident[id];
         }
         if (ff != *item_id)
-            return APR_ENOMEM;  /* already in use!!! */
+            return APR_ENOMEM; /* already in use!!! */
     }
     ff = ident[id];
     if (ff > score->num) {
