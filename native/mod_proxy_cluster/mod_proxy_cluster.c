@@ -2115,6 +2115,7 @@ static void reenable_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_wo
 /*
  * For the provider
  */
+// clang-format off
 static const struct balancer_method balancerhandler = {
     proxy_node_isup,
     proxy_host_isup,
@@ -2122,6 +2123,7 @@ static const struct balancer_method balancerhandler = {
     reenable_proxy_worker,
     proxy_node_get_free_id
 };
+// clang-format on
 
 static int node_has_workers(server_rec *server, proxy_server_conf *conf, int id)
 {
@@ -3671,7 +3673,7 @@ static const char *cmd_proxy_cluster_proxyhctemplate(cmd_parms *cmd, void *dummy
         key = ap_getword_conf(cmd->pool, &arg);
         val = strchr(key, '=');
         if (!val) {
-            return "Invalid ProxyHCTemplate parameter. Parameter must be " "in the form 'key=value'";
+            return "Invalid ProxyHCTemplate parameter. Parameter must be in the form 'key=value'";
         }
         else
             *val++ = '\0';
@@ -3777,7 +3779,7 @@ static const command_rec proxy_cluster_cmds[] = {
                   OR_ALL,
                   "ModProxyClusterThreadCount - Set custom size for the watchdog thread pool (Default: 16)"),
 #endif
-    {NULL}
+    {NULL},
 };
 
 module AP_MODULE_DECLARE_DATA proxy_cluster_module = {

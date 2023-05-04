@@ -276,12 +276,14 @@ static const char *cmd_advertise_h(cmd_parms *cmd, void *dummy, const char *arg)
     return NULL;
 }
 
+// clang-format off
 #define MA_ADVERTISE_SERVER_FMT \
         "HTTP/1.0 %s" CRLF \
         "Date: %s" CRLF \
         "Sequence: %" APR_INT64_T_FMT CRLF \
         "Digest: %s" CRLF \
         "Server: %s" CRLF
+// clang-format on
 
 static const char *hex = "0123456789abcdef";
 

@@ -595,6 +595,7 @@ static int ap_slotmem_get_max_size(ap_slotmem_t *score)
     return score->num;
 }
 
+// clang-format off
 static const slotmem_storage_method storage = {
     &ap_slotmem_do,
     &ap_slotmem_create,
@@ -605,8 +606,9 @@ static const slotmem_storage_method storage = {
     &ap_slotmem_get_used,
     &ap_slotmem_get_max_size,
     &ap_slotmem_lock,
-    &ap_slotmem_unlock
+    &ap_slotmem_unlock,
 };
+// clang-format on
 
 /* make the storage usuable from outside
  * and initialise the global pool */

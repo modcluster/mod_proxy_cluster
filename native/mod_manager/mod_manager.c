@@ -330,7 +330,7 @@ static const struct node_storage_method node_storage = {
     loc_find_node,
     loc_remove_host_context,
     loc_lock_nodes,
-    loc_unlock_nodes
+    loc_unlock_nodes,
 };
 
 /*
@@ -356,6 +356,7 @@ static apr_status_t loc_unlock_contexts(void)
     return apr_global_mutex_unlock(context_mutex);
 }
 
+// clang-format off
 static const struct context_storage_method context_storage = {
     loc_read_context,
     loc_get_ids_used_context,
@@ -363,6 +364,7 @@ static const struct context_storage_method context_storage = {
     loc_lock_contexts,
     loc_unlock_contexts
 };
+// clang-format on
 
 /*
  * routines for the host_storage_method
@@ -380,7 +382,7 @@ static int loc_get_ids_used_host(int *ids)
 static const struct host_storage_method host_storage = {
     loc_read_host,
     loc_get_ids_used_host,
-    loc_get_max_size_host
+    loc_get_max_size_host,
 };
 
 /*
@@ -404,7 +406,7 @@ static int loc_get_max_size_balancer(void)
 static const struct balancer_storage_method balancer_storage = {
     loc_read_balancer,
     loc_get_ids_used_balancer,
-    loc_get_max_size_balancer
+    loc_get_max_size_balancer,
 };
 
 /*
@@ -440,7 +442,7 @@ static const struct sessionid_storage_method sessionid_storage = {
     loc_get_ids_used_sessionid,
     loc_get_max_size_sessionid,
     loc_remove_sessionid,
-    loc_insert_update_sessionid
+    loc_insert_update_sessionid,
 };
 
 /*
@@ -476,14 +478,16 @@ static apr_status_t loc_find_domain(domaininfo_t **domain, const char *route, co
     return find_domain(domainstatsmem, domain, route, balancer);
 }
 
+// clang-format off
 static const struct domain_storage_method domain_storage = {
     loc_read_domain,
     loc_get_ids_used_domain,
     loc_get_max_size_domain,
     loc_remove_domain,
     loc_insert_update_domain,
-    loc_find_domain
+    loc_find_domain,
 };
+// clang-format on
 
 /* helper for the handling of the Alias: host1,... Context: context1,... */
 struct cluster_host
@@ -1328,10 +1332,10 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             clean = 0;
             ap_assert(worker->s->port != 0);
             pptr = (char *)&nodeinfo;
-            offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int);     /* nodeinfo.offset doesn't contain the information */
+            offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int); /* nodeinfo.offset doesn't contain the information */
             offset = APR_ALIGN_DEFAULT(offset);
             pptr = pptr + offset;
-            memcpy(pptr, worker->s, sizeof(proxy_worker_shared));       /* restore the information we are going to reuse */
+            memcpy(pptr, worker->s, sizeof(proxy_worker_shared));   /* restore the information we are going to reuse */
             ap_assert(the_conf);
         }
     }
@@ -2871,7 +2875,7 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
     id = apr_palloc(r->pool, sizeof(int) * size);
     size = get_ids_used_node(nodestatsmem, id);
 
-    for (pos = 0; ptr[pos] != NULL && ptr[pos + 1] != NULL; pos = pos + 2);
+    for (pos = 0; ptr[pos] != NULL && ptr[pos + 1] != NULL; pos = pos + 2) {}
 
     ptr[pos] = apr_pstrdup(r->pool, "JVMRoute");
     ptr[pos + 2] = NULL;
@@ -3744,7 +3748,7 @@ static const command_rec manager_cmds[] = {
                   NULL,
                   OR_ALL,
                   "ResponseFieldSize - Adjust the size of the proxy response field buffer."),
-    {NULL}
+    {NULL},
 };
 
 /* hooks declaration */
@@ -3923,5 +3927,5 @@ module AP_MODULE_DECLARE_DATA manager_module = {
     merge_manager_server_config,
     manager_cmds,               /* command table */
     manager_hooks,              /* register hooks */
-    AP_MODULE_FLAG_NONE         /* flags */
+    AP_MODULE_FLAG_NONE,       /* flags */
 };
