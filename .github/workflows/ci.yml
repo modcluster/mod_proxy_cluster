@@ -1,0 +1,68 @@
+name: CI
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+jobs:
+  cmake-fedora-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: mod_proxy_cluster
+      - name: Setup Podman
+        run: |
+          sudo apt update
+          sudo apt-get -y install podman
+          podman pull fedora:38
+      - name: Create container and build
+        run: |
+          {
+              echo 'FROM fedora:38'
+              echo 'RUN dnf install cmake httpd-devel -y'
+              echo 'RUN dnf groupinstall "C Development Tools and Libraries" -y'
+              echo 'RUN dnf clean all'
+              echo 'COPY mod_proxy_cluster mod_proxy_cluster'
+              echo 'WORKDIR /mod_proxy_cluster/native'
+              echo 'RUN cmake .'
+              echo 'RUN make'
+          } > podmanfile
+          podman build -f ./podmanfile
+    name: cmake-fedora-latest
+  make-fedora-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: mod_proxy_cluster
+      - name: Setup Podman
+        run: |
+          sudo apt update
+          sudo apt-get -y install podman
+          podman pull fedora:38
+      - name: Create container and build
+        run: |
+          {
+              echo 'FROM fedora:38'
+              echo 'RUN dnf install httpd-devel redhat-rpm-config -y'
+              echo 'RUN dnf groupinstall "C Development Tools and Libraries" -y'
+              echo 'RUN dnf clean all'
+              echo 'COPY mod_proxy_cluster mod_proxy_cluster'
+              echo 'WORKDIR /mod_proxy_cluster/native'
+              echo 'RUN \'
+              echo 'for module in advertise/ mod_*; do \'
+              echo '  echo Building: $module; \'
+              echo '  cd $module; \'
+              echo '  sh buildconf; \'
+              echo '  ./configure --with-apxs=$APACHE_DIR/bin/apxs; \'
+              # Ensure the build fails in case of a failure in any of the module builds!
+              echo '  make || exit 1; \'
+              echo '  cd ..; \'
+              echo 'done;'
+          } > podmanfile
+          podman build -f ./podmanfile
