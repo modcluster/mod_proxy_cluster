@@ -4,7 +4,7 @@
  *  Copyright(c) 2008 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -44,7 +44,8 @@
 
 #include "mod_manager.h"
 
-static mem_t * create_attach_mem_node(char *string, int *num, int type, apr_pool_t *p, slotmem_storage_method *storage) {
+static mem_t *create_attach_mem_node(char *string, int *num, int type, apr_pool_t *p, slotmem_storage_method *storage)
+{
     mem_t *ptr;
     const char *storename;
     apr_status_t rv;
@@ -53,11 +54,12 @@ static mem_t * create_attach_mem_node(char *string, int *num, int type, apr_pool
     if (!ptr) {
         return NULL;
     }
-    ptr->storage =  storage;
-    storename = apr_pstrcat(p, string, NODEEXE, NULL); 
+    ptr->storage = storage;
+    storename = apr_pstrcat(p, string, NODEEXE, NULL);
     if (type) {
         rv = ptr->storage->ap_slotmem_create(&ptr->slotmem, storename, sizeof(nodeinfo_t), *num, type, p);
-    } else {
+    }
+    else {
         apr_size_t size = sizeof(nodeinfo_t);
         rv = ptr->storage->ap_slotmem_attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -77,7 +79,8 @@ static mem_t * create_attach_mem_node(char *string, int *num, int type, apr_pool
  * @return APR_SUCCESS if all went well
  *
  */
-apr_status_t get_last_mem_error(mem_t *mem) {
+apr_status_t get_last_mem_error(mem_t *mem)
+{
     return mem->laststatus;
 }
 
@@ -89,11 +92,11 @@ apr_status_t get_last_mem_error(mem_t *mem) {
  * @return APR_SUCCESS if all went well
  *
  */
-static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t insert_update(void *mem, void **data, int id, apr_pool_t *pool)
 {
     nodeinfo_t *in = (nodeinfo_t *)*data;
     nodeinfo_t *ou = (nodeinfo_t *)mem;
-    (void) pool;
+    (void)pool;
 
     if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
         /*
@@ -113,6 +116,7 @@ static apr_status_t insert_update(void* mem, void **data, int id, apr_pool_t *po
     }
     return APR_NOTFOUND;
 }
+
 apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
 {
     apr_status_t rv;
@@ -129,7 +133,7 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
 
     /* we have to insert it */
     ident = *id;
-    rv = s->storage->ap_slotmem_alloc(s->slotmem, &ident, (void **) &ou);
+    rv = s->storage->ap_slotmem_alloc(s->slotmem, &ident, (void **)&ou);
     if (rv != APR_SUCCESS) {
         return rv;
     }
@@ -156,10 +160,12 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
  * @param node node to read from the shared table.
  * @return address of the read node or NULL if error.
  */
-static apr_status_t loc_read_node(void* mem, void **data, int id, apr_pool_t *pool) {
+static apr_status_t loc_read_node(void *mem, void **data, int id, apr_pool_t *pool)
+{
     nodeinfo_t *in = (nodeinfo_t *)*data;
     nodeinfo_t *ou = (nodeinfo_t *)mem;
-    (void) id; (void) pool;
+    (void)id;
+    (void)pool;
 
     if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
         *data = ou;
@@ -167,13 +173,14 @@ static apr_status_t loc_read_node(void* mem, void **data, int id, apr_pool_t *po
     }
     return APR_NOTFOUND;
 }
-nodeinfo_t * read_node(mem_t *s, nodeinfo_t *node)
+
+nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node)
 {
     apr_status_t rv;
     nodeinfo_t *ou = node;
 
     if (node->mess.id)
-        rv = s->storage->ap_slotmem_mem(s->slotmem, node->mess.id, (void **) &ou);
+        rv = s->storage->ap_slotmem_mem(s->slotmem, node->mess.id, (void **)&ou);
     else {
         rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_node, &ou, s->p);
     }
@@ -181,6 +188,7 @@ nodeinfo_t * read_node(mem_t *s, nodeinfo_t *node)
         return ou;
     return NULL;
 }
+
 /**
  * get a node record from the shared table (using ids).
  * @param pointer to the shared table.
@@ -190,9 +198,9 @@ nodeinfo_t * read_node(mem_t *s, nodeinfo_t *node)
  */
 apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids)
 {
-  apr_status_t status;
-  status = s->storage->ap_slotmem_mem(s->slotmem, ids, (void **) node);
-  return(status);
+    apr_status_t status;
+    status = s->storage->ap_slotmem_mem(s->slotmem, ids, (void **)node);
+    return status;
 }
 
 /**
@@ -204,7 +212,7 @@ apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids)
 apr_status_t remove_node(mem_t *s, int ids)
 {
     nodeinfo_t *ou = NULL;
-    return(s->storage->ap_slotmem_free(s->slotmem, ids, ou));
+    return s->storage->ap_slotmem_free(s->slotmem, ids, ou);
 }
 
 /**
@@ -234,7 +242,7 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
  */
 int get_ids_used_node(mem_t *s, int *ids)
 {
-    return (s->storage->ap_slotmem_get_used(s->slotmem, ids));
+    return s->storage->ap_slotmem_get_used(s->slotmem, ids);
 }
 
 /*
@@ -244,10 +252,7 @@ int get_ids_used_node(mem_t *s, int *ids)
  */
 int get_max_size_node(mem_t *s)
 {
-    if (s->storage == NULL)
-        return 0;
-    else
-        return (s->storage->ap_slotmem_get_max_size(s->slotmem));
+    return s->storage == NULL ? 0 : s->storage->ap_slotmem_get_max_size(s->slotmem);
 }
 
 /**
@@ -258,10 +263,11 @@ int get_max_size_node(mem_t *s)
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t * get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return(create_attach_mem_node(string, num, 0, p, storage));
+    return create_attach_mem_node(string, num, 0, p, storage);
 }
+
 /**
  * create a shared node table
  * @param name to use to create the table.
@@ -271,9 +277,9 @@ mem_t * get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_meth
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t * create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return(create_attach_mem_node(string, num, CREATE_SLOTMEM|persist, p, storage));
+    return create_attach_mem_node(string, num, CREATE_SLOTMEM | persist, p, storage);
 }
 
 
@@ -285,18 +291,20 @@ mem_t * create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slot
  * @param port string containing the port .
  * @return APR_SUCCESS if all went well
  */
-static apr_status_t loc_read_node_byhostport(void* mem, void **data, int id, apr_pool_t *pool) {
+static apr_status_t loc_read_node_byhostport(void *mem, void **data, int id, apr_pool_t *pool)
+{
     nodeinfo_t *in = (nodeinfo_t *)*data;
     nodeinfo_t *ou = (nodeinfo_t *)mem;
-    (void) id; (void) pool;
+    (void)id;
+    (void)pool;
 
-    if (strcmp(in->mess.Host, ou->mess.Host) == 0 &&
-        strcmp(in->mess.Port, ou->mess.Port) == 0) {
+    if (strcmp(in->mess.Host, ou->mess.Host) == 0 && strcmp(in->mess.Port, ou->mess.Port) == 0) {
         *data = ou;
         return APR_SUCCESS;
     }
     return APR_NOTFOUND;
 }
+
 apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host, const char *port)
 {
     nodeinfo_t ou;

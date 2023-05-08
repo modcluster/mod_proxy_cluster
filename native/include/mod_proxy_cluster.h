@@ -30,53 +30,56 @@
 
 #define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"
 
-APR_DECLARE_OPTIONAL_FN(apr_status_t, balancer_manage, (request_rec *r, apr_table_t *params));
+APR_DECLARE_OPTIONAL_FN(apr_status_t, balancer_manage, (request_rec * r, apr_table_t *params));
 
-struct balancer_method {
-/**
- * Check that the node is responding
- * @param r request_rec structure.
- * @param id ident of the worker.
- * @param load load factor to set if test is ok.
- * @return 0: All OK 500 : Error
- */ 
-int (* proxy_node_isup)(request_rec *r, int id, int load);
-/**
- * Check that the node is responding
- * @param r request_rec structure.
- * @param scheme something like ajp, http or https.
- * @param host the hostname.
- * @param port the port on which the node connector is running
- * @return 0: All OK 500 : Error
- */ 
-int (* proxy_host_isup)(request_rec *r, char *scheme, char *host, char *port);
-/**
- * Check if a worker already exists and return the corresponding id
- * @param r request_rec structure.
- * @param balancername, the balancer name.
- * @param scheme something like ajp, http or https.
- * @param host the hostname.
- * @param port the port on which the node connector is running
- * @param id the address to store the index that was previously used.
- * @param the_conf adress to store the proxy_server_conf the worker is using.
- * @return the worker or NULL if not existing.
- */
-proxy_worker *(* proxy_node_getid)(request_rec *r, char *balancername, char *scheme, char *host, char *port, int *id, proxy_server_conf **the_conf);
+struct balancer_method
+{
+    /**
+     * Check that the node is responding
+     * @param r request_rec structure.
+     * @param id ident of the worker.
+     * @param load load factor to set if test is ok.
+     * @return 0: All OK 500 : Error
+     */
+    int (*proxy_node_isup)(request_rec *r, int id, int load);
+    /**
+     * Check that the node is responding
+     * @param r request_rec structure.
+     * @param scheme something like ajp, http or https.
+     * @param host the hostname.
+     * @param port the port on which the node connector is running
+     * @return 0: All OK 500 : Error
+     */
+    int (*proxy_host_isup)(request_rec *r, char *scheme, char *host, char *port);
+    /**
+     * Check if a worker already exists and return the corresponding id
+     * @param r request_rec structure.
+     * @param balancername, the balancer name.
+     * @param scheme something like ajp, http or https.
+     * @param host the hostname.
+     * @param port the port on which the node connector is running
+     * @param id the address to store the index that was previously used.
+     * @param the_conf adress to store the proxy_server_conf the worker is using.
+     * @return the worker or NULL if not existing.
+     */
+    proxy_worker *(*proxy_node_getid)(request_rec *r, char *balancername, char *scheme, char *host, char *port, int *id,
+                                      proxy_server_conf **the_conf);
 
-/**
- * Re enable the proxy_worker
- * @param r request_rec structure.
- * @param node pointer to node structure we have created.
- * @param worker the proxy_worker to re enable
- * @param nodeinfo pointer to node structure we are creating
- * @param the_conf the proxy_server_conf from proxy_node_getid()
- */
-void (* reenable_proxy_worker)(server_rec *s, nodeinfo_t*  node, proxy_worker *worker, nodeinfo_t* nodeinfo, proxy_server_conf *the_conf);
+    /**
+     * Re enable the proxy_worker
+     * @param r request_rec structure.
+     * @param node pointer to node structure we have created.
+     * @param worker the proxy_worker to re enable
+     * @param nodeinfo pointer to node structure we are creating
+     * @param the_conf the proxy_server_conf from proxy_node_getid()
+     */
+    void (*reenable_proxy_worker)(server_rec *s, nodeinfo_t *node, proxy_worker *worker, nodeinfo_t *nodeinfo,
+                                  proxy_server_conf *the_conf);
 
-/**
- * return the first free id to insert in node table
- */
-int (*proxy_node_get_free_id)(request_rec *r, int node_table_size);
+    /**
+     * return the first free id to insert in node table
+     */
+    int (*proxy_node_get_free_id)(request_rec *r, int node_table_size);
 };
 
 typedef struct balancer_method balancer_method;
@@ -84,9 +87,9 @@ typedef struct balancer_method balancer_method;
 /* Context table copy for local use */
 struct proxy_context_table
 {
-	int sizecontext;
-	int* contexts;
-	contextinfo_t* context_info;
+    int sizecontext;
+    int *contexts;
+    contextinfo_t *context_info;
 };
 typedef struct proxy_context_table proxy_context_table;
 
@@ -94,75 +97,75 @@ typedef struct proxy_context_table proxy_context_table;
 /* VHost table copy for local use */
 struct proxy_vhost_table
 {
-	int sizevhost;
-	int* vhosts;
-	hostinfo_t* vhost_info;
+    int sizevhost;
+    int *vhosts;
+    hostinfo_t *vhost_info;
 };
 typedef struct proxy_vhost_table proxy_vhost_table;
 
 /* Balancer table copy for local use */
 struct proxy_balancer_table
 {
-	int sizebalancer;
-	int* balancers;
-	balancerinfo_t* balancer_info;
+    int sizebalancer;
+    int *balancers;
+    balancerinfo_t *balancer_info;
 };
 typedef struct proxy_balancer_table proxy_balancer_table;
 
 /* Node table copy for local use, the ptr_node is the shared memory address (slotmem address) */
 struct proxy_node_table
 {
-	int sizenode;
-	int* nodes;
-	nodeinfo_t*  node_info;
-        char **ptr_node;
+    int sizenode;
+    int *nodes;
+    nodeinfo_t *node_info;
+    char **ptr_node;
 };
 typedef struct proxy_node_table proxy_node_table;
 
 /* table of node and context selected by find_node_context_host() */
 struct node_context
 {
-        int node;
-        int context;
+    int node;
+    int context;
 };
 typedef struct node_context node_context;
 
 /* common routines */
 proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage, int for_cache);
-proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage, int for_cache);
-proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage, int for_cache);
+proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage_method *context_storage,
+                                        int for_cache);
+proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_storage_method *balancer_storage,
+                                          int for_cache);
 proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *node_storage, int for_cache);
-proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *proxy_vhost_table, struct host_storage_method *host_storage);
-proxy_context_table *update_context_table_cached(proxy_context_table *context_table, struct context_storage_method *context_storage);
-proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table, struct balancer_storage_method *balancer_storage);
+proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *proxy_vhost_table,
+                                             struct host_storage_method *host_storage);
+proxy_context_table *update_context_table_cached(proxy_context_table *context_table,
+                                                 struct context_storage_method *context_storage);
+proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table,
+                                                   struct balancer_storage_method *balancer_storage);
 proxy_node_table *update_node_table_cached(proxy_node_table *node_table, struct node_storage_method *node_storage);
 
-const char *get_route_balancer(request_rec *r, proxy_server_conf *conf,
-                                      proxy_vhost_table *vhost_table,
-                                      proxy_context_table *context_table,
-                                      proxy_balancer_table *balancer_table,
-                                      proxy_node_table *node_table,
-                                      int use_alias);
+const char *get_route_balancer(request_rec *r, proxy_server_conf *conf, proxy_vhost_table *vhost_table,
+                               proxy_context_table *context_table, proxy_balancer_table *balancer_table,
+                               proxy_node_table *node_table, int use_alias);
 
-const char *get_context_host_balancer(request_rec *r,
-                proxy_vhost_table *vhost_table,
-                proxy_context_table *context_table,
-                proxy_node_table *node_table,
-                int use_alias);
+const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_table,
+                                      proxy_context_table *context_table, proxy_node_table *node_table, int use_alias);
 
-nodeinfo_t* table_get_node(proxy_node_table *node_table, int id);
+nodeinfo_t *table_get_node(proxy_node_table *node_table, int id);
 char *cluster_get_sessionid(request_rec *r, const char *stickyval, char *uri, char **sticky_used);
 char *get_cookie_param(request_rec *r, const char *name, int in);
-char *get_path_param(apr_pool_t *pool, char *url,
-                            const char *name);
+char *get_path_param(apr_pool_t *pool, char *url, const char *name);
 node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, const char *route, int use_alias,
-                                     proxy_vhost_table* vhost_table, proxy_context_table* context_table, proxy_node_table *node_table);
+                                     proxy_vhost_table *vhost_table, proxy_context_table *context_table,
+                                     proxy_node_table *node_table);
 int hassession_byname(request_rec *r, int nodeid, const char *route, proxy_node_table *node_table);
 
-nodeinfo_t* table_get_node_route(proxy_node_table *node_table, char *route, int *id);
+nodeinfo_t *table_get_node_route(proxy_node_table *node_table, char *route, int *id);
 
 node_context *context_host_ok(request_rec *r, proxy_balancer *balancer, int node, int use_alias,
-                             proxy_vhost_table *vhost_table, proxy_context_table *context_table, proxy_node_table *node_table);
+                              proxy_vhost_table *vhost_table, proxy_context_table *context_table,
+                              proxy_node_table *node_table);
 
 
 #endif /*MOD_PROXY_CLUSTER_H*/

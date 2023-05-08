@@ -4,7 +4,7 @@
  *  Copyright(c) 2007 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -40,7 +40,7 @@
 #define NODEEXE ".nodes"
 
 #ifndef MEM_T
-typedef struct mem mem_t; 
+typedef struct mem mem_t;
 #define MEM_T
 #endif
 
@@ -49,8 +49,9 @@ typedef struct mem mem_t;
 #include "ap_mmn.h"
 
 /* configuration of the node received from jboss cluster. */
-struct nodemess {
-    char balancer[BALANCERSZ];        /* name of the balancer */
+struct nodemess
+{
+    char balancer[BALANCERSZ]; /* name of the balancer */
     char JVMRoute[JVMROUTESZ];
     char Domain[DOMAINNDSZ];
     char Host[HOSTNODESZ];
@@ -58,41 +59,42 @@ struct nodemess {
     char Type[SCHEMENDSZ];
     char Upgrade[SCHEMENDSZ];
     char AJPSecret[AJPSECRETSZ];
-    int  reversed; /* 1 : reversed... 0 : normal */
-    int  remove;   /* 1 : removed     0 : normal */
+    int reversed; /* 1 : reversed... 0 : normal */
+    int remove;   /* 1 : removed     0 : normal */
     long ResponseFieldSize;
 
     /* node conf part */
     int flushpackets;
-    int	flushwait;
-    apr_time_t	ping;
-    int	smax;
+    int flushwait;
+    apr_time_t ping;
+    int smax;
     apr_time_t ttl;
     apr_time_t timeout;
 
     /* part updated in httpd */
-    int id;                   /* id in table and worker id */
+    int id;                  /* id in table and worker id */
     apr_time_t updatetimelb; /* time of last update of the lbstatus value */
     int num_failure_idle;    /* number of time the cping/cpong failed while calculating the lbstatus value */
     apr_size_t oldelected;   /* value of s->elected when calculating the lbstatus */
-    apr_off_t  oldread;      /* Number of bytes read from remote when calculating the lbstatus */
+    apr_off_t oldread;       /* Number of bytes read from remote when calculating the lbstatus */
     apr_time_t lastcleantry; /* time of last unsuccessful try to clean the worker in proxy part */
     int num_remove_check;    /* number of tries to remove a REMOVED node */
 };
-typedef struct nodemess nodemess_t; 
+typedef struct nodemess nodemess_t;
 
 #define SIZEOFSCORE 1700 /* at least size of the proxy_worker_stat structure */
 
 /* status of the node as read/store in httpd. */
-struct nodeinfo {
+struct nodeinfo
+{
     /* config from jboss/tomcat */
     nodemess_t mess;
     /* filled by httpd */
-    apr_time_t updatetime;   /* time of last received message */
-    unsigned long offset;    /* offset to the proxy_worker_stat structure */
-    char stat[SIZEOFSCORE];  /* to store the status */ 
+    apr_time_t updatetime;  /* time of last received message */
+    unsigned long offset;   /* offset to the proxy_worker_stat structure */
+    char stat[SIZEOFSCORE]; /* to store the status */
 };
-typedef struct nodeinfo nodeinfo_t; 
+typedef struct nodeinfo nodeinfo_t;
 
 /**
  * return the last stored in the mem structure
@@ -119,7 +121,7 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean);
  * @param node node to read from the shared table.
  * @return address of the read node or NULL if error.
  */
-nodeinfo_t * read_node(mem_t *s, nodeinfo_t *node);
+nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node);
 
 /**
  * get a node record from the shared table
@@ -195,7 +197,7 @@ unsigned int get_version_node(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t * get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared node table
  * @param name to use to create the table.
@@ -204,60 +206,60 @@ mem_t * get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_meth
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t * create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.
  */
-struct node_storage_method {
-/**
- * the node corresponding to the ident
- * @param ids ident of the node to read.
- * @param node address of pointer to return the node.
- * @return APR_SUCCESS if all went well
- */
-apr_status_t (* read_node)(int ids, nodeinfo_t **node);
-/**
- * read the list of ident of used nodes.
- * @param ids address to store the idents.
- * @return APR_SUCCESS if all went well
- */
-int (* get_ids_used_node)(int *ids);
-/**
- * read the max number of nodes in the shared table
- */
-int (*get_max_size_node)(void);
-/**
- * check the nodes for modifications.
- * XXX: void *data is server_rec *s in fact.
- */
-unsigned int (*worker_nodes_need_update)(void *data, apr_pool_t *pool);
-/*
- * mark that the worker node are now up to date.
- */
-int (*worker_nodes_are_updated)(void *data, unsigned int version);
-/*
- * Remove the node from shared memory (free the slotmem)
- */
-int (*remove_node)(int node);
-/*
- * Find the node using the JVMRoute information
- */
-apr_status_t (*find_node)(nodeinfo_t **node, const char *route);
-/*
- * Remove the virtual hosts and contexts corresponding the node.
- */
-void (*remove_host_context)(int node, apr_pool_t *pool);
+struct node_storage_method
+{
+    /**
+     * the node corresponding to the ident
+     * @param ids ident of the node to read.
+     * @param node address of pointer to return the node.
+     * @return APR_SUCCESS if all went well
+     */
+    apr_status_t (*read_node)(int ids, nodeinfo_t **node);
+    /**
+     * read the list of ident of used nodes.
+     * @param ids address to store the idents.
+     * @return APR_SUCCESS if all went well
+     */
+    int (*get_ids_used_node)(int *ids);
+    /**
+     * read the max number of nodes in the shared table
+     */
+    int (*get_max_size_node)(void);
+    /**
+     * check the nodes for modifications.
+     * XXX: void *data is server_rec *s in fact.
+     */
+    unsigned int (*worker_nodes_need_update)(void *data, apr_pool_t *pool);
+    /*
+     * mark that the worker node are now up to date.
+     */
+    int (*worker_nodes_are_updated)(void *data, unsigned int version);
+    /*
+     * Remove the node from shared memory (free the slotmem)
+     */
+    int (*remove_node)(int node);
+    /*
+     * Find the node using the JVMRoute information
+     */
+    apr_status_t (*find_node)(nodeinfo_t **node, const char *route);
+    /*
+     * Remove the virtual hosts and contexts corresponding the node.
+     */
+    void (*remove_host_context)(int node, apr_pool_t *pool);
 
-/*
- * lock the nodes table
- */
-apr_status_t (*lock_nodes)(void);
+    /*
+     * lock the nodes table
+     */
+    apr_status_t (*lock_nodes)(void);
 
-/*
- * unlock the nodes table
- */
-apr_status_t (*unlock_nodes)(void);
-
+    /*
+     * unlock the nodes table
+     */
+    apr_status_t (*unlock_nodes)(void);
 };
 #endif /*NODE_H*/

@@ -25,7 +25,8 @@
  * @version $Revision$
  */
 
-struct mem {
+struct mem
+{
     ap_slotmem_t *slotmem;
     const slotmem_storage_method *storage;
     int num;

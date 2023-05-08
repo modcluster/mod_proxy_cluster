@@ -4,7 +4,7 @@
  *  Copyright(c) 2008 Red Hat Middleware, LLC,
  *  and individual contributors as indicated by the @authors tag.
  *  See the copyright.txt in the distribution for a
- *  full listing of individual contributors. 
+ *  full listing of individual contributors.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -40,27 +40,28 @@
 #define BALANCEREXE ".balancers"
 
 #ifndef MEM_T
-typedef struct mem mem_t; 
+typedef struct mem mem_t;
 #define MEM_T
 #endif
 
 #include "mod_clustersize.h"
 
 /* status of the balancer as read/store in httpd. */
-struct balancerinfo {
+struct balancerinfo
+{
     char balancer[BALANCERSZ]; /* Name of the balancer */
-    int StickySession; /* 0 : Don't use, 1: Use it */
+    int StickySession;         /* 0 : Don't use, 1: Use it */
     char StickySessionCookie[COOKNAMESZ];
     char StickySessionPath[PATHNAMESZ];
     int StickySessionRemove; /* 0 : Don't remove, 1: Remove it */
     int StickySessionForce;  /* 0: Don't force, 1: return error */
     int Timeout;
-    int	Maxattempts;
+    int Maxattempts;
 
     apr_time_t updatetime; /* time of last received message */
-    int id;           /* id in table */
+    int id;                /* id in table */
 };
-typedef struct balancerinfo balancerinfo_t; 
+typedef struct balancerinfo balancerinfo_t;
 
 
 /**
@@ -78,7 +79,7 @@ apr_status_t insert_update_balancer(mem_t *s, balancerinfo_t *balancer);
  * @param balancer balancer to read from the shared table.
  * @return address of the read balancer or NULL if error.
  */
-balancerinfo_t * read_balancer(mem_t *s, balancerinfo_t *balancer);
+balancerinfo_t *read_balancer(mem_t *s, balancerinfo_t *balancer);
 
 /**
  * get a balancer record from the shared table
@@ -118,7 +119,7 @@ int get_max_size_balancer(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t * get_mem_balancer(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_balancer(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared balancer table
  * @param name to use to create the table.
@@ -127,28 +128,29 @@ mem_t * get_mem_balancer(char *string, int *num, apr_pool_t *p, slotmem_storage_
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t * create_mem_balancer(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_balancer(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.
  */
-struct balancer_storage_method {
-/**
- * the balancer corresponding to the ident
- * @param ids ident of the balancer to read.
- * @param balancer address of pointer to return the balancer.
- * @return APR_SUCCESS if all went well
- */
-apr_status_t (* read_balancer)(int ids, balancerinfo_t **balancer);
-/**
- * read the list of ident of used balancers.
- * @param ids address to store the idents.
- * @return APR_SUCCESS if all went well
- */
-int (* get_ids_used_balancer)(int *ids);
-/**
- * read the max number of balancers in the shared table
- */
-int (*get_max_size_balancer)(void);
+struct balancer_storage_method
+{
+    /**
+     * the balancer corresponding to the ident
+     * @param ids ident of the balancer to read.
+     * @param balancer address of pointer to return the balancer.
+     * @return APR_SUCCESS if all went well
+     */
+    apr_status_t (*read_balancer)(int ids, balancerinfo_t **balancer);
+    /**
+     * read the list of ident of used balancers.
+     * @param ids address to store the idents.
+     * @return APR_SUCCESS if all went well
+     */
+    int (*get_ids_used_balancer)(int *ids);
+    /**
+     * read the max number of balancers in the shared table
+     */
+    int (*get_max_size_balancer)(void);
 };
 #endif /*BALANCER_H*/
