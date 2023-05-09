@@ -66,3 +66,31 @@ jobs:
               echo 'done;'
           } > podmanfile
           podman build -f ./podmanfile
+  clang-format-style-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          path: mod_proxy_cluster
+      - name: Install clang-format
+        run: |
+          sudo apt update
+          sudo apt-get -y install clang-format
+      - name: Check styles
+        run: |
+          code=0
+          cd mod_proxy_cluster/native
+          for file in */*.c */*.h; do
+            clang-format $file -n &> diff.txt;
+            if [ ! -s diff.txt ]; then
+              printf "%-42s ... OK\n" $file
+            else
+              cat diff.txt
+              printf "%-42s ... NOK\n" $file
+              code=1
+            fi
+            rm diff.txt || true # we don't fail if the file does not exist
+          done;
+          exit $code
+
