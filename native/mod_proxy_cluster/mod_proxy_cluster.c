@@ -2115,7 +2115,7 @@ static void reenable_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_wo
 /*
  * For the provider
  */
-// clang-format off
+/* clang-format off */
 static const struct balancer_method balancerhandler = {
     proxy_node_isup,
     proxy_host_isup,
@@ -2123,7 +2123,7 @@ static const struct balancer_method balancerhandler = {
     reenable_proxy_worker,
     proxy_node_get_free_id
 };
-// clang-format on
+/* clang-format on */
 
 static int node_has_workers(server_rec *server, proxy_server_conf *conf, int id)
 {
@@ -3709,7 +3709,7 @@ static const char *cmd_mc_thread_count(cmd_parms *cmd, void *dummy, const char *
 }
 #endif
 
-// clang-format off
+/* clang-format off */
 static const command_rec proxy_cluster_cmds[] = {
     AP_INIT_TAKE1("CreateBalancers", cmd_proxy_cluster_creatbal, NULL, OR_ALL,
                   "CreateBalancers - Defined VirtualHosts where the balancers are created 0: All, 1: None, 2: Main "
@@ -3742,7 +3742,7 @@ static const command_rec proxy_cluster_cmds[] = {
 #endif
     {NULL}
 };
-// clang-format on
+/* clang-format on */
 
 module AP_MODULE_DECLARE_DATA proxy_cluster_module = {
     STANDARD20_MODULE_STUFF,

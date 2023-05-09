@@ -356,7 +356,7 @@ static apr_status_t loc_unlock_contexts(void)
     return apr_global_mutex_unlock(context_mutex);
 }
 
-// clang-format off
+/* clang-format off */
 static const struct context_storage_method context_storage = {
     loc_read_context,
     loc_get_ids_used_context,
@@ -364,7 +364,7 @@ static const struct context_storage_method context_storage = {
     loc_lock_contexts,
     loc_unlock_contexts
 };
-// clang-format on
+/* clang-format on */
 
 /*
  * routines for the host_storage_method
@@ -475,7 +475,7 @@ static apr_status_t loc_find_domain(domaininfo_t **domain, const char *route, co
     return find_domain(domainstatsmem, domain, route, balancer);
 }
 
-// clang-format off
+/* clang-format off */
 static const struct domain_storage_method domain_storage = {
     loc_read_domain,
     loc_get_ids_used_domain,
@@ -484,7 +484,7 @@ static const struct domain_storage_method domain_storage = {
     loc_insert_update_domain,
     loc_find_domain,
 };
-// clang-format on
+/* clang-format on */
 
 /* helper for the handling of the Alias: host1,... Context: context1,... */
 struct cluster_host
