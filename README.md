@@ -18,7 +18,6 @@ Mod_cluster boasts the following advantages over other httpd-based load-balancer
 [https://modcluster.io](https://modcluster.io)
 
 
-
 Project Structure
 -----------------
 
@@ -37,6 +36,23 @@ To build the native component from the sources you need a C compiler and the fol
 * make
 * patch
 * python
+
+Styles
+------
+
+The codebase follows certain code style that is specified in `.clang-format` file within the `native`
+directory. You can run the tool manualy from the mentioned directory by executing `clang-format -n <file>`.
+
+However, there are some cases where breaking the code style may result in better clarity. In those cases
+enclose the corresponding part of code like this
+
+```
+/* clang-format off */
+<code>
+/* clang-format on */
+```
+
+The style check will ignore everything between the two comments. (Please, don't abuse it.)
 
 License
 -------
