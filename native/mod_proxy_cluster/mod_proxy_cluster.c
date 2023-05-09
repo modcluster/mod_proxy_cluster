@@ -1621,6 +1621,11 @@ static proxy_worker *internal_find_best_byrequests(proxy_balancer *balancer, pro
     /* do this once now to avoid repeating find_node_context_host through loop iterations */
     route = apr_table_get(r->notes, "session-route");
     best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
+    if (best == NULL) {
+        /* No context to serve the request we can't do much */
+        apr_table_setn(r->notes, "no-context-error", "1");
+        return NULL;
+    }
 
     /* First try to see if we have available candidate */
     if (domain && strlen(domain) > 0)
@@ -2115,7 +2120,7 @@ static void reenable_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_wo
 /*
  * For the provider
  */
-// clang-format off
+/* clang-format off */
 static const struct balancer_method balancerhandler = {
     proxy_node_isup,
     proxy_host_isup,
@@ -2123,7 +2128,7 @@ static const struct balancer_method balancerhandler = {
     reenable_proxy_worker,
     proxy_node_get_free_id
 };
-// clang-format on
+/* clang-format on */
 
 static int node_has_workers(server_rec *server, proxy_server_conf *conf, int id)
 {
@@ -2685,8 +2690,8 @@ static int proxy_cluster_trans(request_rec *r)
                 rv = ap_proxy_trans_match(r, dconf->alias, dconf);
                 if (rv != HTTP_CONTINUE) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
-                                  "proxy_cluster_trans ap_proxy_trans_match(dconf) matches or reject %s  to %s", r->uri,
-                                  r->filename);
+                                  "proxy_cluster_trans ap_proxy_trans_match(dconf) matches or reject %s  to %s %d", r->uri,
+                                  r->filename, rv);
                     return rv; /* Done */
                 }
             }
@@ -2701,8 +2706,8 @@ static int proxy_cluster_trans(request_rec *r)
                 rv = ap_proxy_trans_match(r, ent, dconf);
                 if (rv != HTTP_CONTINUE) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
-                                  "proxy_cluster_trans ap_proxy_trans_match(conf) matches or reject %s  to %s", r->uri,
-                                  r->filename);
+                                  "proxy_cluster_trans ap_proxy_trans_match(conf) matches or reject %s  to %s %d", r->uri,
+                                  r->filename, rv);
                     return rv; /* Done */
                 }
             }
@@ -3314,10 +3319,20 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
         runtime =
             find_best_worker(*balancer, conf, r, domain, failoverdomain, vhost_table, context_table, node_table, 1);
         if (!runtime) {
-            ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy: CLUSTER: (%s). All workers are in error state",
-                         (*balancer)->s->name);
+            const char *no_context_error = apr_table_get(r->notes, "no-context-error");
+            if (no_context_error == NULL) {
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy: CLUSTER: (%s). All workers are in error state",
+                             (*balancer)->s->name);
 
-            return HTTP_SERVICE_UNAVAILABLE;
+                return HTTP_SERVICE_UNAVAILABLE;
+            } else {
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                             "proxy: CLUSTER: (%s). No context for the URL",
+                             (*balancer)->s->name
+                             );
+
+                return HTTP_NOT_FOUND;
+            }
         }
         if ((*balancer)->s->sticky[0] != '\0' && runtime) {
             /*
@@ -3709,7 +3724,7 @@ static const char *cmd_mc_thread_count(cmd_parms *cmd, void *dummy, const char *
 }
 #endif
 
-// clang-format off
+/* clang-format off */
 static const command_rec proxy_cluster_cmds[] = {
     AP_INIT_TAKE1("CreateBalancers", cmd_proxy_cluster_creatbal, NULL, OR_ALL,
                   "CreateBalancers - Defined VirtualHosts where the balancers are created 0: All, 1: None, 2: Main "
@@ -3742,7 +3757,7 @@ static const command_rec proxy_cluster_cmds[] = {
 #endif
     {NULL}
 };
-// clang-format on
+/* clang-format on */
 
 module AP_MODULE_DECLARE_DATA proxy_cluster_module = {
     STANDARD20_MODULE_STUFF,
