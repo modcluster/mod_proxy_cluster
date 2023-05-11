@@ -1261,8 +1261,6 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     apr_pool_t *rrp;
     request_rec *rnew;
 
-    (void)thread;
-
     watchdog_thread_args_t *targs = (watchdog_thread_args_t *)data;
     proxy_worker *worker = targs->worker;
     apr_pool_t *pool = targs->pool;
@@ -1272,6 +1270,7 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     apr_time_t now = targs->now;
     int id = targs->id;
 
+    (void)thread;
     apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
 
     if (strchr(worker->s->hostname, ':') != NULL)
@@ -2410,7 +2409,6 @@ static void proxy_cluster_child_stopping(apr_pool_t *pool, int graceful)
 static void proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
 {
     apr_status_t rv;
-    (void)p;
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
@@ -2425,6 +2423,8 @@ static void proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
      */
 
     rv = node_storage->lock_nodes();
+
+    (void)p; /* unused argument */
     ap_assert(rv == APR_SUCCESS);
     if (conf && node_storage && node_storage->get_max_size_node()) {
         /* fill the cache and create pool */
