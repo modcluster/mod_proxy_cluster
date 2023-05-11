@@ -1261,6 +1261,8 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     apr_pool_t *rrp;
     request_rec *rnew;
 
+    (void)thread;
+
     watchdog_thread_args_t *targs = (watchdog_thread_args_t *)data;
     proxy_worker *worker = targs->worker;
     apr_pool_t *pool = targs->pool;
@@ -2395,6 +2397,8 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
 
 static void proxy_cluster_child_stopping(apr_pool_t *pool, int graceful)
 {
+    (void)pool;
+    (void)graceful;
     child_stopping = -1;
 }
 
@@ -2406,6 +2410,7 @@ static void proxy_cluster_child_stopping(apr_pool_t *pool, int graceful)
 static void proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
 {
     apr_status_t rv;
+    (void)p;
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
@@ -2690,8 +2695,8 @@ static int proxy_cluster_trans(request_rec *r)
                 rv = ap_proxy_trans_match(r, dconf->alias, dconf);
                 if (rv != HTTP_CONTINUE) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
-                                  "proxy_cluster_trans ap_proxy_trans_match(dconf) matches or reject %s  to %s %d", r->uri,
-                                  r->filename, rv);
+                                  "proxy_cluster_trans ap_proxy_trans_match(dconf) matches or reject %s  to %s %d",
+                                  r->uri, r->filename, rv);
                     return rv; /* Done */
                 }
             }
@@ -2706,8 +2711,8 @@ static int proxy_cluster_trans(request_rec *r)
                 rv = ap_proxy_trans_match(r, ent, dconf);
                 if (rv != HTTP_CONTINUE) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
-                                  "proxy_cluster_trans ap_proxy_trans_match(conf) matches or reject %s  to %s %d", r->uri,
-                                  r->filename, rv);
+                                  "proxy_cluster_trans ap_proxy_trans_match(conf) matches or reject %s  to %s %d",
+                                  r->uri, r->filename, rv);
                     return rv; /* Done */
                 }
             }
@@ -3321,15 +3326,14 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
         if (!runtime) {
             const char *no_context_error = apr_table_get(r->notes, "no-context-error");
             if (no_context_error == NULL) {
-                ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy: CLUSTER: (%s). All workers are in error state",
-                             (*balancer)->s->name);
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
+                             "proxy: CLUSTER: (%s). All workers are in error state", (*balancer)->s->name);
 
                 return HTTP_SERVICE_UNAVAILABLE;
-            } else {
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                             "proxy: CLUSTER: (%s). No context for the URL",
-                             (*balancer)->s->name
-                             );
+            }
+            else {
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: CLUSTER: (%s). No context for the URL",
+                             (*balancer)->s->name);
 
                 return HTTP_NOT_FOUND;
             }

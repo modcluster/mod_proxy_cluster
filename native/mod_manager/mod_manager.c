@@ -557,6 +557,8 @@ static APR_INLINE int is_child_process(void)
 
 static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp)
 {
+    (void)plog;
+    (void)ptemp;
     ap_mutex_register(pconf, node_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
     ap_mutex_register(pconf, context_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
     return OK;
