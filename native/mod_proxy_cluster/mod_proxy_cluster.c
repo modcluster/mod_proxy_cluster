@@ -1261,6 +1261,8 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     apr_pool_t *rrp;
     request_rec *rnew;
 
+    (void)thread;
+
     watchdog_thread_args_t *targs = (watchdog_thread_args_t *)data;
     proxy_worker *worker = targs->worker;
     apr_pool_t *pool = targs->pool;
@@ -2395,6 +2397,8 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
 
 static void proxy_cluster_child_stopping(apr_pool_t *pool, int graceful)
 {
+    (void)pool;
+    (void)graceful;
     child_stopping = -1;
 }
 
@@ -2406,6 +2410,7 @@ static void proxy_cluster_child_stopping(apr_pool_t *pool, int graceful)
 static void proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
 {
     apr_status_t rv;
+    (void)p;
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
