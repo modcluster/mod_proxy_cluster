@@ -93,4 +93,24 @@ jobs:
             rm diff.txt || true # we don't fail if the file does not exist
           done;
           exit $code
+  make-httpd-maintainer-mode:
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/mod_cluster/ci-httpd-dev
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Build
+        run: |
+          cd native
+          for module in advertise/ mod_*; do \
+            cd $module; \
+            sh buildconf; \
+            ./configure  --with-apxs=/usr/local/apache2/bin/apxs; \
+            make || exit 1; \
+            cd ..; \
+          done;
 
