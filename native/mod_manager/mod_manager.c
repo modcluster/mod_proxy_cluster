@@ -1451,6 +1451,24 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
 }
 
 /*
+ * Hepler function to convert status to string. The individual statuses are macros defined in context.h; if
+ * there is an unknown status (integer value other than 1-4, it will be interpreted as REMOVE -> "REMOVED").
+ */
+static char *context_status_to_string(int status)
+{
+    switch (status) {
+    case ENABLED:
+        return "ENABLED";
+    case DISABLED:
+        return "DISABLED";
+    case STOPPED:
+        return "STOPPED";
+    default:
+        return "REMOVED";
+    }
+}
+
+/*
  * Process a DUMP command.
  */
 static char *process_dump(request_rec *r, int *errtype)
@@ -1609,25 +1627,13 @@ static char *process_dump(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            char *status;
-            status = "REMOVED";
-            switch (ou->status) {
-            case ENABLED:
-                status = "ENABLED";
-                break;
-            case DISABLED:
-                status = "DISABLED";
-                break;
-            case STOPPED:
-                status = "STOPPED";
-                break;
-            }
             ap_rprintf(r, "<Context id=\"%d\" path=\"%.*s\">\
                             <Vhost>%d</Vhost>\
                             <Node>%d</Node>\
                             <Status id=\"%d\">%s</Status>\
                            </Context>",
-                       id[i], (int)sizeof(ou->context), ou->context, ou->vhost, ou->node, ou->status, status);
+                       id[i], (int)sizeof(ou->context), ou->context, ou->vhost, ou->node, ou->status,
+                       context_status_to_string(ou->status));
             break;
         case TEXT_PLAIN:
         default:
@@ -1802,21 +1808,8 @@ static char *process_info(request_rec *r, int *errtype)
 
     for (i = 0; i < size; i++) {
         contextinfo_t *ou;
-        char *status;
         if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
-        status = "REMOVED";
-        switch (ou->status) {
-        case ENABLED:
-            status = "ENABLED";
-            break;
-        case DISABLED:
-            status = "DISABLED";
-            break;
-        case STOPPED:
-            status = "STOPPED";
-            break;
-        }
 
         switch (type) {
         case TEXT_XML:
@@ -1826,12 +1819,13 @@ static char *process_info(request_rec *r, int *errtype)
                            <Node id=\"%d\"/>\
                            <Vhost id=\"%d\"/>\
                            </Context>",
-                       id[i], ou->status, status, (int)sizeof(ou->context), ou->context, ou->node, ou->vhost);
+                       id[i], ou->status, context_status_to_string(ou->status), (int)sizeof(ou->context), ou->context,
+                       ou->node, ou->vhost);
             break;
         case TEXT_PLAIN:
         default:
             ap_rprintf(r, "Context: [%d:%d:%d], Context: %.*s, Status: %s\n", ou->node, ou->vhost, id[i],
-                       (int)sizeof(ou->context), ou->context, status);
+                       (int)sizeof(ou->context), ou->context, context_status_to_string(ou->status));
             break;
         }
     }
@@ -2640,24 +2634,12 @@ static void manager_info_contexts(request_rec *r, int reduce_display, int allow_
     size = get_ids_used_context(contextstatsmem, id);
     for (i = 0; i < size; i++) {
         contextinfo_t *ou;
-        char *status;
         if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
         if (ou->node != node || ou->vhost != host)
             continue;
-        status = "REMOVED";
-        switch (ou->status) {
-        case ENABLED:
-            status = "ENABLED";
-            break;
-        case DISABLED:
-            status = "DISABLED";
-            break;
-        case STOPPED:
-            status = "STOPPED";
-            break;
-        }
-        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int)sizeof(ou->context), ou->context, status, ou->nbrequests);
+        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int)sizeof(ou->context), ou->context,
+                   context_status_to_string(ou->status), ou->nbrequests);
         if (allow_cmd)
             context_command_string(r, ou, Alias, JVMRoute);
         ap_rprintf(r, "\n");
