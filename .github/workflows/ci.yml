@@ -9,6 +9,9 @@ on:
 jobs:
   cmake-fedora-latest:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -23,12 +26,12 @@ jobs:
         run: |
           {
               echo 'FROM fedora:38'
-              echo 'RUN dnf install cmake httpd-devel -y'
+              echo 'RUN dnf install cmake httpd-devel ${{ matrix.compiler }} -y'
               echo 'RUN dnf groupinstall "C Development Tools and Libraries" -y'
               echo 'RUN dnf clean all'
               echo 'COPY mod_proxy_cluster mod_proxy_cluster'
               echo 'WORKDIR /mod_proxy_cluster/native'
-              echo 'RUN cmake .'
+              echo 'RUN cmake . -DCMAKE_C_COMPILER=${{ matrix.compiler }}'
               echo 'RUN make'
           } > podmanfile
           podman build -f ./podmanfile
