@@ -1513,8 +1513,7 @@ static void remove_timeout_sessionid(proxy_server_conf *conf, apr_pool_t *pool, 
     size = sessionid_storage->get_max_size_sessionid();
     if (size == 0)
         return;
-    else
-        return;
+
     id = apr_pcalloc(pool, sizeof(int) * size);
     size = sessionid_storage->get_ids_used_sessionid(id);
 
