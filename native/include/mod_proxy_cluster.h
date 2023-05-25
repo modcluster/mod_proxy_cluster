@@ -62,8 +62,8 @@ struct balancer_method
      * @param the_conf adress to store the proxy_server_conf the worker is using.
      * @return the worker or NULL if not existing.
      */
-    proxy_worker *(*proxy_node_getid)(request_rec *r, char *balancername, char *scheme, char *host, char *port, unsigned int *id,
-                                      proxy_server_conf **the_conf);
+    proxy_worker *(*proxy_node_getid)(request_rec *r, char *balancername, char *scheme, char *host, char *port,
+                                      unsigned int *id, proxy_server_conf **the_conf);
 
     /**
      * Re enable the proxy_worker

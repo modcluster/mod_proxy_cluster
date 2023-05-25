@@ -614,10 +614,11 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
     /* Get a provider to handle the shared memory */
     storage = ap_lookup_provider(AP_SLOTMEM_PROVIDER_GROUP, "shm", AP_SLOTMEM_PROVIDER_VERSION);
     if (storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "ap_lookup_provider %s failed", AP_SLOTMEM_PROVIDER_GROUP);
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "ap_lookup_provider %s failed",
+                     AP_SLOTMEM_PROVIDER_GROUP);
         return !OK;
     }
-    nodestatsmem = create_mem_node(node, &mconf->maxnode, mconf->persistent+AP_SLOTMEM_TYPE_PREGRAB, p, storage);
+    nodestatsmem = create_mem_node(node, &mconf->maxnode, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (nodestatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_node %s failed", node);
         return !OK;
@@ -629,19 +630,21 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
         return !OK;
     }
 
-    contextstatsmem = create_mem_context(context, &mconf->maxcontext, mconf->persistent+AP_SLOTMEM_TYPE_PREGRAB, p, storage);
+    contextstatsmem =
+        create_mem_context(context, &mconf->maxcontext, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (contextstatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_context failed");
         return !OK;
     }
 
-    hoststatsmem = create_mem_host(host, &mconf->maxhost, mconf->persistent+AP_SLOTMEM_TYPE_PREGRAB, p, storage);
+    hoststatsmem = create_mem_host(host, &mconf->maxhost, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (hoststatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_host failed");
         return !OK;
     }
 
-    balancerstatsmem = create_mem_balancer(balancer, &mconf->maxhost, mconf->persistent+AP_SLOTMEM_TYPE_PREGRAB, p, storage);
+    balancerstatsmem =
+        create_mem_balancer(balancer, &mconf->maxhost, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (balancerstatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_balancer failed");
         return !OK;
@@ -649,14 +652,16 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
 
     if (mconf->maxsessionid) {
         /* Only create sessionid stuff if required */
-        sessionidstatsmem = create_mem_sessionid(sessionid, &mconf->maxsessionid, mconf->persistent+AP_SLOTMEM_TYPE_PREGRAB, p, storage);
+        sessionidstatsmem = create_mem_sessionid(sessionid, &mconf->maxsessionid,
+                                                 mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
         if (sessionidstatsmem == NULL) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_sessionid failed");
             return !OK;
         }
     }
 
-    domainstatsmem = create_mem_domain(domain, &mconf->maxnode, mconf->persistent+AP_SLOTMEM_TYPE_PREGRAB, p, storage);
+    domainstatsmem =
+        create_mem_domain(domain, &mconf->maxnode, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (domainstatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_domain failed");
         return !OK;
@@ -938,7 +943,8 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
  * Check if the proxy balancer module already has a worker
  * and return the id
  */
-static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, unsigned int *id, proxy_server_conf **the_conf)
+static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, unsigned int *id,
+                                      proxy_server_conf **the_conf)
 {
     if (balancerhandler != NULL) {
         return balancerhandler->proxy_node_getid(r, nodeinfo->mess.balancer, nodeinfo->mess.Type, nodeinfo->mess.Host,

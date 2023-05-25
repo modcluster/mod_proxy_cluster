@@ -34,7 +34,8 @@ struct mem
     apr_status_t laststatus;
 };
 
-struct counter {
+struct counter
+{
     int count;
     int *values;
 };

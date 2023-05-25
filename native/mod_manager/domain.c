@@ -44,7 +44,8 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_domain(char *string, unsigned int *num, int type, int create, apr_pool_t *p, slotmem_storage_method *storage)
+static mem_t *create_attach_mem_domain(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+                                       slotmem_storage_method *storage)
 {
     mem_t *ptr;
     const char *storename;
@@ -220,7 +221,7 @@ apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, con
  * get the ids for the used (not free) domains in the table
  * @param pointer to the shared table.
  * @param ids array of int to store the used id (must be big enough).
- * @return number of domain existing or -1 if error.
+ * @return number of domain existing or 0 if error.
  */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
@@ -244,7 +245,7 @@ int get_ids_used_domain(mem_t *s, int *ids)
 /*
  * read the size of the table.
  * @param pointer to the shared table.
- * @return number of domain existing or -1 if error.
+ * @return the max number of domains that the slotmem can contain.
  */
 int get_max_size_domain(mem_t *s)
 {

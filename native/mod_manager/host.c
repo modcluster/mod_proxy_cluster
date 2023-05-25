@@ -44,7 +44,8 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_host(char *string, unsigned int *num, int type, int create, apr_pool_t *p, slotmem_storage_method *storage)
+static mem_t *create_attach_mem_host(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+                                     slotmem_storage_method *storage)
 {
     mem_t *ptr;
     const char *storename;
@@ -192,7 +193,7 @@ apr_status_t remove_host(mem_t *s, hostinfo_t *host)
  * get the ids for the used (not free) hosts in the table
  * @param pointer to the shared table.
  * @param ids array of int to store the used id (must be big enough).
- * @return number of host existing or -1 if error.
+ * @return number of host existing or 0 if error.
  */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
@@ -205,7 +206,7 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 }
 int get_ids_used_host(mem_t *s, int *ids)
 {
-   struct counter count;
+    struct counter count;
     count.count = 0;
     count.values = ids;
     if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
@@ -216,7 +217,7 @@ int get_ids_used_host(mem_t *s, int *ids)
 /*
  * read the size of the table.
  * @param pointer to the shared table.
- * @return number of host existing or -1 if error.
+ * @return the max number of host that the slotmem can contain.
  */
 int get_max_size_host(mem_t *s)
 {

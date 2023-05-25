@@ -1995,8 +1995,8 @@ static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, unsigned
     return NULL;
 }
 
-static proxy_worker *proxy_node_getid(request_rec *r, char *balancername, char *scheme, char *host, char *port, unsigned int *id,
-                                      proxy_server_conf **the_conf)
+static proxy_worker *proxy_node_getid(request_rec *r, char *balancername, char *scheme, char *host, char *port,
+                                      unsigned int *id, proxy_server_conf **the_conf)
 {
     proxy_worker *worker = NULL;
     char *ptr, *url, *bal;

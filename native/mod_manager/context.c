@@ -111,7 +111,7 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
         return rv;
     }
     rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
-    if (rv != APR_SUCCESS) 
+    if (rv != APR_SUCCESS)
         return rv;
     memcpy(ou, context, sizeof(contextinfo_t));
     ou->id = id;
@@ -194,7 +194,7 @@ apr_status_t remove_context(mem_t *s, contextinfo_t *context)
  * get the ids for the used (not free) contexts in the table
  * @param pointer to the shared table.
  * @param ids array of int to store the used id (must be big enough).
- * @return number of context existing or -1 if error.
+ * @return number of context existing or 0 if error.
  */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
@@ -218,7 +218,7 @@ int get_ids_used_context(mem_t *s, int *ids)
 /*
  * read the size of the table.
  * @param pointer to the shared table.
- * @return number of context existing or -1 if error.
+ * @return the max number of contexts that the slotmem can contain.
  */
 int get_max_size_context(mem_t *s)
 {

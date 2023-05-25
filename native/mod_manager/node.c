@@ -48,7 +48,8 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_node(char *string, unsigned int *num, int type, int create, apr_pool_t *p, slotmem_storage_method *storage)
+static mem_t *create_attach_mem_node(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+                                     slotmem_storage_method *storage)
 {
     mem_t *ptr;
     const char *storename;
@@ -143,7 +144,8 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned int *id, in
         if (rv != APR_SUCCESS) {
             return rv;
         }
-    } else {
+    }
+    else {
         rv = s->storage->fgrab(s->slotmem, *id);
         if (rv != APR_SUCCESS) {
             return rv;
@@ -255,7 +257,7 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
  * get the ids for the used (not free) nodes in the table
  * @param pointer to the shared table.
  * @param ids array of int to store the used id (must be big enough).
- * @return number of node existing or -1 if error.
+ * @return number of node existing or 0 if error.
  */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
@@ -279,7 +281,7 @@ int get_ids_used_node(mem_t *s, int *ids)
 /*
  * read the size of the table.
  * @param pointer to the shared table.
- * @return number of node existing or -1 if error.
+ * @return the max number nodes that the slotmem can contain or 0 if no storage available.
  */
 int get_max_size_node(mem_t *s)
 {
@@ -310,7 +312,7 @@ mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_stor
  */
 mem_t *create_mem_node(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return create_attach_mem_node(string, num, (unsigned int) persist, 1, p, storage);
+    return create_attach_mem_node(string, num, (unsigned int)persist, 1, p, storage);
 }
 
 
