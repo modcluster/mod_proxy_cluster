@@ -30,6 +30,5 @@ INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}")
 
 ADD_SUBDIRECTORY(mod_proxy_cluster)
 ADD_SUBDIRECTORY(advertise)
-ADD_SUBDIRECTORY(mod_cluster_slotmem)
 ADD_SUBDIRECTORY(mod_manager)
 ADD_SUBDIRECTORY(balancers)
