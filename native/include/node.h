@@ -97,6 +97,11 @@ struct nodeinfo
 typedef struct nodeinfo nodeinfo_t;
 
 /**
+ * use apache httpd structure
+ */
+typedef struct ap_slotmem_provider_t slotmem_storage_method;
+
+/**
  * return the last stored in the mem structure
  * @param pointer to the shared table
  * @return APR_SUCCESS if all went well
@@ -113,7 +118,7 @@ apr_status_t get_last_mem_error(mem_t *mem);
  * @return APR_SUCCESS if all went well
  *
  */
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean);
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned int *id, int clean);
 
 /**
  * read a node record from the shared table
@@ -197,7 +202,7 @@ unsigned int get_version_node(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared node table
  * @param name to use to create the table.
@@ -206,7 +211,7 @@ mem_t *get_mem_node(char *string, int *num, apr_pool_t *p, slotmem_storage_metho
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_node(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_node(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.

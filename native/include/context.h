@@ -66,6 +66,10 @@ struct contextinfo
 };
 typedef struct contextinfo contextinfo_t;
 
+/**
+ * use apache httpd structure
+ */
+typedef struct ap_slotmem_provider_t slotmem_storage_method;
 
 /**
  * Insert(alloc) and update a context record in the shared table
@@ -122,7 +126,7 @@ int get_max_size_context(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_context(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_context(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared context table
  * @param name to use to create the table.
@@ -131,7 +135,7 @@ mem_t *get_mem_context(char *string, int *num, apr_pool_t *p, slotmem_storage_me
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_context(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_context(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.

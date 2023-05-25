@@ -38,7 +38,7 @@
 #include "mod_proxy.h"
 #include "mod_watchdog.h"
 
-#include "slotmem.h"
+#include "ap_slotmem.h"
 
 #include "node.h"
 #include "host.h"
@@ -1943,7 +1943,7 @@ static int proxy_host_isup(request_rec *r, char *scheme, char *host, char *port)
     return 0;
 }
 
-static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, int *id, proxy_server_conf **the_conf)
+static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, unsigned int *id, proxy_server_conf **the_conf)
 {
     /* search for the worker in the VirtualHosts */
     proxy_worker *worker = NULL;
@@ -1995,7 +1995,7 @@ static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, int *id,
     return NULL;
 }
 
-static proxy_worker *proxy_node_getid(request_rec *r, char *balancername, char *scheme, char *host, char *port, int *id,
+static proxy_worker *proxy_node_getid(request_rec *r, char *balancername, char *scheme, char *host, char *port, unsigned int *id,
                                       proxy_server_conf **the_conf)
 {
     proxy_worker *worker = NULL;

@@ -9,7 +9,7 @@
 #include "http_request.h"
 #include "mod_proxy.h"
 
-#include "slotmem.h"
+#include "ap_slotmem.h"
 
 #include "domain.h"
 #include "node.h"

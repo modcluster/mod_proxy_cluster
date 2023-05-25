@@ -27,9 +27,14 @@
 
 struct mem
 {
-    ap_slotmem_t *slotmem;
+    ap_slotmem_instance_t *slotmem;
     const slotmem_storage_method *storage;
     int num;
     apr_pool_t *p;
     apr_status_t laststatus;
+};
+
+struct counter {
+    int count;
+    int *values;
 };

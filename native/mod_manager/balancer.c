@@ -39,12 +39,12 @@
 #include "apr_pools.h"
 #include "apr_time.h"
 
-#include "slotmem.h"
+#include "ap_slotmem.h"
 #include "balancer.h"
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_balancer(char *string, int *num, int type, apr_pool_t *p,
+static mem_t *create_attach_mem_balancer(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
                                          slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -57,11 +57,11 @@ static mem_t *create_attach_mem_balancer(char *string, int *num, int type, apr_p
     }
     ptr->storage = storage;
     storename = apr_pstrcat(p, string, BALANCEREXE, NULL);
-    if (type)
-        rv = ptr->storage->ap_slotmem_create(&ptr->slotmem, storename, sizeof(balancerinfo_t), *num, type, p);
+    if (create)
+        rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(balancerinfo_t), *num, type, p);
     else {
         apr_size_t size = sizeof(balancerinfo_t);
-        rv = ptr->storage->ap_slotmem_attach(&ptr->slotmem, storename, &size, num, p);
+        rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
     if (rv != APR_SUCCESS) {
         return NULL;
@@ -72,47 +72,49 @@ static mem_t *create_attach_mem_balancer(char *string, int *num, int type, apr_p
 }
 
 /**
- * Insert(alloc) and update a balancer record in the shared table
+ * Update a balancer record in the shared table
  * @param pointer to the shared table.
  * @param balancer balancer to store in the shared table.
  * @return APR_SUCCESS if all went well
  *
  */
-static apr_status_t insert_update(void *mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
 {
-    balancerinfo_t *in = (balancerinfo_t *)*data;
+    balancerinfo_t *in = (balancerinfo_t *)data;
     balancerinfo_t *ou = (balancerinfo_t *)mem;
     (void)pool;
 
     if (strcmp(in->balancer, ou->balancer) == 0) {
         memcpy(ou, in, sizeof(balancerinfo_t));
-        ou->id = id;
+        ou->id = in->id;
         ou->updatetime = apr_time_sec(apr_time_now());
-        *data = ou;
-        return APR_SUCCESS;
+        return  APR_EEXIST; /* it exists so we are done */
     }
-    return APR_NOTFOUND;
+    return APR_SUCCESS;
 }
 
 apr_status_t insert_update_balancer(mem_t *s, balancerinfo_t *balancer)
 {
     apr_status_t rv;
     balancerinfo_t *ou;
-    int ident = 0;
+    unsigned int id = 0;
 
     balancer->id = 0;
-    rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &balancer, s->p);
-    if (balancer->id != 0 && rv == APR_SUCCESS) {
+    rv = s->storage->doall(s->slotmem, update, &balancer, s->p);
+    if (rv == APR_EEXIST) {
         return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
-    rv = s->storage->ap_slotmem_alloc(s->slotmem, &ident, (void **)&ou);
+    rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
     if (rv != APR_SUCCESS) {
         return rv;
     }
+    rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
+    if (rv != APR_SUCCESS)
+        return rv;
     memcpy(ou, balancer, sizeof(balancerinfo_t));
-    ou->id = ident;
+    ou->id = id;
     ou->updatetime = apr_time_sec(apr_time_now());
 
     return APR_SUCCESS;
@@ -124,30 +126,30 @@ apr_status_t insert_update_balancer(mem_t *s, balancerinfo_t *balancer)
  * @param balancer balancer to read from the shared table.
  * @return address of the read balancer or NULL if error.
  */
-static apr_status_t loc_read_balancer(void *mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t loc_read_balancer(void *mem, void *data, apr_pool_t *pool)
 {
-    balancerinfo_t *in = (balancerinfo_t *)*data;
+    balancerinfo_t *in = (balancerinfo_t *)data;
     balancerinfo_t *ou = (balancerinfo_t *)mem;
-    (void)id;
     (void)pool;
 
     if (strcmp(in->balancer, ou->balancer) == 0) {
-        *data = ou;
-        return APR_SUCCESS;
+        in->id = ou->id;
+        return APR_EEXIST;
     }
-    return APR_NOTFOUND;
+    return APR_SUCCESS;
 }
 
 balancerinfo_t *read_balancer(mem_t *s, balancerinfo_t *balancer)
 {
     apr_status_t rv;
-    balancerinfo_t *ou = balancer;
+    balancerinfo_t *ou;
 
-    if (balancer->id)
-        rv = s->storage->ap_slotmem_mem(s->slotmem, balancer->id, (void **)&ou);
-    else {
-        rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_balancer, &ou, s->p);
+    if (!balancer->id) {
+        rv = s->storage->doall(s->slotmem, loc_read_balancer, balancer, s->p);
+        if (rv != APR_EEXIST)
+            return NULL;
     }
+    rv = s->storage->dptr(s->slotmem, balancer->id, (void **)&ou);
     if (rv == APR_SUCCESS)
         return ou;
     return NULL;
@@ -157,12 +159,12 @@ balancerinfo_t *read_balancer(mem_t *s, balancerinfo_t *balancer)
  * get a balancer record from the shared table
  * @param pointer to the shared table.
  * @param balancer address where the balancer is locate in the shared table.
- * @param ids  in the balancer table.
+ * @param id  in the balancer table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t get_balancer(mem_t *s, balancerinfo_t **balancer, int ids)
+apr_status_t get_balancer(mem_t *s, balancerinfo_t **balancer, int id)
 {
-    return s->storage->ap_slotmem_mem(s->slotmem, ids, (void **)balancer);
+    return s->storage->dptr(s->slotmem, id, (void **)balancer);
 }
 
 /**
@@ -176,13 +178,13 @@ apr_status_t remove_balancer(mem_t *s, balancerinfo_t *balancer)
     apr_status_t rv;
     balancerinfo_t *ou = balancer;
     if (balancer->id) {
-        rv = s->storage->ap_slotmem_free(s->slotmem, balancer->id, balancer);
+        rv = s->storage->release(s->slotmem, balancer->id);
     }
     else {
         /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
-        rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_balancer, &ou, s->p);
-        if (rv == APR_SUCCESS)
-            rv = s->storage->ap_slotmem_free(s->slotmem, ou->id, balancer);
+        rv = s->storage->doall(s->slotmem, loc_read_balancer, &ou, s->p);
+        if (rv == APR_EEXIST)
+            rv = s->storage->release(s->slotmem, ou->id);
     }
     return rv;
 }
@@ -193,9 +195,23 @@ apr_status_t remove_balancer(mem_t *s, balancerinfo_t *balancer)
  * @param ids array of int to store the used id (must be big enough).
  * @return number of balancer existing or -1 if error.
  */
+static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
+{
+    struct counter *count = (struct counter *)data;
+    balancerinfo_t *ou = (balancerinfo_t *)mem;
+    *count->values = ou->id;
+    count->values++;
+    count->count++;
+    return APR_SUCCESS;
+}
 int get_ids_used_balancer(mem_t *s, int *ids)
 {
-    return s->storage->ap_slotmem_get_used(s->slotmem, ids);
+    struct counter count;
+    count.count = 0;
+    count.values = ids;
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+        return 0;
+    return count.count;
 }
 
 /*
@@ -205,7 +221,7 @@ int get_ids_used_balancer(mem_t *s, int *ids)
  */
 int get_max_size_balancer(mem_t *s)
 {
-    return s->storage->ap_slotmem_get_max_size(s->slotmem);
+    return s->storage->num_slots(s->slotmem);
 }
 
 /**
@@ -216,9 +232,9 @@ int get_max_size_balancer(mem_t *s)
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_balancer(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_balancer(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return create_attach_mem_balancer(string, num, 0, p, storage);
+    return create_attach_mem_balancer(string, num, 0, 0, p, storage);
 }
 
 /**
@@ -230,7 +246,7 @@ mem_t *get_mem_balancer(char *string, int *num, apr_pool_t *p, slotmem_storage_m
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_balancer(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_balancer(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return create_attach_mem_balancer(string, num, CREATE_SLOTMEM | persist, p, storage);
+    return create_attach_mem_balancer(string, num, persist, 1, p, storage);
 }

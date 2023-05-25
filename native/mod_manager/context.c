@@ -39,12 +39,12 @@
 #include "apr_pools.h"
 #include "apr_time.h"
 
-#include "slotmem.h"
+#include "ap_slotmem.h"
 #include "context.h"
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_context(char *string, int *num, int type, apr_pool_t *p,
+static mem_t *create_attach_mem_context(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
                                         slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -57,11 +57,11 @@ static mem_t *create_attach_mem_context(char *string, int *num, int type, apr_po
     }
     ptr->storage = storage;
     storename = apr_pstrcat(p, string, CONTEXTEXE, NULL);
-    if (type)
-        rv = ptr->storage->ap_slotmem_create(&ptr->slotmem, storename, sizeof(contextinfo_t), *num, type, p);
+    if (create)
+        rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(contextinfo_t), *num, type, p);
     else {
         apr_size_t size = sizeof(contextinfo_t);
-        rv = ptr->storage->ap_slotmem_attach(&ptr->slotmem, storename, &size, num, p);
+        rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
     if (rv != APR_SUCCESS) {
         return NULL;
@@ -72,48 +72,49 @@ static mem_t *create_attach_mem_context(char *string, int *num, int type, apr_po
 }
 
 /**
- * Insert(alloc) and update a context record in the shared table
+ * Update a context record in the shared table
  * @param pointer to the shared table.
  * @param context context to store in the shared table.
  * @return APR_SUCCESS if all went well
  *
  */
-static apr_status_t insert_update(void *mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
 {
-    contextinfo_t *in = (contextinfo_t *)*data;
+    contextinfo_t *in = (contextinfo_t *)data;
     contextinfo_t *ou = (contextinfo_t *)mem;
     (void)pool;
 
     if (strcmp(in->context, ou->context) == 0 && in->vhost == ou->vhost && in->node == ou->node) {
         /* We don't update nbrequests it belongs to mod_proxy_cluster logic */
         ou->status = in->status;
-        ou->id = id;
+        ou->id = in->id;
         ou->updatetime = apr_time_sec(apr_time_now());
-        *data = ou;
-        return APR_SUCCESS;
+        return APR_EEXIST; /* it exists so we are done */
     }
-    return APR_NOTFOUND;
+    return APR_SUCCESS;
 }
 
 apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
 {
     apr_status_t rv;
     contextinfo_t *ou;
-    int ident = 0;
+    unsigned int id = 0;
 
-    context->id = 0;
-    rv = s->storage->ap_slotmem_do(s->slotmem, insert_update, &context, s->p);
-    if (context->id != 0 && rv == APR_SUCCESS) {
+    rv = s->storage->doall(s->slotmem, update, &context, s->p);
+    if (rv == APR_EEXIST) {
         return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
-    rv = s->storage->ap_slotmem_alloc(s->slotmem, &ident, (void **)&ou);
+    rv = s->storage->grab(s->slotmem, &id);
     if (rv != APR_SUCCESS) {
         return rv;
     }
+    rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
+    if (rv != APR_SUCCESS) 
+        return rv;
     memcpy(ou, context, sizeof(contextinfo_t));
-    ou->id = ident;
+    ou->id = id;
     ou->nbrequests = 0;
     ou->updatetime = apr_time_sec(apr_time_now());
 
@@ -126,30 +127,30 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
  * @param context context to read from the shared table.
  * @return address of the read context or NULL if error.
  */
-static apr_status_t loc_read_context(void *mem, void **data, int id, apr_pool_t *pool)
+static apr_status_t loc_read_context(void *mem, void *data, apr_pool_t *pool)
 {
-    contextinfo_t *in = (contextinfo_t *)*data;
+    contextinfo_t *in = (contextinfo_t *)data;
     contextinfo_t *ou = (contextinfo_t *)mem;
-    (void)id;
     (void)pool;
 
     if (strcmp(in->context, ou->context) == 0 && in->vhost == ou->vhost && ou->node == in->node) {
-        *data = ou;
-        return APR_SUCCESS;
+        in->id = ou->id;
+        return APR_EEXIST;
     }
-    return APR_NOTFOUND;
+    return APR_SUCCESS;
 }
 
 contextinfo_t *read_context(mem_t *s, contextinfo_t *context)
 {
     apr_status_t rv;
-    contextinfo_t *ou = context;
+    contextinfo_t *ou;
 
-    if (context->id)
-        rv = s->storage->ap_slotmem_mem(s->slotmem, context->id, (void **)&ou);
-    else {
-        rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_context, &ou, s->p);
+    if (!context->id) {
+        rv = s->storage->doall(s->slotmem, loc_read_context, context, s->p);
+        if (rv != APR_EEXIST)
+            return NULL;
     }
+    rv = s->storage->dptr(s->slotmem, context->id, (void **)&ou);
     if (rv == APR_SUCCESS)
         return ou;
     return NULL;
@@ -159,12 +160,12 @@ contextinfo_t *read_context(mem_t *s, contextinfo_t *context)
  * get a context record from the shared table
  * @param pointer to the shared table.
  * @param context address where the context is locate in the shared table.
- * @param ids  in the context table.
+ * @param id  in the context table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t get_context(mem_t *s, contextinfo_t **context, int ids)
+apr_status_t get_context(mem_t *s, contextinfo_t **context, int id)
 {
-    return s->storage->ap_slotmem_mem(s->slotmem, ids, (void **)context);
+    return s->storage->dptr(s->slotmem, id, (void **)context);
 }
 
 /**
@@ -178,13 +179,13 @@ apr_status_t remove_context(mem_t *s, contextinfo_t *context)
     apr_status_t rv;
     contextinfo_t *ou = context;
     if (context->id) {
-        rv = s->storage->ap_slotmem_free(s->slotmem, context->id, context);
+        rv = s->storage->release(s->slotmem, context->id);
     }
     else {
         /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
-        rv = s->storage->ap_slotmem_do(s->slotmem, loc_read_context, &ou, s->p);
-        if (rv == APR_SUCCESS)
-            rv = s->storage->ap_slotmem_free(s->slotmem, ou->id, context);
+        rv = s->storage->doall(s->slotmem, loc_read_context, &ou, s->p);
+        if (rv == APR_EEXIST)
+            rv = s->storage->release(s->slotmem, ou->id);
     }
     return rv;
 }
@@ -195,9 +196,23 @@ apr_status_t remove_context(mem_t *s, contextinfo_t *context)
  * @param ids array of int to store the used id (must be big enough).
  * @return number of context existing or -1 if error.
  */
+static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
+{
+    struct counter *count = (struct counter *)data;
+    contextinfo_t *ou = (contextinfo_t *)mem;
+    *count->values = ou->id;
+    count->values++;
+    count->count++;
+    return APR_SUCCESS;
+}
 int get_ids_used_context(mem_t *s, int *ids)
 {
-    return s->storage->ap_slotmem_get_used(s->slotmem, ids);
+    struct counter count;
+    count.count = 0;
+    count.values = ids;
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+        return 0;
+    return count.count;
 }
 
 /*
@@ -207,7 +222,7 @@ int get_ids_used_context(mem_t *s, int *ids)
  */
 int get_max_size_context(mem_t *s)
 {
-    return s->storage->ap_slotmem_get_max_size(s->slotmem);
+    return s->storage->num_slots(s->slotmem);
 }
 
 /**
@@ -218,9 +233,9 @@ int get_max_size_context(mem_t *s)
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_context(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_context(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return create_attach_mem_context(string, num, 0, p, storage);
+    return create_attach_mem_context(string, num, 0, 0, p, storage);
 }
 
 /**
@@ -232,7 +247,7 @@ mem_t *get_mem_context(char *string, int *num, apr_pool_t *p, slotmem_storage_me
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_context(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_context(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return create_attach_mem_context(string, num, CREATE_SLOTMEM | persist, p, storage);
+    return create_attach_mem_context(string, num, persist, 1, p, storage);
 }
