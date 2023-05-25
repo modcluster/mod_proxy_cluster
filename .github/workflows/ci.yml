@@ -10,6 +10,7 @@ jobs:
   cmake-fedora-latest:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         compiler: [gcc, clang]
     steps:
