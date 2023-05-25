@@ -42,6 +42,7 @@ Styles
 
 The codebase follows certain code style that is specified in `.clang-format` file within the `native`
 directory. You can run the tool manualy from the mentioned directory by executing `clang-format -n <file>`.
+To apply all suggestions to a file automatically, run `clang-format -i <file>`.
 
 However, there are some cases where breaking the code style may result in better clarity. In those cases
 enclose the corresponding part of code like this
