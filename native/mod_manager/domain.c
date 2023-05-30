@@ -75,7 +75,7 @@ static mem_t *create_attach_mem_domain(char *string, unsigned int *num, int type
  * Update a domain record in the shared table
  * @param pointer to the shared table.
  * @param domain domain to store in the shared table.
- * @return APR_SUCCESS if all went well
+ * @return APR_EEXIST if the record was updated, APR_SUCCESS otherwise
  *
  */
 static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
@@ -221,7 +221,7 @@ apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, con
  * get the ids for the used (not free) domains in the table
  * @param pointer to the shared table.
  * @param ids array of int to store the used id (must be big enough).
- * @return number of domain existing or 0 if error.
+ * @return number of domain existing or 0.
  */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {

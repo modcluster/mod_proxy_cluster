@@ -75,7 +75,7 @@ static mem_t *create_attach_mem_context(char *string, unsigned int *num, int typ
  * Update a context record in the shared table
  * @param pointer to the shared table.
  * @param context context to store in the shared table.
- * @return APR_SUCCESS if all went well
+ * @return APR_EEXIST if the record was updated, APR_SUCCESS otherwise
  *
  */
 static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
@@ -183,7 +183,7 @@ apr_status_t remove_context(mem_t *s, int id)
  * get the ids for the used (not free) contexts in the table
  * @param pointer to the shared table.
  * @param ids array of int to store the used id (must be big enough).
- * @return number of context existing or 0 if error.
+ * @return number of context existing or 0.
  */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
