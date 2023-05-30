@@ -171,23 +171,12 @@ apr_status_t get_context(mem_t *s, contextinfo_t **context, int id)
 /**
  * remove(free) a context record from the shared table
  * @param pointer to the shared table.
- * @param context context to remove from the shared table.
+ * @param id id of the context to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_context(mem_t *s, contextinfo_t *context)
+apr_status_t remove_context(mem_t *s, int id)
 {
-    apr_status_t rv;
-    contextinfo_t *ou = context;
-    if (context->id) {
-        rv = s->storage->release(s->slotmem, context->id);
-    }
-    else {
-        /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
-        rv = s->storage->doall(s->slotmem, loc_read_context, &ou, s->p);
-        if (rv == APR_EEXIST)
-            rv = s->storage->release(s->slotmem, ou->id);
-    }
-    return rv;
+    return s->storage->release(s->slotmem, id);
 }
 
 /*

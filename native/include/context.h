@@ -99,10 +99,10 @@ apr_status_t get_context(mem_t *s, contextinfo_t **context, int ids);
 /**
  * remove(free) a context record from the shared table
  * @param pointer to the shared table.
- * @param context context to remove from the shared table.
+ * @param int the id of context to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_context(mem_t *s, contextinfo_t *context);
+apr_status_t remove_context(mem_t *s, int id);
 
 /*
  * get the ids for the used (not free) contexts in the table

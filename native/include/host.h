@@ -91,10 +91,10 @@ apr_status_t get_host(mem_t *s, hostinfo_t **host, int ids);
 /**
  * remove(free) a host record from the shared table
  * @param pointer to the shared table.
- * @param host host to remove from the shared table.
+ * @param int id id of host to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_host(mem_t *s, hostinfo_t *host);
+apr_status_t remove_host(mem_t *s, int id);
 
 /*
  * get the ids for the used (not free) hosts in the table

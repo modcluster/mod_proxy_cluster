@@ -170,23 +170,12 @@ apr_status_t get_host(mem_t *s, hostinfo_t **host, int id)
 /**
  * remove(free) a host record from the shared table
  * @param pointer to the shared table.
- * @param host host to remove from the shared table.
+ * @param id id of the host to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_host(mem_t *s, hostinfo_t *host)
+apr_status_t remove_host(mem_t *s, int id)
 {
-    apr_status_t rv;
-    hostinfo_t *ou = host;
-    if (host->id) {
-        rv = s->storage->release(s->slotmem, host->id);
-    }
-    else {
-        /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
-        rv = s->storage->doall(s->slotmem, loc_read_host, &ou, s->p);
-        if (rv == APR_EEXIST)
-            rv = s->storage->release(s->slotmem, ou->id);
-    }
-    return rv;
+    return s->storage->release(s->slotmem, id);
 }
 
 /*

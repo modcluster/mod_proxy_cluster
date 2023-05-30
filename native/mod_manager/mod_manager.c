@@ -307,7 +307,7 @@ static void loc_remove_host_context(int node, apr_pool_t *pool)
         if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
         if (ou->node == node)
-            remove_host(hoststatsmem, ou);
+            remove_host(hoststatsmem, ou->id);
     }
 
     sizecontext = get_ids_used_context(contextstatsmem, idcontext);
@@ -316,7 +316,7 @@ static void loc_remove_host_context(int node, apr_pool_t *pool)
         if (get_context(contextstatsmem, &context, idcontext[i]) != APR_SUCCESS)
             continue;
         if (context->node == node)
-            remove_context(contextstatsmem, context);
+            remove_context(contextstatsmem, context->id);
     }
 }
 
@@ -792,6 +792,19 @@ static apr_status_t insert_update_hosts(mem_t *mem, char *str, int node, int vho
 }
 
 /*
+ * remove the context using the contextinfo_t information
+ * we read it first then remove it
+ */
+static void read_remove_context(mem_t *mem, contextinfo_t *context)
+{
+    contextinfo_t *info;
+    info = read_context(mem, context);
+    if (info == NULL)
+        return;
+    remove_context(mem, info->id);
+}
+
+/*
  * Insert the context from Context information
  * Note:
  * 1 - if status is REMOVE remove_context will be called.
@@ -823,8 +836,9 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
                 if (ret != APR_SUCCESS)
                     return ret;
             }
-            else
-                remove_context(mem, &info);
+            else {
+                read_remove_context(mem, &info);
+            }
 
             previous = ptr + 1;
         }
@@ -834,8 +848,9 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
     strncpy(info.context, previous, sizeof(info.context));
     if (status != REMOVE)
         ret = insert_update_context(mem, &info);
-    else
-        remove_context(mem, &info);
+    else {
+        read_remove_context(mem, &info);
+    }
     return ret;
 }
 
@@ -1881,12 +1896,12 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
                     insert_update_context(contextstatsmem, context);
                 }
                 else {
-                    remove_context(contextstatsmem, context);
+                    remove_context(contextstatsmem, context->id);
                 }
             }
         }
         if (status == REMOVE) {
-            remove_host(hoststatsmem, ou);
+            remove_host(hoststatsmem, ou->id);
         }
     }
 
@@ -2116,7 +2131,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                 if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
                     continue;
                 if (ou->vhost == host->vhost && ou->node == node->mess.id)
-                    remove_host(hoststatsmem, ou);
+                    remove_host(hoststatsmem, ou->id);
             }
         }
     }
