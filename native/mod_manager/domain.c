@@ -85,8 +85,8 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     (void)pool;
 
     if (strcmp(in->JVMRoute, ou->JVMRoute) == 0 && strcmp(in->balancer, ou->balancer) == 0) {
+        in->id = ou->id;
         memcpy(ou, in, sizeof(domaininfo_t));
-        ou->id = in->id;
         ou->updatetime = apr_time_sec(apr_time_now());
         return APR_EEXIST;
     }
@@ -99,7 +99,7 @@ apr_status_t insert_update_domain(mem_t *s, domaininfo_t *domain)
     domaininfo_t *ou;
     unsigned int id = 0;
 
-    rv = s->storage->doall(s->slotmem, update, &domain, s->p);
+    rv = s->storage->doall(s->slotmem, update, domain, s->p);
     if (rv == APR_EEXIST) {
         return APR_SUCCESS; /* updated */
     }

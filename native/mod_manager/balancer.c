@@ -85,8 +85,8 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     (void)pool;
 
     if (strcmp(in->balancer, ou->balancer) == 0) {
+        in->id = ou->id;
         memcpy(ou, in, sizeof(balancerinfo_t));
-        ou->id = in->id;
         ou->updatetime = apr_time_sec(apr_time_now());
         return APR_EEXIST; /* it exists so we are done */
     }
@@ -99,20 +99,20 @@ apr_status_t insert_update_balancer(mem_t *s, balancerinfo_t *balancer)
     balancerinfo_t *ou;
     unsigned int id = 0;
 
-    balancer->id = 0;
-    rv = s->storage->doall(s->slotmem, update, &balancer, s->p);
+    rv = s->storage->doall(s->slotmem, update, balancer, s->p);
     if (rv == APR_EEXIST) {
         return APR_SUCCESS; /* updated */
     }
 
     /* we have to insert it */
-    rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
+    rv = s->storage->grab(s->slotmem, &id);
     if (rv != APR_SUCCESS) {
         return rv;
     }
     rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
-    if (rv != APR_SUCCESS)
+    if (rv != APR_SUCCESS) {
         return rv;
+    }
     memcpy(ou, balancer, sizeof(balancerinfo_t));
     ou->id = id;
     ou->updatetime = apr_time_sec(apr_time_now());

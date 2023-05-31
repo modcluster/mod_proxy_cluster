@@ -85,8 +85,8 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     (void)pool;
 
     if (strcmp(in->host, ou->host) == 0 && in->vhost == ou->vhost && in->node == ou->node) {
+        in->id = ou->id;
         memcpy(ou, in, sizeof(hostinfo_t));
-        ou->id = in->id;
         ou->updatetime = apr_time_sec(apr_time_now());
         return APR_EEXIST; /* it exists so we are done */
     }
@@ -99,7 +99,7 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
     hostinfo_t *ou;
     unsigned int id = 0;
 
-    rv = s->storage->doall(s->slotmem, update, &host, s->p);
+    rv = s->storage->doall(s->slotmem, update, host, s->p);
     if (rv == APR_EEXIST) {
         return APR_SUCCESS; /* updated */
     }

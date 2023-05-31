@@ -87,7 +87,6 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     if (strcmp(in->context, ou->context) == 0 && in->vhost == ou->vhost && in->node == ou->node) {
         /* We don't update nbrequests it belongs to mod_proxy_cluster logic */
         ou->status = in->status;
-        ou->id = in->id;
         ou->updatetime = apr_time_sec(apr_time_now());
         return APR_EEXIST; /* it exists so we are done */
     }
@@ -100,7 +99,7 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
     contextinfo_t *ou;
     unsigned int id = 0;
 
-    rv = s->storage->doall(s->slotmem, update, &context, s->p);
+    rv = s->storage->doall(s->slotmem, update, context, s->p);
     if (rv == APR_EEXIST) {
         return APR_SUCCESS; /* updated */
     }

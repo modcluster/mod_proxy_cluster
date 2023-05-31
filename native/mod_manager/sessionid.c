@@ -85,8 +85,8 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     (void)pool;
 
     if (strcmp(in->sessionid, ou->sessionid) == 0) {
+        in->id = ou->id;
         memcpy(ou, in, sizeof(sessionidinfo_t));
-        ou->id = in->id;
         ou->updatetime = apr_time_sec(apr_time_now());
         return APR_EEXIST; /* it exists so we are done */
     }
@@ -99,8 +99,7 @@ apr_status_t insert_update_sessionid(mem_t *s, sessionidinfo_t *sessionid)
     sessionidinfo_t *ou;
     unsigned int id = 0;
 
-    sessionid->id = 0;
-    rv = s->storage->doall(s->slotmem, update, &sessionid, s->p);
+    rv = s->storage->doall(s->slotmem, update, sessionid, s->p);
     if (rv == APR_EEXIST) {
         return APR_SUCCESS; /* updated */
     }
