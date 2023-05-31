@@ -17,7 +17,7 @@ echo "Test values are FOREVER_PAUSE=$FOREVER_PAUSE, TOMCAT_CYCLE_COUNT=$TOMCAT_C
 #
 # Stop running given dockered tomcat
 stoptomcat() {
-    docker ps -a | grep $1
+    podman ps -a | grep $1
     if [ $? -eq 0 ]; then
         echo "Stopping $1"
         docker stop $1
@@ -31,7 +31,7 @@ stoptomcat() {
 #
 # Stop running all dockered tomcats
 stoptomcats() {
-    for i in `docker ps -a --format "{{.Names}}" | grep tomcat`
+    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
     do
         stoptomcat $i
     done
@@ -78,15 +78,15 @@ waitnodes() {
 #
 # Stop and remove tomcat docker container of a given name
 removetomcatname() {
-    docker ps -a | grep $1
+    podman ps -a | grep $1
     if [ $? -eq 0 ]; then
         echo "Stopping $1"
-        docker stop $1
+        podman stop $1
         if [ $? -ne 0 ]; then
             echo "Can't stop $1"
         fi
         echo "Removing $1"
-        docker rm $1
+        podman rm $1
         if [ $? -ne 0 ]; then
             echo "Can't remove $1"
         fi
@@ -96,7 +96,7 @@ removetomcatname() {
 #
 # Remove all tomcat containers and images
 removetomcats() {
-    for i in `docker ps -a --format "{{.Names}}" | grep tomcat`
+    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
     do
         removetomcatname $i
     done
@@ -137,7 +137,7 @@ jdbsuspend() {
     rm -f /tmp/testpipeout
     mkfifo /tmp/testpipeout
     sleep 1000 > /tmp/testpipein &
-    jdb -attach 6660 < /tmp/testpipein > /tmp/testpipeout &
+    podman exec -it tomcat8080 jdb -attach 6660 < /tmp/testpipein > /tmp/testpipeout &
     echo "suspend" > /tmp/testpipein
     cat < /tmp/testpipeout &
 }
@@ -225,7 +225,7 @@ abtomcats() {
     tc=2
     while true
     do
-        abtomcat $tc
+        abtomcat $tc || exit 1
         tc=`expr $tc + 1`
         if [ $tc -gt $1 ]; then
             echo "abtomcats: Done!"
