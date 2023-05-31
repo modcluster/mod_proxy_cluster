@@ -360,7 +360,7 @@ singlecycle() {
     shutdowntomcat $1 $R || exit 1
     while true
     do
-        curl -s http://localhost:6666/mod_cluster_manager | grep Node | grep $1 > /dev/null
+        curl -s http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
         if [ $? -ne 0 ]; then
             break
         fi
