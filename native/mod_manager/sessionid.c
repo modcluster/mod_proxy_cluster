@@ -189,12 +189,6 @@ apr_status_t remove_sessionid(mem_t *s, sessionidinfo_t *sessionid)
     return rv;
 }
 
-/*
- * get the ids for the used (not free) sessionids in the table
- * @param pointer to the shared table.
- * @param ids array of int to store the used id (must be big enough).
- * @return number of sessionid existing or 0.
- */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
     struct counter *count = (struct counter *)data;
@@ -204,6 +198,13 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
     count->count++;
     return APR_SUCCESS;
 }
+
+/*
+ * get the ids for the used (not free) sessionids in the table
+ * @param pointer to the shared table.
+ * @param ids array of int to store the used id (must be big enough).
+ * @return number of sessionid existing or 0.
+ */
 int get_ids_used_sessionid(mem_t *s, int *ids)
 {
     struct counter count;

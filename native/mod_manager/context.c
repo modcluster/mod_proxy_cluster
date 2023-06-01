@@ -178,12 +178,6 @@ apr_status_t remove_context(mem_t *s, int id)
     return s->storage->release(s->slotmem, id);
 }
 
-/*
- * get the ids for the used (not free) contexts in the table
- * @param pointer to the shared table.
- * @param ids array of int to store the used id (must be big enough).
- * @return number of context existing or 0.
- */
 static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
     struct counter *count = (struct counter *)data;
@@ -193,6 +187,13 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
     count->count++;
     return APR_SUCCESS;
 }
+
+/*
+ * get the ids for the used (not free) contexts in the table
+ * @param pointer to the shared table.
+ * @param ids array of int to store the used id (must be big enough).
+ * @return number of context existing or 0.
+ */
 int get_ids_used_context(mem_t *s, int *ids)
 {
     struct counter count;
