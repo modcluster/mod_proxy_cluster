@@ -31,4 +31,3 @@ SpacesBeforeTrailingComments: 8
 AllowShortFunctionsOnASingleLine: None
 TypenameMacros: ['APR_OPTIONAL_FN_TYPE']
 StatementMacros: ['AP_INIT_TAKE1', 'AP_INIT_TAKE12', 'AP_INIT_FLAG', 'AP_INIT_RAW_ARGS']
-
