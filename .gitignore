@@ -1,12 +1,15 @@
+# Eclipse IDE
 .settings
 .classpath
 .project
-bin
-target
 
-.idea
+# IntelliJ IDEA IDE
+.idea/
 *.ipr
 *.iml
+
+# Visual Studio Code IDE
+.vscode/
 
 # Native built files
 native/*/*.log
@@ -22,4 +25,5 @@ native/*/configure
 
 # Native testsuite
 test/java/node*/
-
+bin/
+target/
