@@ -50,21 +50,13 @@ waitnodes() {
     i=0
     while [ ${NBNODES} != ${nodes} ]
     do
-        NBNODES=`curl -s http://localhost:6666/mod_cluster_manager | grep Node | awk ' { print $3} ' | wc -l`
+        NBNODES=`curl -s http://localhost:6666/mod_cluster_manager | grep "Status: OK" | awk ' { print $3} ' | wc -l`
         sleep 10
         echo "Waiting for ${nodes} node to be ready: `date`"
         i=`expr $i + 1`
         if [ $i -gt 120 ]; then
             echo "Timeout the node(s) number is NOT ${nodes} but ${NBNODES}"
             exit 1
-        fi
-        # check if the nodes are OK
-        if [ ${NBNODES} = ${nodes} ]; then
-            NBNODESOK=`curl -s http://localhost:6666/mod_cluster_manager | grep "Status: OK" | wc -l`
-            if [ $NBNODESOK != ${nodes} ]; then
-                echo "Some nodes are not in OK state..."
-                exit 1
-            fi
         fi
     done
     curl -s http://localhost:6666/mod_cluster_manager -o /dev/null
@@ -164,7 +156,16 @@ starttomcat() {
 }
 
 # Start the webapp on the given tomcat
+# wait for the tomcat to start.
 startwebapptomcat() {
+    while true
+    do
+        podman ps -a --format "{{.Names}}" | grep tomcat$1
+        if [ $? -eq 0 ]; then
+            break
+        fi
+        sleep 2
+    done
     docker cp testapp tomcat$1:/usr/local/tomcat/webapps/tomcat$1 || exit 1
 }
 
