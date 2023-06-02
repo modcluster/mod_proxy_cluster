@@ -694,7 +694,14 @@ nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=t
 # Now try to test the websocket
 echotestlabel "testing websocket"
 # The websocket-hello app is at: https://github.com/jfclere/httpd_websocket
-mvn dependency:copy -U -Dartifact=org.apache.tomcat:websocket:hello:0.0.1:war  -DoutputDirectory=.
+mvn dependency:copy -U -Dartifact=org.apache.tomcat:websocket:hello:0.0.1:war  -DoutputDirectory=. 
+if [ $? -ne 0 ]; then
+  echo "Something was wrong... can't find org.apache.tomcat:websocket:hello:0.0.1:war"
+  cp $HOME/.m2/repository/org/apache/tomcat/websocket-hello/0.0.1/websocket-hello-0.0.1.war .
+  if [ $? -ne 0 ]; then
+    exit 1
+  fi
+fi
 docker cp websocket-hello-0.0.1.war tomcat8080:/usr/local/tomcat/webapps
 docker cp websocket-hello-0.0.1.war tomcat8081:/usr/local/tomcat/webapps
 # Put the testapp in the  tomcat we restarted.
