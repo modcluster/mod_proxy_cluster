@@ -58,6 +58,10 @@ struct hostinfo
 };
 typedef struct hostinfo hostinfo_t;
 
+/**
+ * use apache httpd structure
+ */
+typedef struct ap_slotmem_provider_t slotmem_storage_method;
 
 /**
  * Insert(alloc) and update a host record in the shared table
@@ -87,10 +91,10 @@ apr_status_t get_host(mem_t *s, hostinfo_t **host, int ids);
 /**
  * remove(free) a host record from the shared table
  * @param pointer to the shared table.
- * @param host host to remove from the shared table.
+ * @param int id id of host to remove from the shared table.
  * @return APR_SUCCESS if all went well
  */
-apr_status_t remove_host(mem_t *s, hostinfo_t *host);
+apr_status_t remove_host(mem_t *s, int id);
 
 /*
  * get the ids for the used (not free) hosts in the table
@@ -114,7 +118,7 @@ int get_max_size_host(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_host(char *string, int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_host(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared host table
  * @param name to use to create the table.
@@ -123,7 +127,7 @@ mem_t *get_mem_host(char *string, int *num, apr_pool_t *p, slotmem_storage_metho
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_host(char *string, int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_host(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.

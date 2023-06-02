@@ -21,7 +21,7 @@
 #include "apr_version.h"
 #include "ap_hooks.h"
 
-#include "slotmem.h"
+#include "ap_slotmem.h"
 
 #include "node.h"
 #include "host.h"

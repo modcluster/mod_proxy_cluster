@@ -41,7 +41,7 @@
 #include "mod_proxy.h"
 #include "ap_mpm.h"
 
-#include "slotmem.h"
+#include "ap_slotmem.h"
 
 #include "node.h"
 #include "host.h"
@@ -153,13 +153,13 @@ typedef struct mod_manager_config
     /* base name for the shared memory */
     char *basefilename;
     /* max number of context supported */
-    int maxcontext;
+    unsigned int maxcontext;
     /* max number of node supported */
-    int maxnode;
+    unsigned int maxnode;
     /* max number of host supported */
-    int maxhost;
+    unsigned int maxhost;
     /* max number of session supported */
-    int maxsessionid;
+    unsigned int maxsessionid;
 
     /* version, the version is increased each time the node update logic is called */
     unsigned int tableversion;
@@ -307,7 +307,7 @@ static void loc_remove_host_context(int node, apr_pool_t *pool)
         if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
             continue;
         if (ou->node == node)
-            remove_host(hoststatsmem, ou);
+            remove_host(hoststatsmem, ou->id);
     }
 
     sizecontext = get_ids_used_context(contextstatsmem, idcontext);
@@ -316,7 +316,7 @@ static void loc_remove_host_context(int node, apr_pool_t *pool)
         if (get_context(contextstatsmem, &context, idcontext[i]) != APR_SUCCESS)
             continue;
         if (context->node == node)
-            remove_context(contextstatsmem, context);
+            remove_context(contextstatsmem, context->id);
     }
 }
 
@@ -612,12 +612,13 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
         mconf->maxcontext = mconf->maxhost;
 
     /* Get a provider to handle the shared memory */
-    storage = ap_lookup_provider(SLOTMEM_STORAGE, "shared", "0");
+    storage = ap_lookup_provider(AP_SLOTMEM_PROVIDER_GROUP, "shm", AP_SLOTMEM_PROVIDER_VERSION);
     if (storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "ap_lookup_provider %s failed", SLOTMEM_STORAGE);
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "ap_lookup_provider %s failed",
+                     AP_SLOTMEM_PROVIDER_GROUP);
         return !OK;
     }
-    nodestatsmem = create_mem_node(node, &mconf->maxnode, mconf->persistent, p, storage);
+    nodestatsmem = create_mem_node(node, &mconf->maxnode, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (nodestatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_node %s failed", node);
         return !OK;
@@ -629,19 +630,21 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
         return !OK;
     }
 
-    contextstatsmem = create_mem_context(context, &mconf->maxcontext, mconf->persistent, p, storage);
+    contextstatsmem =
+        create_mem_context(context, &mconf->maxcontext, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (contextstatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_context failed");
         return !OK;
     }
 
-    hoststatsmem = create_mem_host(host, &mconf->maxhost, mconf->persistent, p, storage);
+    hoststatsmem = create_mem_host(host, &mconf->maxhost, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (hoststatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_host failed");
         return !OK;
     }
 
-    balancerstatsmem = create_mem_balancer(balancer, &mconf->maxhost, mconf->persistent, p, storage);
+    balancerstatsmem =
+        create_mem_balancer(balancer, &mconf->maxhost, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (balancerstatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_balancer failed");
         return !OK;
@@ -649,14 +652,16 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
 
     if (mconf->maxsessionid) {
         /* Only create sessionid stuff if required */
-        sessionidstatsmem = create_mem_sessionid(sessionid, &mconf->maxsessionid, mconf->persistent, p, storage);
+        sessionidstatsmem = create_mem_sessionid(sessionid, &mconf->maxsessionid,
+                                                 mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
         if (sessionidstatsmem == NULL) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_sessionid failed");
             return !OK;
         }
     }
 
-    domainstatsmem = create_mem_domain(domain, &mconf->maxnode, mconf->persistent, p, storage);
+    domainstatsmem =
+        create_mem_domain(domain, &mconf->maxnode, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (domainstatsmem == NULL) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_domain failed");
         return !OK;
@@ -787,6 +792,19 @@ static apr_status_t insert_update_hosts(mem_t *mem, char *str, int node, int vho
 }
 
 /*
+ * remove the context using the contextinfo_t information
+ * we read it first then remove it
+ */
+static void read_remove_context(mem_t *mem, contextinfo_t *context)
+{
+    contextinfo_t *info;
+    info = read_context(mem, context);
+    if (info == NULL)
+        return;
+    remove_context(mem, info->id);
+}
+
+/*
  * Insert the context from Context information
  * Note:
  * 1 - if status is REMOVE remove_context will be called.
@@ -818,8 +836,9 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
                 if (ret != APR_SUCCESS)
                     return ret;
             }
-            else
-                remove_context(mem, &info);
+            else {
+                read_remove_context(mem, &info);
+            }
 
             previous = ptr + 1;
         }
@@ -829,8 +848,9 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
     strncpy(info.context, previous, sizeof(info.context));
     if (status != REMOVE)
         ret = insert_update_context(mem, &info);
-    else
-        remove_context(mem, &info);
+    else {
+        read_remove_context(mem, &info);
+    }
     return ret;
 }
 
@@ -938,7 +958,8 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
  * Check if the proxy balancer module already has a worker
  * and return the id
  */
-static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, int *id, proxy_server_conf **the_conf)
+static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, unsigned int *id,
+                                      proxy_server_conf **the_conf)
 {
     if (balancerhandler != NULL) {
         return balancerhandler->proxy_node_getid(r, nodeinfo->mess.balancer, nodeinfo->mess.Type, nodeinfo->mess.Host,
@@ -993,7 +1014,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     struct cluster_host *phost;
 
     int i = 0;
-    int id;
+    unsigned int id = 0;
     int vid = 1; /* zero and "" is empty */
     int removed = 0;
     void *sconf = r->server->module_config;
@@ -1875,18 +1896,18 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
                     insert_update_context(contextstatsmem, context);
                 }
                 else {
-                    remove_context(contextstatsmem, context);
+                    remove_context(contextstatsmem, context->id);
                 }
             }
         }
         if (status == REMOVE) {
-            remove_host(hoststatsmem, ou);
+            remove_host(hoststatsmem, ou->id);
         }
     }
 
     /* The REMOVE-APP * removes the node (well mark it removed) */
     if (status == REMOVE) {
-        int id;
+        unsigned int id = 0;
         node->mess.remove = 1;
         insert_update_node(nodestatsmem, node, &id, 0);
     }
@@ -2110,7 +2131,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                 if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS)
                     continue;
                 if (ou->vhost == host->vhost && ou->node == node->mess.id)
-                    remove_host(hoststatsmem, ou);
+                    remove_host(hoststatsmem, ou->id);
             }
         }
     }
@@ -3448,7 +3469,7 @@ static const char *cmd_manager_pers(cmd_parms *cmd, void *dummy, const char *arg
     if (strcasecmp(arg, "Off") == 0)
         mconf->persistent = 0;
     else if (strcasecmp(arg, "On") == 0)
-        mconf->persistent = CREPER_SLOTMEM;
+        mconf->persistent = AP_SLOTMEM_TYPE_PERSIST;
     else
         return "PersistSlots must be one of: "
                "off | on";
