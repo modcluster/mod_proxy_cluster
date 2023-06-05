@@ -57,8 +57,9 @@ static mem_t *create_attach_mem_domain(char *string, unsigned int *num, int type
     }
     ptr->storage = storage;
     storename = apr_pstrcat(p, string, DOMAINEXE, NULL);
-    if (create)
+    if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(domaininfo_t), *num, type, p);
+    }
     else {
         apr_size_t size = sizeof(domaininfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
@@ -146,12 +147,14 @@ domaininfo_t *read_domain(mem_t *s, domaininfo_t *domain)
 
     if (!domain->id) {
         rv = s->storage->doall(s->slotmem, loc_read_domain, domain, s->p);
-        if (rv != APR_EEXIST)
+        if (rv != APR_EEXIST) {
             return NULL;
+        }
     }
     rv = s->storage->dptr(s->slotmem, domain->id, (void **)&ou);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return ou;
+    }
     return NULL;
 }
 
@@ -183,8 +186,9 @@ apr_status_t remove_domain(mem_t *s, domaininfo_t *domain)
     else {
         /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
         rv = s->storage->doall(s->slotmem, loc_read_domain, &ou, s->p);
-        if (rv == APR_EEXIST)
+        if (rv == APR_EEXIST) {
             rv = s->storage->release(s->slotmem, ou->id);
+        }
     }
     return rv;
 }
@@ -211,8 +215,9 @@ apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, con
         rv = s->storage->dptr(s->slotmem, ou.id, (void **)domain);
         return rv;
     }
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return APR_NOTFOUND;
+    }
     return rv;
 }
 
@@ -237,8 +242,9 @@ int get_ids_used_domain(mem_t *s, int *ids)
     struct counter count;
     count.count = 0;
     count.values = ids;
-    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS) {
         return 0;
+    }
     return count.count;
 }
 

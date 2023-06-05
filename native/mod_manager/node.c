@@ -198,12 +198,14 @@ nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node)
 
     if (!node->mess.id) {
         rv = s->storage->doall(s->slotmem, loc_read_node, node, s->p);
-        if (rv != APR_EEXIST)
+        if (rv != APR_EEXIST) {
             return NULL;
+        }
     }
     rv = s->storage->dptr(s->slotmem, node->mess.id, (void **)&ou);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return ou;
+    }
     return NULL;
 }
 
@@ -245,8 +247,9 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
     strncpy(ou.mess.JVMRoute, route, sizeof(ou.mess.JVMRoute));
     ou.mess.JVMRoute[sizeof(ou.mess.JVMRoute) - 1] = '\0';
     rv = s->storage->doall(s->slotmem, loc_read_node, &ou, s->p);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return APR_NOTFOUND;
+    }
     if (rv == APR_EEXIST) {
         rv = s->storage->dptr(s->slotmem, ou.mess.id, (void **)node);
     }
@@ -274,8 +277,9 @@ int get_ids_used_node(mem_t *s, int *ids)
     struct counter count;
     count.count = 0;
     count.values = ids;
-    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS) {
         return 0;
+    }
     return count.count;
 }
 
@@ -353,7 +357,8 @@ apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host,
         rv = s->storage->dptr(s->slotmem, ou.mess.id, (void **)node);
         return rv;
     }
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return APR_NOTFOUND;
+    }
     return rv;
 }

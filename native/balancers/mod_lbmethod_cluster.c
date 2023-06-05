@@ -61,14 +61,17 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
         proxy_worker **run = (proxy_worker **)ptr;
         proxy_worker *worker = *run;
 
-        if (!PROXY_WORKER_IS_USABLE(worker))
+        if (!PROXY_WORKER_IS_USABLE(worker)) {
             continue;
+        }
         /* read the node and check context */
         node = table_get_node_route(node_table, worker->s->route, &id);
-        if (!node)
+        if (!node) {
             continue;
-        if (!context_host_ok(r, balancer, id, use_alias, vhost_table, context_table, node_table))
+        }
+        if (!context_host_ok(r, balancer, id, use_alias, vhost_table, context_table, node_table)) {
             continue;
+        }
         if (!mycandidate) {
             mycandidate = worker;
         }
@@ -126,14 +129,17 @@ static proxy_worker *find_best(proxy_balancer *balancer, request_rec *r)
     proxy_context_table *context_table = (proxy_context_table *)apr_table_get(r->notes, "context-table");
     proxy_node_table *node_table = (proxy_node_table *)apr_table_get(r->notes, "node-table");
 
-    if (!vhost_table)
+    if (!vhost_table) {
         vhost_table = read_vhost_table(r->pool, host_storage, 0);
+    }
 
-    if (!context_table)
+    if (!context_table) {
         context_table = read_context_table(r->pool, context_storage, 0);
+    }
 
-    if (!node_table)
+    if (!node_table) {
         node_table = read_node_table(r->pool, node_storage, 0);
+    }
 
     mycandidate = internal_find_best_byrequests(r, balancer, vhost_table, context_table, node_table);
 
@@ -203,10 +209,12 @@ static int lbmethod_cluster_trans(request_rec *r)
     if (balancer) {
 
         /* It is safer to use r->uri */
-        if (strncmp(r->uri, "balancer://", 11))
+        if (strncmp(r->uri, "balancer://", 11)) {
             r->filename = apr_pstrcat(r->pool, "proxy:balancer://", balancer, r->uri, NULL);
-        else
+        }
+        else {
             r->filename = apr_pstrcat(r->pool, "proxy:", r->uri, NULL);
+        }
         r->handler = "proxy-server";
         r->proxyreq = PROXYREQ_REVERSE;
 #if HAVE_CLUSTER_EX_DEBUG
@@ -233,8 +241,9 @@ static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now,
 
     for (i = 0; i < node_table->sizenode; i++) {
         nodeinfo_t *ou;
-        if (node_storage->read_node(node_table->nodes[i], &ou) != APR_SUCCESS)
+        if (node_storage->read_node(node_table->nodes[i], &ou) != APR_SUCCESS) {
             continue;
+        }
         if (ou->mess.remove && (now - ou->updatetime) >= wait_for_remove &&
             (now - ou->mess.lastcleantry) >= wait_for_remove) {
             /* remove the node from the shared memory */
@@ -305,8 +314,9 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
                             node->mess.updatetimelb = now;
                             node->mess.oldelected = elected;
                             ou->mess.oldelected = elected;
-                            if (worker->s->lbfactor > 0)
+                            if (worker->s->lbfactor > 0) {
                                 worker->s->lbstatus = ((elected - oldelected) * 1000) / worker->s->lbfactor;
+                            }
                             if (elected == oldelected) {
                                 /* lbstatus_recalc_time without changes: test for broken nodes */
                                 if (PROXY_WORKER_IS(worker, PROXY_WORKER_HC_FAIL)) {

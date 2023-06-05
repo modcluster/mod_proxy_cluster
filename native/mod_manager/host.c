@@ -57,8 +57,9 @@ static mem_t *create_attach_mem_host(char *string, unsigned int *num, int type, 
     }
     ptr->storage = storage;
     storename = apr_pstrcat(p, string, HOSTEXE, NULL);
-    if (create)
+    if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(hostinfo_t), *num, type, p);
+    }
     else {
         apr_size_t size = sizeof(hostinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
@@ -110,8 +111,9 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
         return rv;
     }
     rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
-    if (rv != APR_SUCCESS)
+    if (rv != APR_SUCCESS) {
         return rv;
+    }
     memcpy(ou, host, sizeof(hostinfo_t));
     ou->id = id;
     ou->updatetime = apr_time_sec(apr_time_now());
@@ -145,12 +147,14 @@ hostinfo_t *read_host(mem_t *s, hostinfo_t *host)
 
     if (!host->id) {
         rv = s->storage->doall(s->slotmem, loc_read_host, host, s->p);
-        if (rv != APR_EEXIST)
+        if (rv != APR_EEXIST) {
             return NULL;
+        }
     }
     rv = s->storage->dptr(s->slotmem, host->id, (void **)&ou);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return ou;
+    }
 
     return NULL;
 }
@@ -199,8 +203,9 @@ int get_ids_used_host(mem_t *s, int *ids)
     struct counter count;
     count.count = 0;
     count.values = ids;
-    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS) {
         return 0;
+    }
     return count.count;
 }
 

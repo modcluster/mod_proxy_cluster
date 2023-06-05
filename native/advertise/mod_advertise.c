@@ -135,15 +135,19 @@ static const char *cmd_advertise_m(cmd_parms *cmd, void *dummy, const char *arg,
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     (void)dummy;
 
-    if (mconf->ma_advertise_srvs)
+    if (mconf->ma_advertise_srvs) {
         return "Duplicate ServerAdvertise directives are not allowed";
+    }
 
-    if (strcasecmp(arg, "Off") == 0)
+    if (strcasecmp(arg, "Off") == 0) {
         mconf->ma_advertise_mode = ma_advertise_off;
-    else if (strcasecmp(arg, "On") == 0)
+    }
+    else if (strcasecmp(arg, "On") == 0) {
         mconf->ma_advertise_mode = ma_advertise_on;
-    else
+    }
+    else {
         return "ServerAdvertise must be Off or On";
+    }
     if (opt) {
         const char *p = ap_strstr_c(opt, "://");
         if (p) {
@@ -171,16 +175,20 @@ static const char *cmd_advertise_g(cmd_parms *cmd, void *dummy, const char *arg)
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     (void)dummy;
 
-    if (mconf->ma_advertise_port != MA_DEFAULT_ADVPORT && strcmp(mconf->ma_advertise_adrs, MA_DEFAULT_GROUP) != 0)
+    if (mconf->ma_advertise_port != MA_DEFAULT_ADVPORT && strcmp(mconf->ma_advertise_adrs, MA_DEFAULT_GROUP) != 0) {
         return "Duplicate AdvertiseGroup directives are not allowed";
+    }
 
     if (apr_parse_addr_port(&mconf->ma_advertise_adrs, &mconf->ma_advertise_adsi, &mconf->ma_advertise_port, arg,
-                            cmd->pool) != APR_SUCCESS)
+                            cmd->pool) != APR_SUCCESS) {
         return "Invalid AdvertiseGroup address";
-    if (!mconf->ma_advertise_adrs)
+    }
+    if (!mconf->ma_advertise_adrs) {
         return "Missing Ip part from AdvertiseGroup address";
-    if (!mconf->ma_advertise_port)
+    }
+    if (!mconf->ma_advertise_port) {
         mconf->ma_advertise_port = MA_DEFAULT_ADVPORT;
+    }
     mconf->ma_advertise_server = cmd->server;
     return NULL;
 }
@@ -195,16 +203,20 @@ static const char *cmd_bindaddr(cmd_parms *cmd, void *dummy, const char *arg)
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     (void)dummy;
 
-    if (mconf->ma_bind_set)
+    if (mconf->ma_bind_set) {
         return "Duplicate AdvertiseBindAddress directives are not allowed";
+    }
 
     if (apr_parse_addr_port(&mconf->ma_bind_adrs, &mconf->ma_bind_adsi, &mconf->ma_bind_port, arg, cmd->pool) !=
-        APR_SUCCESS)
+        APR_SUCCESS) {
         return "Invalid AdvertiseBindAddress address";
-    if (!mconf->ma_bind_adrs)
+    }
+    if (!mconf->ma_bind_adrs) {
         return "Missing Ip part from AdvertiseBindAddress address";
-    if (!mconf->ma_bind_port)
+    }
+    if (!mconf->ma_bind_port) {
         mconf->ma_bind_port = MA_DEFAULT_ADVPORT;
+    }
     mconf->ma_bind_set = 1;
     mconf->ma_advertise_server = cmd->server;
     return NULL;
@@ -224,15 +236,18 @@ static const char *cmd_advertise_f(cmd_parms *cmd, void *dummy, const char *arg)
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     (void)dummy;
 
-    if (mconf->ma_advertise_freq != MA_DEFAULT_ADV_FREQ)
+    if (mconf->ma_advertise_freq != MA_DEFAULT_ADV_FREQ) {
         return "Duplicate AdvertiseFrequency directives are not allowed";
-    if ((p = ap_strchr_c(arg, '.')) || (p = ap_strchr_c(arg, ',')))
+    }
+    if ((p = ap_strchr_c(arg, '.')) || (p = ap_strchr_c(arg, ','))) {
         u = atoi(p + 1);
+    }
 
     s = atoi(arg);
     mconf->ma_advertise_freq = s * APR_USEC_PER_SEC + u * APR_TIME_C(1000);
-    if (mconf->ma_advertise_freq == 0)
+    if (mconf->ma_advertise_freq == 0) {
         return "Invalid AdvertiseFrequency value";
+    }
 
     mconf->ma_advertise_server = cmd->server;
     return NULL;
@@ -248,8 +263,9 @@ static const char *cmd_advertise_k(cmd_parms *cmd, void *dummy, const char *arg)
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     (void)dummy;
 
-    if (mconf->ma_advertise_skey != NULL)
+    if (mconf->ma_advertise_skey != NULL) {
         return "Duplicate AdvertiseSecurityKey directives are not allowed";
+    }
     mconf->ma_advertise_skey = apr_pstrdup(cmd->pool, arg);
     mconf->ma_advertise_server = cmd->server;
     return NULL;
@@ -265,8 +281,9 @@ static const char *cmd_advertise_h(cmd_parms *cmd, void *dummy, const char *arg)
     mod_advertise_config *mconf = ap_get_module_config(cmd->server->module_config, &advertise_module);
     (void)dummy;
 
-    if (mconf->ma_advertise_srvh != NULL)
+    if (mconf->ma_advertise_srvh != NULL) {
         return "Duplicate AdvertiseManagerUrl directives are not allowed";
+    }
     mconf->ma_advertise_srvh = apr_pstrdup(cmd->pool, arg);
     mconf->ma_advertise_server = cmd->server;
     return NULL;
@@ -299,8 +316,9 @@ static apr_status_t ma_advertise_server(server_rec *server, int type)
     mod_advertise_config *mconf = ap_get_module_config(server->module_config, &advertise_module);
 
     ma_sequence++;
-    if (ma_sequence < 1)
+    if (ma_sequence < 1) {
         ma_sequence = 1;
+    }
     sprintf(buf, "%" APR_INT64_T_FMT, ma_sequence);
     ap_recent_rfc822_date(dat, apr_time_now());
     asl = ap_get_status_line(ma_advertise_stat);
@@ -412,8 +430,9 @@ static void *APR_THREAD_FUNC parent_thread(apr_thread_t *thd, void *data)
 
     while (is_mp_running) {
         apr_sleep(MA_TM_RESOLUTION);
-        if (!is_mp_running)
+        if (!is_mp_running) {
             break;
+        }
         if (ma_advertise_run) {
             a_step += MA_TM_RESOLUTION;
             if (current_status != ma_advertise_stat) {
@@ -427,12 +446,14 @@ static void *APR_THREAD_FUNC parent_thread(apr_thread_t *thd, void *data)
                 a_step = 0;
                 f_time = 0;
             }
-            if (!is_mp_running)
+            if (!is_mp_running) {
                 break;
+            }
         }
         /* TODO: Implement actual work for parent thread */
-        if (!is_mp_running)
+        if (!is_mp_running) {
             break;
+        }
     }
     is_mp_created = 0;
     return NULL;
@@ -530,8 +551,9 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
                              "mod_advertise: directive in more than one VirtualHost: not supported");
                 return !OK;
             }
-            else
+            else {
                 advertisefound = -1;
+            }
         }
         server = server->next;
     }
@@ -540,15 +562,17 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
     server = s;
     while (server) {
         mconf = ap_get_module_config(server->module_config, &advertise_module);
-        if (mconf->ma_advertise_server == server)
+        if (mconf->ma_advertise_server == server) {
             break;
+        }
         server = server->next;
     }
 
     apr_pool_userdata_get((void *)&magd, pk, pproc);
     if (!magd) {
-        if (!(magd = apr_pcalloc(pproc, sizeof(ma_global_data_t))))
+        if (!(magd = apr_pcalloc(pproc, sizeof(ma_global_data_t)))) {
             return apr_get_os_error();
+        }
         apr_pool_create(&magd->ppool, pproc);
         apr_pool_userdata_set(magd, pk, apr_pool_cleanup_null, pproc);
         /* First time config phase -- skip. */
@@ -580,8 +604,9 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
     apr_uuid_get(&magd->suuid);
     magd->srvid[0] = '/';
     apr_uuid_format(&magd->srvid[1], &magd->suuid);
-    if (!mconf->ma_advertise_srvh)
+    if (!mconf->ma_advertise_srvh) {
         mconf->ma_advertise_srvh = magd->srvid;
+    }
     /* Check if we have advertise set */
     if (mconf->ma_advertise_mode != ma_advertise_off && mconf->ma_advertise_adrs) {
         rv = ma_group_join(mconf->ma_advertise_adrs, mconf->ma_advertise_port, mconf->ma_bind_adrs, mconf->ma_bind_port,
@@ -621,8 +646,9 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
         /* Use don't use any as local address too */
         if (ptr == NULL || strncmp(ptr, "0.0.0.0", 7) == 0 || strncmp(ptr, "::", 2) == 0) {
             if (ma_server_rec->port == 0 || ma_server_rec->port == 1) {
-                if (ma_server_rec->addrs->host_addr->port != 0)
+                if (ma_server_rec->addrs->host_addr->port != 0) {
                     port = ma_server_rec->addrs->host_addr->port;
+                }
             }
             else {
                 port = ma_server_rec->port;
