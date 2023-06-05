@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [gcc, clang]
+        compiler: [ gcc, clang ]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -82,6 +82,9 @@ jobs:
           sudo apt update
           sudo apt-get -y install clang-format
       - name: Check styles
+        # Take full control over shell parameters by providing a template string to the shell options
+        # to display the resulting diff in the build logs.
+        shell: bash {0}
         run: |
           code=0
           cd mod_proxy_cluster/native
