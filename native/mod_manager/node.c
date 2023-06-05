@@ -260,6 +260,7 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
     struct counter *count = (struct counter *)data;
     nodeinfo_t *ou = (nodeinfo_t *)mem;
+    (void)pool;
     *count->values = ou->mess.id;
     count->values++;
     count->count++;

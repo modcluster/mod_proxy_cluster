@@ -1339,7 +1339,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     worker = proxy_node_getid(r, &nodeinfo, &id, &the_conf);
     if (id != 0) {
         /* Same node should be OK, different nodes will bring problems */
-        if (node != NULL && node->mess.id == id) {
+        if (node != NULL && (unsigned)node->mess.id == id) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: proxy_node_getid() worker exist and should be OK");
         }
@@ -1441,7 +1441,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                      "process_config: proxy_node_getid() worker %s inserted... %d", nodeinfo.mess.JVMRoute, id);
         /* make sure we can use it */
         ap_assert(worker->context != NULL);
-        ap_assert(workernode->mess.id == id);
+        ap_assert((unsigned)workernode->mess.id == id);
         ap_assert(the_conf);
 
         /* so the scheme, hostname and port correspond to worker which was removed and readded */

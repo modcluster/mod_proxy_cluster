@@ -225,6 +225,7 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
     struct counter *count = (struct counter *)data;
     domaininfo_t *ou = (domaininfo_t *)mem;
+    (void)pool;
     *count->values = ou->id;
     count->values++;
     count->count++;
