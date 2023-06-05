@@ -71,7 +71,8 @@ jobs:
           } > podmanfile
           podman build -f ./podmanfile
   clang-format-style-check:
-    runs-on: ubuntu-latest
+    # The ubuntu-latest has an old version of clang-format, let's just use the latest installed via brew.
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -79,8 +80,7 @@ jobs:
           path: mod_proxy_cluster
       - name: Install clang-format
         run: |
-          sudo apt update
-          sudo apt-get -y install clang-format
+          brew install clang-format
       - name: Check styles
         # Take full control over shell parameters by providing a template string to the shell options
         # to display the resulting diff in the build logs.
