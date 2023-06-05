@@ -48,7 +48,7 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_node(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+static mem_t *create_attach_mem_node(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                      slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -121,7 +121,7 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     return APR_SUCCESS;
 }
 
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned int *id, int clean)
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned *id, int clean)
 {
     apr_status_t rv;
     nodeinfo_t *ou;
@@ -301,7 +301,7 @@ int get_max_size_node(mem_t *s)
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_node(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_node(string, num, 0, 0, p, storage);
 }
@@ -315,9 +315,9 @@ mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_stor
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_node(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_node(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return create_attach_mem_node(string, num, (unsigned int)persist, 1, p, storage);
+    return create_attach_mem_node(string, num, (unsigned)persist, 1, p, storage);
 }
 
 

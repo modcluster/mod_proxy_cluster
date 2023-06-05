@@ -153,16 +153,16 @@ typedef struct mod_manager_config
     /* base name for the shared memory */
     char *basefilename;
     /* max number of context supported */
-    unsigned int maxcontext;
+    unsigned maxcontext;
     /* max number of node supported */
-    unsigned int maxnode;
+    unsigned maxnode;
     /* max number of host supported */
-    unsigned int maxhost;
+    unsigned maxhost;
     /* max number of session supported */
-    unsigned int maxsessionid;
+    unsigned maxsessionid;
 
     /* version, the version is increased each time the node update logic is called */
-    unsigned int tableversion;
+    unsigned tableversion;
 
     /* Should be the slotmem persisted (1) or not (0) */
     int persistent;
@@ -236,11 +236,11 @@ static void inc_version_node(void)
  *   0 : No update of the nodes since last time.
  *   x: The version has changed the local table need to be updated.
  */
-static unsigned int loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
+static unsigned loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
 {
     int size;
     server_rec *s = (server_rec *)data;
-    unsigned int last = 0;
+    unsigned last = 0;
     version_data *base;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
     (void)pool;
@@ -260,7 +260,7 @@ static unsigned int loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
 }
 
 /* Store the last version update in the proccess config */
-static int loc_worker_nodes_are_updated(void *data, unsigned int last)
+static int loc_worker_nodes_are_updated(void *data, unsigned last)
 {
     server_rec *s = (server_rec *)data;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
@@ -985,8 +985,7 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
  * Check if the proxy balancer module already has a worker
  * and return the id
  */
-static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, unsigned int *id,
-                                      proxy_server_conf **the_conf)
+static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, unsigned *id, proxy_server_conf **the_conf)
 {
     if (balancerhandler != NULL) {
         return balancerhandler->proxy_node_getid(r, nodeinfo->mess.balancer, nodeinfo->mess.Type, nodeinfo->mess.Host,
@@ -1041,7 +1040,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     struct cluster_host *phost;
 
     int i = 0;
-    unsigned int id = 0;
+    unsigned id = 0;
     int vid = 1; /* zero and "" is empty */
     int removed = 0;
     void *sconf = r->server->module_config;
@@ -1953,7 +1952,7 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
 
     /* The REMOVE-APP * removes the node (well mark it removed) */
     if (status == REMOVE) {
-        unsigned int id = 0;
+        unsigned id = 0;
         node->mess.remove = 1;
         insert_update_node(nodestatsmem, node, &id, 0);
     }

@@ -118,7 +118,7 @@ apr_status_t get_last_mem_error(mem_t *mem);
  * @return APR_SUCCESS if all went well
  *
  */
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned int *id, int clean);
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned *id, int clean);
 
 /**
  * read a node record from the shared table
@@ -193,7 +193,7 @@ int get_max_size_node(mem_t *s);
  * @param pointer to the shared table.
  * @return version the actual version in the table.
  */
-unsigned int get_version_node(mem_t *s);
+unsigned get_version_node(mem_t *s);
 
 /**
  * attach to the shared node table
@@ -202,7 +202,7 @@ unsigned int get_version_node(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_node(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared node table
  * @param name to use to create the table.
@@ -211,7 +211,7 @@ mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_stor
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_node(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_node(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.
@@ -239,11 +239,11 @@ struct node_storage_method
      * check the nodes for modifications.
      * XXX: void *data is server_rec *s in fact.
      */
-    unsigned int (*worker_nodes_need_update)(void *data, apr_pool_t *pool);
+    unsigned (*worker_nodes_need_update)(void *data, apr_pool_t *pool);
     /*
      * mark that the worker node are now up to date.
      */
-    int (*worker_nodes_are_updated)(void *data, unsigned int version);
+    int (*worker_nodes_are_updated)(void *data, unsigned version);
     /*
      * Remove the node from shared memory (free the slotmem)
      */

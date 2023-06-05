@@ -40,6 +40,6 @@ struct mem
 
 struct counter
 {
-    int count;
+    unsigned count;
     int *values;
 };

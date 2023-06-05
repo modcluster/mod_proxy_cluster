@@ -118,7 +118,7 @@ int get_max_size_host(mem_t *s);
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_host(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *get_mem_host(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage);
 /**
  * create a shared host table
  * @param name to use to create the table.
@@ -127,7 +127,7 @@ mem_t *get_mem_host(char *string, unsigned int *num, apr_pool_t *p, slotmem_stor
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_host(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
+mem_t *create_mem_host(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
  * provider for the mod_proxy_cluster or mod_jk modules.

@@ -44,7 +44,7 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_balancer(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+static mem_t *create_attach_mem_balancer(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                          slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -98,7 +98,7 @@ apr_status_t insert_update_balancer(mem_t *s, balancerinfo_t *balancer)
 {
     apr_status_t rv;
     balancerinfo_t *ou;
-    unsigned int id = 0;
+    unsigned id = 0;
 
     rv = s->storage->doall(s->slotmem, update, balancer, s->p);
     if (rv == APR_EEXIST) {
@@ -238,7 +238,7 @@ int get_max_size_balancer(mem_t *s)
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_balancer(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_balancer(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_balancer(string, num, 0, 0, p, storage);
 }
@@ -252,7 +252,7 @@ mem_t *get_mem_balancer(char *string, unsigned int *num, apr_pool_t *p, slotmem_
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_balancer(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_balancer(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_balancer(string, num, persist, 1, p, storage);
 }

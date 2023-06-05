@@ -921,7 +921,7 @@ static void update_workers_node(proxy_server_conf *conf, apr_pool_t *pool, serve
                                 proxy_node_table *node_table)
 {
     int i;
-    unsigned int last;
+    unsigned last;
     (void)conf;
 
     if (node_table == NULL) {
@@ -1979,7 +1979,7 @@ static int proxy_host_isup(request_rec *r, char *scheme, char *host, char *port)
     return 0;
 }
 
-static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, unsigned int *id, proxy_server_conf **the_conf)
+static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, unsigned *id, proxy_server_conf **the_conf)
 {
     /* search for the worker in the VirtualHosts */
     proxy_worker *worker = NULL;
@@ -2032,7 +2032,7 @@ static proxy_worker *searchworker(request_rec *r, char *bal, char *ptr, unsigned
 }
 
 static proxy_worker *proxy_node_getid(request_rec *r, char *balancername, char *scheme, char *host, char *port,
-                                      unsigned int *id, proxy_server_conf **the_conf)
+                                      unsigned *id, proxy_server_conf **the_conf)
 {
     proxy_worker *worker = NULL;
     char *ptr, *url, *bal;
@@ -2293,7 +2293,7 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
 {
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
-    unsigned int last;
+    unsigned last;
     server_rec *smain = s;
     proxy_node_table *node_table = NULL;
 
@@ -3302,8 +3302,8 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
             int i;
             int sizew = (*balancer)->workers->elt_size;
             char *ptr = (*balancer)->workers->elts;
-            unsigned int def = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_DEFAULT);
-            unsigned int fnv = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_FNV);
+            unsigned def = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_DEFAULT);
+            unsigned fnv = ap_proxy_hashfunc(worker_name, PROXY_HASHFUNC_FNV);
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_pre_request: worker %s", worker_name);
             /* Ajust the context counter here */
             context_id = apr_table_get(r->subprocess_env, "BALANCER_CONTEXT_ID");

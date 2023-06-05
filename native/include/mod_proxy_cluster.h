@@ -66,7 +66,7 @@ struct balancer_method
      * @return the worker or NULL if not existing.
      */
     proxy_worker *(*proxy_node_getid)(request_rec *r, char *balancername, char *scheme, char *host, char *port,
-                                      unsigned int *id, proxy_server_conf **the_conf);
+                                      unsigned *id, proxy_server_conf **the_conf);
 
     /**
      * Re enable the proxy_worker
