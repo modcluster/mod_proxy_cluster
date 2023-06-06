@@ -17,7 +17,7 @@ echo "Test values are FOREVER_PAUSE=$FOREVER_PAUSE, TOMCAT_CYCLE_COUNT=$TOMCAT_C
 #
 # Stop running given dockered tomcat
 stoptomcat() {
-    podman ps -a | grep $1
+    docker container list -a | grep $1
     if [ $? -eq 0 ]; then
         echo "Stopping $1"
         docker stop $1
@@ -31,7 +31,7 @@ stoptomcat() {
 #
 # Stop running all dockered tomcats
 stoptomcats() {
-    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+    for i in `docker container list -a --format "{{.Names}}" | grep tomcat`
     do
         stoptomcat $i
     done
@@ -70,15 +70,15 @@ waitnodes() {
 #
 # Stop and remove tomcat docker container of a given name
 removetomcatname() {
-    podman ps -a | grep $1
+    docker container list -a | grep $1
     if [ $? -eq 0 ]; then
         echo "Stopping $1"
-        podman stop $1
+        docker stop $1
         if [ $? -ne 0 ]; then
             echo "Can't stop $1"
         fi
         echo "Removing $1"
-        podman rm $1
+        docker rm $1
         if [ $? -ne 0 ]; then
             echo "Can't remove $1"
         fi
@@ -88,7 +88,7 @@ removetomcatname() {
 #
 # Remove all tomcat containers and images
 removetomcats() {
-    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+    for i in `docker container list -a --format "{{.Names}}" | grep tomcat`
     do
         removetomcatname $i
     done
@@ -160,7 +160,7 @@ starttomcat() {
 startwebapptomcat() {
     while true
     do
-        podman ps -a --format "{{.Names}}" | grep tomcat$1
+        docker container list --format "{{.Names}}" | grep tomcat$1
         if [ $? -eq 0 ]; then
             break
         fi
@@ -266,7 +266,7 @@ runtomcatbatch() {
     done
 
     # test the tomcats
-    sleep 10
+    sleep 20
     testtomcats 9
     if [ $? -ne 0 ];then
         echo "runtomcatbatch testtomcats 9 FAILED!"
@@ -438,7 +438,7 @@ runjbcs1236() {
     startwebapptomcat 2 || exit 1
     startwebapptomcat 3 || exit 1
     startwebapptomcat 4 || exit 1
-    sleep 10
+    sleep 15
     testtomcat 2 || exit 1
     testtomcat 3 || exit 1
     testtomcat 4 || exit 1
@@ -476,7 +476,7 @@ runjbcs1236() {
             echo "startwebapptomcat 5: runjbcs1236 Failed!"
             exit 1
         fi
-        sleep 10
+        sleep 20
         testtomcat 5
         if [ $? -ne 0 ]; then
             echo "testtomcat 5: runjbcs1236 Failed!"
@@ -495,7 +495,7 @@ runjbcs1236() {
             echo "startwebapptomcat 2: runjbcs1236 Failed!"
             exit 1
         fi
-        sleep 10
+        sleep 20
         testtomcat 2
         if [ $? -ne 0 ]; then
             echo "testtomcat 2: runjbcs1236 Failed!"
@@ -510,16 +510,19 @@ runjbcs1236() {
             exit 1
         fi
         removetomcat 5
+        sleep 20
         testtomcat 2 || exit 1
         if [ $? -ne 0 ]; then
             echo "testtomcat 2: runjbcs1236 Failed!"
             exit 1
         fi
+        sleep 20
         testtomcat 3 || exit 1
         if [ $? -ne 0 ]; then
             echo "testtomcat 3: runjbcs1236 Failed!"
             exit 1
         fi
+        sleep 20
         testtomcat 4 || exit 1
         if [ $? -ne 0 ]; then
             echo "testtomcat 4: runjbcs1236 Failed!"

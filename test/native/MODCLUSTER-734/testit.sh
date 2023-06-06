@@ -13,17 +13,17 @@ stoptomcats
 removetomcats
 
 # and httpd
-podman stop MODCLUSTER-734
-podman rm MODCLUSTER-734
+docker stop MODCLUSTER-734
+docker rm MODCLUSTER-734
 
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
-nohup podman run --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.54.tar.gz -e SOURCES=https://github.com/modcluster/mod_proxy_cluster -e BRANCH=main -e CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/MODCLUSTER-734/mod_proxy_cluster.conf --name MODCLUSTER-734 quay.io/${USER}/mod_cluster_httpd &
+nohup docker run --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.54.tar.gz -e SOURCES=https://github.com/modcluster/mod_proxy_cluster -e BRANCH=main -e CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/MODCLUSTER-734/mod_proxy_cluster.conf --name MODCLUSTER-734 quay.io/${USER}/mod_cluster_httpd &
 
 # wait until httpd is started
 waitforhttpd || exit 1
-#podman cp mod_proxy_cluster.conf MODCLUSTER-734:/usr/local/apache2/conf/mod_proxy_cluster.conf
-#podman exec -it  MODCLUSTER-734 /usr/local/apache2/bin/apachectl restart
+#docker cp mod_proxy_cluster.conf MODCLUSTER-734:/usr/local/apache2/conf/mod_proxy_cluster.conf
+#docker exec -it  MODCLUSTER-734 /usr/local/apache2/bin/apachectl restart
 
 # start tomcat8080 and tomcat8081.
 starttomcats
@@ -32,8 +32,8 @@ starttomcats
 waitnodes 2
 
 # copy the test page in ROOT to tomcat8080
-podman cp ROOT tomcat8080:/usr/local/tomcat/webapps/ROOT
-podman cp ROOT_OK tomcat8081:/usr/local/tomcat/webapps/ROOT
+docker cp ROOT tomcat8080:/usr/local/tomcat/webapps/ROOT
+docker cp ROOT_OK tomcat8081:/usr/local/tomcat/webapps/ROOT
 
 # after a while the health check will get the Under maintenance status.jsp
 # and mark the node not OK.

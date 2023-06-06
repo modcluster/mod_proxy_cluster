@@ -15,12 +15,12 @@ stoptomcats
 removetomcats
 
 # and httpd
-podman stop MODCLUSTER-640
-podman rm MODCLUSTER-640
+docker stop MODCLUSTER-640
+docker rm MODCLUSTER-640
 
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
-nohup podman run --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.54.tar.gz -e SOURCES=https://github.com/jfclere/mod_proxy_cluster -e BRANCH=main -e CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/MODCLUSTER-640/mod_proxy_cluster.conf --name MODCLUSTER-640 quay.io/${USER}/mod_cluster_httpd &
+nohup docker run --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.54.tar.gz -e SOURCES=https://github.com/jfclere/mod_proxy_cluster -e BRANCH=main -e CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/MODCLUSTER-640/mod_proxy_cluster.conf --name MODCLUSTER-640 quay.io/${USER}/mod_cluster_httpd &
 
 # wait until httpd is started
 waitforhttpd  || exit 1
@@ -32,8 +32,8 @@ starttomcats
 waitnodes 2
 
 # copy the webapp in the tomcats
-podman cp webapp1 tomcat8080:/usr/local/tomcat/webapps/webapp1
-podman cp webapp1 tomcat8081:/usr/local/tomcat/webapps/webapp1
+docker cp webapp1 tomcat8080:/usr/local/tomcat/webapps/webapp1
+docker cp webapp1 tomcat8081:/usr/local/tomcat/webapps/webapp1
 
 sleep 10
 
@@ -52,8 +52,8 @@ fi
 # Test without UseNocanon On
 sed 's:UseNocanon On::'  mod_proxy_cluster.conf > mod_proxy_cluster_new.conf
 
-podman cp mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
-podman exec -it  MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
+docker cp mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
+docker exec -it  MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables
 waitnodes 2
@@ -74,8 +74,8 @@ fi
 sed 's:UseNocanon On::'  mod_proxy_cluster.conf > mod_proxy_cluster_new.conf
 echo "ProxyPass / balancer://mycluster/ nocanon" >> mod_proxy_cluster_new.conf
 
-podman cp mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
-podman exec -it  MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
+docker cp mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
+docker exec -it  MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables
 waitnodes 2
