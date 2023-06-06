@@ -120,4 +120,20 @@ jobs:
             make || exit 1; \
             cd ..; \
           done;
-
+  cmake-windows-latest:
+    runs-on: windows-latest
+    env:
+      APACHE_LOUNGE_DISTRO_VERSION: 2.4.57
+      HTTPD_DEV_HOME: '${{ github.workspace }}\httpd-apache-lounge\Apache24'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Developer Command Prompt for Microsoft Visual C++
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Get httpd
+        run: |
+          curl.exe --output "httpd-apache-lounge.zip" --url "https://www.apachelounge.com/download/VS16/binaries/httpd-${{ env.APACHE_LOUNGE_DISTRO_VERSION }}-win64-VS16.zip"
+          Expand-Archive -Path "httpd-apache-lounge.zip" -DestinationPath "httpd-apache-lounge"
+      - name: Build
+        run: |
+          ./native/scripts/windows-build.bat
