@@ -30,8 +30,6 @@
 
 #define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"
 
-APR_DECLARE_OPTIONAL_FN(apr_status_t, balancer_manage, (request_rec * r, apr_table_t *params));
-
 struct balancer_method
 {
     /**

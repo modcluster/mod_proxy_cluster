@@ -25,6 +25,10 @@
  * @version $Revision$
  */
 
+#include "apr_optional.h"
+
+APR_DECLARE_OPTIONAL_FN(apr_status_t, balancer_manage, (request_rec *, apr_table_t *));
+
 struct mem
 {
     ap_slotmem_instance_t *slotmem;
