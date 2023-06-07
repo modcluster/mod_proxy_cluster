@@ -27,3 +27,6 @@ native/*/configure
 test/java/node*/
 bin/
 target/
+
+# Folder usually used for CMake
+**/build
