@@ -17,7 +17,7 @@ echo "Test values are FOREVER_PAUSE=$FOREVER_PAUSE, TOMCAT_CYCLE_COUNT=$TOMCAT_C
 #
 # Stop running given dockered tomcat
 stoptomcat() {
-    podman ps -a | grep $1
+    docker ps | grep $1
     if [ $? -eq 0 ]; then
         echo "Stopping $1"
         docker stop $1
@@ -25,13 +25,15 @@ stoptomcat() {
             echo "Can't stop $1"
             exit 1
         fi
+    else
+        echo "$1 is not running"
     fi
 }
 
 #
 # Stop running all dockered tomcats
 stoptomcats() {
-    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+    for i in $(docker ps -a --format "{{.Names}}" | grep tomcat)
     do
         stoptomcat $i
     done
@@ -50,10 +52,10 @@ waitnodes() {
     i=0
     while [ ${NBNODES} != ${nodes} ]
     do
-        NBNODES=`curl -s http://localhost:6666/mod_cluster_manager | grep "Status: OK" | awk ' { print $3} ' | wc -l`
+        NBNODES=$(curl -s http://localhost:6666/mod_cluster_manager | grep "Status: OK" | awk ' { print $3} ' | wc -l)
         sleep 10
-        echo "Waiting for ${nodes} node to be ready: `date`"
-        i=`expr $i + 1`
+        echo "Waiting for ${nodes} node to be ready: $(date)"
+        i=$(expr $i + 1)
         if [ $i -gt 120 ]; then
             echo "Timeout the node(s) number is NOT ${nodes} but ${NBNODES}"
             exit 1
@@ -64,21 +66,21 @@ waitnodes() {
         echo "httpd no started or something VERY wrong"
         exit 1
     fi
-    echo "Waiting for the node DONE: `date`"
+    echo "Waiting for the node DONE: $(date)"
 }
 
 #
 # Stop and remove tomcat docker container of a given name
 removetomcatname() {
-    podman ps -a | grep $1
+    docker ps -a | grep $1
     if [ $? -eq 0 ]; then
         echo "Stopping $1"
-        podman stop $1
+        docker stop $1
         if [ $? -ne 0 ]; then
             echo "Can't stop $1"
         fi
         echo "Removing $1"
-        podman rm $1
+        docker rm $1
         if [ $? -ne 0 ]; then
             echo "Can't remove $1"
         fi
@@ -88,7 +90,7 @@ removetomcatname() {
 #
 # Remove all tomcat containers and images
 removetomcats() {
-    for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+    for i in $(docker ps -a --format "{{.Names}}" | grep tomcat)
     do
         removetomcatname $i
     done
@@ -129,7 +131,7 @@ jdbsuspend() {
     rm -f /tmp/testpipeout
     mkfifo /tmp/testpipeout
     sleep 1000 > /tmp/testpipein &
-    podman exec -it tomcat8080 jdb -attach 6660 < /tmp/testpipein > /tmp/testpipeout &
+    jdb -attach 6660 < /tmp/testpipein > /tmp/testpipeout &
     echo "suspend" > /tmp/testpipein
     cat < /tmp/testpipeout &
 }
@@ -160,7 +162,7 @@ starttomcat() {
 startwebapptomcat() {
     while true
     do
-        podman ps -a --format "{{.Names}}" | grep tomcat$1
+        docker ps --format "{{.Names}}" | grep tomcat$1
         if [ $? -eq 0 ]; then
             break
         fi
@@ -188,7 +190,7 @@ removetomcat() {
 
 # Test whether the webapp is working (responding)
 testtomcat() {
-    CODE=`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/tomcat$1/test.jsp`
+    CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/tomcat$1/test.jsp)
     if [ ${CODE} != "200" ]; then
         echo "Failed can't reach $tomcat$1: ${CODE}"
         exit 1
@@ -202,7 +204,7 @@ testtomcats() {
     while true
     do
         testtomcat $tc || exit 1
-        tc=`expr $tc + 1`
+        tc=$(expr $tc + 1)
         if [ $tc -gt $1 ]; then
             echo "testtomcats $tc Done!"
             break
@@ -227,7 +229,7 @@ abtomcats() {
     while true
     do
         abtomcat $tc || exit 1
-        tc=`expr $tc + 1`
+        tc=$(expr $tc + 1)
         if [ $tc -gt $1 ]; then
             echo "abtomcats: Done!"
             break
@@ -249,7 +251,7 @@ runtomcatbatch() {
     while true
     do
         starttomcat $t 0
-        t=`expr $t + 1`
+        t=$(expr $t + 1)
         if [ $t -gt 10 ]; then
             break
         fi
@@ -259,14 +261,14 @@ runtomcatbatch() {
     while true
     do
         startwebapptomcat $t || exit 1
-        t=`expr $t + 1`
+        t=$(expr $t + 1)
         if [ $t -gt 10 ]; then
             break
         fi
     done
 
     # test the tomcats
-    sleep 10
+    sleep 20
     testtomcats 9
     if [ $? -ne 0 ];then
         echo "runtomcatbatch testtomcats 9 FAILED!"
@@ -292,7 +294,7 @@ runtomcatbatch() {
     while true
     do
         shutdowntomcat $t 0
-        t=`expr $t + 1`
+        t=$(expr $t + 1)
         if [ $t -gt 10 ]; then
             break
         fi
@@ -309,7 +311,7 @@ runtomcatbatch() {
     while true
     do
         removetomcat $t
-        t=`expr $t + 1`
+        t=$(expr $t + 1)
         if [ $t -gt 10 ]; then
             break
         fi
@@ -323,8 +325,8 @@ singlecycle() {
     echo "singlecycle: Testing tomcat$1"
     R=$1
     if [ "X$2" = "Xuseran" ]; then
-        R=`echo $((1 + $RANDOM % 10))`
-        R=`expr $R + 2`
+        R=$(echo $((1 + $RANDOM % 10)))
+        R=$(expr $R + 2)
         starttomcat $1 $R || exit 1
     else
         R=0
@@ -417,7 +419,7 @@ cyclestomcats() {
     i=1
     while true
     do
-        i=`expr $i + 1`
+        i=$(expr $i + 1)
         if [ $i -gt $1 ]; then
             echo "Looks OK, Done!"
             break
@@ -438,7 +440,7 @@ runjbcs1236() {
     startwebapptomcat 2 || exit 1
     startwebapptomcat 3 || exit 1
     startwebapptomcat 4 || exit 1
-    sleep 10
+    sleep 20
     testtomcat 2 || exit 1
     testtomcat 3 || exit 1
     testtomcat 4 || exit 1
@@ -447,7 +449,7 @@ runjbcs1236() {
     runjbcs1236=0
     while true
     do
-        runjbcs1236=`expr $runjbcs1236 + 1`
+        runjbcs1236=$(expr $runjbcs1236 + 1)
         if [ $runjbcs1236 -gt 2 ]; then
             echo "Looks OK, runjbcs1236 stopping!"
         break
@@ -476,7 +478,7 @@ runjbcs1236() {
             echo "startwebapptomcat 5: runjbcs1236 Failed!"
             exit 1
         fi
-        sleep 10
+        sleep 20
         testtomcat 5
         if [ $? -ne 0 ]; then
             echo "testtomcat 5: runjbcs1236 Failed!"
@@ -495,7 +497,7 @@ runjbcs1236() {
             echo "startwebapptomcat 2: runjbcs1236 Failed!"
             exit 1
         fi
-        sleep 10
+        sleep 20
         testtomcat 2
         if [ $? -ne 0 ]; then
             echo "testtomcat 2: runjbcs1236 Failed!"
@@ -510,16 +512,19 @@ runjbcs1236() {
             exit 1
         fi
         removetomcat 5
+
         testtomcat 2 || exit 1
         if [ $? -ne 0 ]; then
             echo "testtomcat 2: runjbcs1236 Failed!"
             exit 1
         fi
+
         testtomcat 3 || exit 1
         if [ $? -ne 0 ]; then
             echo "testtomcat 3: runjbcs1236 Failed!"
             exit 1
         fi
+
         testtomcat 4 || exit 1
         if [ $? -ne 0 ]; then
             echo "testtomcat 4: runjbcs1236 Failed!"
@@ -590,12 +595,12 @@ sleep 10
 
 # Basic 200 and 404 tests.
 echotestlabel "basic 200 and 404 tests"
-CODE=`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp`
+CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp)
 if [ ${CODE} != "200" ]; then
   echo "Failed can't reach webapp: ${CODE}"
   exit 1
 fi
-CODE=`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/toto.jsp`
+CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/toto.jsp)
 if [ ${CODE} != "404" ]; then
   echo "Failed should get 404"
   exit 1
@@ -603,13 +608,13 @@ fi
 
 # Sticky (yes, there is only one app!!!)
 echotestlabel "sticky one app"
-SESSIONCO=`curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::'`
+SESSIONCO=$(curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${SESSIONCO}" == "" ];then
   echo "Failed no sessionid in curl output..."
   curl -v http://localhost:8000/testapp/test.jsp
 fi
 echo ${SESSIONCO}
-NEWCO=`curl -v --cookie "${SESSIONCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::'`
+NEWCO=$(curl -v --cookie "${SESSIONCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${NEWCO}" != "" ]; then
   echo "Failed not sticky received : ${NEWCO}???"
   exit 1
@@ -621,19 +626,19 @@ sleep 10
 
 # Sticky (yes there are 2 apps now)
 echotestlabel "sticky 2 app"
-SESSIONCO=`curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::'`
-NODE=`echo ${SESSIONCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }'`
+SESSIONCO=$(curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
+NODE=$(echo ${SESSIONCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo "first: ${SESSIONCO} node: ${NODE}"
-NEWCO=`curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::'`
-NEWNODE=`echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }'`
+NEWCO=$(curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
+NEWNODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo "second: ${NEWCO} node: ${NEWNODE}"
 echo "Checking we can reach the 2 nodes"
 i=0
 while [ "${NODE}" == "${NEWNODE}" ]
 do
-  NEWCO=`curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::'`
-  NEWNODE=`echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }'`
-  i=`expr $i + 1`
+  NEWCO=$(curl -v http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
+  NEWNODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
+  i=$(expr $i + 1)
   if [ $i -gt 40 ]; then
     echo "Can't find the 2 webapps"
     exit 1
@@ -648,12 +653,12 @@ done
 echo "${i} try gives: ${NEWCO} node: ${NEWNODE}"
 
 # Still sticky
-CO=`curl -v --cookie "${SESSIONCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::'`
+CO=$(curl -v --cookie "${SESSIONCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${CO}" != "" ]; then
   echo "Failed not sticky received : ${CO}???"
   exit 1
 fi
-CO=`curl -v --cookie "${NEWCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::'`
+CO=$(curl -v --cookie "${NEWCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${CO}" != "" ]; then
   echo "Failed not sticky received : ${CO}???"
   exit 1
@@ -661,9 +666,9 @@ fi
 
 # Stop one of the while running requests.
 echotestlabel "sticky: stopping one node and doing requests..."
-NODE=`echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }'`
+NODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo $NODE
-PORT=`curl http://localhost:6666/mod_cluster_manager | grep Node | grep $NODE | sed 's:)::' | awk -F : '{ print $3 } '`
+PORT=$(curl http://localhost:6666/mod_cluster_manager | grep Node | grep $NODE | sed 's:)::' | awk -F : '{ print $3 } ')
 echo "Will stop ${PORT} corresponding to ${NODE} and cookie: ${NEWCO}"
 CODE="200"
 i=0
@@ -673,14 +678,14 @@ do
     echo "Done remaining tomcat still answering!"
     break
   fi
-  CODE=`curl -s -o /dev/null -w "%{http_code}" --cookie "${NEWCO}" http://localhost:8000/testapp/test.jsp`
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" --cookie "${NEWCO}" http://localhost:8000/testapp/test.jsp)
   if [ $i -eq 0 ]; then
     # stop the tomcat
     echo "tomcat${PORT} being stopped"
     docker stop tomcat${PORT}
     docker container rm tomcat${PORT}
   fi
-  i=`expr $i + 1`
+  i=$(expr $i + 1)
 done
 if [ ${CODE} != "200" ]; then
   echo "Something was wrong... got: ${CODE}"
@@ -747,25 +752,25 @@ waitnodes 2  || exit 1
 # X-Forwarded-Server: fe80::faf4:935b:9dda:2adf
 # therefore don't forget ProxyPreserveHost On (otherwise UseAlias On failed...)
 #
-CODE=`curl -s -o /dev/null -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8000/test/test.jsp`
+CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8000/test/test.jsp)
 if [ ${CODE} != "200" ]; then
   echo "Failed can't rearch webapp at example.com: ${CODE}"
   exit 1
 fi
 # Basically curl --header "Host: localhost" http://127.0.0.1:8000/test/test.jsp gives 400
-CODE=`curl -s -o /dev/null -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8000/test/test.jsp`
+CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8000/test/test.jsp)
 if [ ${CODE} != "404" ]; then
   echo "Failed should NOT rearch webapp at localhost: ${CODE}"
   exit 1
 fi
 # Same using localhost/testapp2 and curl --header "Host: localhost" http://127.0.0.1:8000/testapp2/test.jsp
-CODE=`curl -s -o /dev/null -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8000/testapp2/test.jsp`
+CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8000/testapp2/test.jsp)
 if [ ${CODE} != "200" ]; then
   echo "Failed can't rearch webapp at localhost: ${CODE}"
   exit 1
 fi
 # Basically curl --header "Host: example.com" http://127.0.0.1:8000/testapp2/test.jsp gives 400
-CODE=`curl -s -o /dev/null -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8000/testapp2/test.jsp`
+CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8000/testapp2/test.jsp)
 if [ ${CODE} != "404" ]; then
   echo "Failed should NOT rearch webapp at localhost: ${CODE}"
   exit 1
@@ -789,7 +794,7 @@ do
    docker exec -it tomcat8080 /usr/local/tomcat/bin/shutdown.sh
    waitnodes 0 || exit 1
    docker container rm tomcat8080
-   iter=`expr $iter + 1`
+   iter=$(expr $iter + 1)
 done 
 
 # Check that hanging tomcat will be removed

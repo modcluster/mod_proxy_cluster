@@ -32,7 +32,7 @@ cd $DIRSOURCES
 # exit if branch does not exist, because main would be used otherwise
 git checkout $BRANCH || exit 1
 cd ..
-for dir in `echo $DIRSOURCES/native/mod_cluster_slotmem $DIRSOURCES/native/mod_manager $DIRSOURCES/native/mod_proxy_cluster`
+for dir in `echo $DIRSOURCES/native/mod_manager $DIRSOURCES/native/mod_proxy_cluster`
 do
   cd $dir
   ./buildconf

@@ -3,10 +3,10 @@
 #
 # first stop running tomcats
 stoptomcat() {
-podman ps -a | grep $1
+docker ps -a | grep $1
 if [ $? -eq 0 ]; then
   echo "Stopping $1"
-  podman stop $1
+  docker stop $1
     if [ $? -ne 0 ]; then
       echo "Can't stop $1"
       exit 1
@@ -14,7 +14,7 @@ if [ $? -eq 0 ]; then
 fi
 }
 stoptomcats () {
-for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+for i in `docker ps -a --format "{{.Names}}" | grep tomcat`
 do
   stoptomcat $i
 done
@@ -61,22 +61,22 @@ echo "Waiting for the node DONE: `date`"
 #
 # remove them
 removetomcatname () {
-podman ps -a | grep $1
+docker ps -a | grep $1
 if [ $? -eq 0 ]; then
   echo "Stopping $1"
-  podman stop $1
+  docker stop $1
     if [ $? -ne 0 ]; then
       echo "Can't stop $1"
   fi
   echo "Removing $1"
-  podman rm $1
+  docker rm $1
     if [ $? -ne 0 ]; then
       echo "Can't remove $1"
   fi
 fi
 }
 removetomcats () {
-for i in `podman ps -a --format "{{.Names}}" | grep tomcat`
+for i in `docker ps -a --format "{{.Names}}" | grep tomcat`
 do
   removetomcatname $i
 done
@@ -86,14 +86,14 @@ done
 # Start them again
 starttomcats() {
 echo "Starting tomcat8080..."
-nohup podman run --network=host -e tomcat_port=8080 -e tomcat_shutdown_port=true --name tomcat8080 ${IMG} &
+nohup docker run --network=host -e tomcat_port=8080 -e tomcat_shutdown_port=true --name tomcat8080 ${IMG} &
 if [ $? -ne 0 ]; then
   echo "Can't start tomcat8080"
   exit 1
 fi
 sleep 10
 echo "Starting tomcat8081..."
-nohup podman run --network=host -e tomcat_port=8081 -e tomcat_shutdown_port=true --name tomcat8081 ${IMG} &
+nohup docker run --network=host -e tomcat_port=8081 -e tomcat_shutdown_port=true --name tomcat8081 ${IMG} &
 if [ $? -ne 0 ]; then
   echo "Can't start tomcat8081"
   exit 1

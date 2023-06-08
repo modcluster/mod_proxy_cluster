@@ -18,8 +18,8 @@ docker-push: ## Push docker image with the manager.
 
 setup-httpd:
 	cd httpd
-	podman build -t quay.io/${USER}/mod_cluster_httpd .
-	podman run -d --network=host quay.io/${USER}/mod_cluster_httpd
+	docker build -t quay.io/${USER}/mod_cluster_httpd .
+	docker run -d --network=host quay.io/${USER}/mod_cluster_httpd
 	cd ..
 
 tests:

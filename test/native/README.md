@@ -23,7 +23,9 @@ and then push it by
 make docker-push
 ```
 
-Do not forget to log into quay.io before you run those commands. You can log in using `podman login quay.io`.
+Do not forget to log into quay.io before you run those commands. You can log in using `docker login quay.io`.
+
+If you use `podman` instead of `docker`, you can use `podman-docker` package if it is available for you platform.
 
 ## Running the image
 ```
