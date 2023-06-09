@@ -46,8 +46,9 @@ static apr_time_t wait_for_remove = apr_time_from_sec(10); /* wait until that be
 
 module AP_MODULE_DECLARE_DATA lbmethod_cluster_module;
 
-static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balancer *balancer,
-                                                   proxy_vhost_table *vhost_table, proxy_context_table *context_table,
+static proxy_worker *internal_find_best_byrequests(request_rec *r, const proxy_balancer *balancer,
+                                                   const proxy_vhost_table *vhost_table,
+                                                   const proxy_context_table *context_table,
                                                    proxy_node_table *node_table)
 {
     char *ptr = balancer->workers->elts;
@@ -56,7 +57,7 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
     int i;
 
     for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
-        nodeinfo_t *node;
+        const nodeinfo_t *node;
         int id;
         proxy_worker **run = (proxy_worker **)ptr;
         proxy_worker *worker = *run;
@@ -75,7 +76,7 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
         if (!mycandidate) {
             mycandidate = worker;
         } else {
-            nodeinfo_t *node1;
+            const nodeinfo_t *node1;
             int id1;
             node1 = table_get_node_route(node_table, mycandidate->s->route, &id1);
             if (node1) {
