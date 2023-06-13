@@ -2478,6 +2478,14 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
                      "httpd version %d.%d.%d doesn't match version %d.%d.%d used by mod_proxy_cluster.c", version.major,
                      version.minor, version.patch, AP_SERVER_MAJORVERSION_NUMBER, AP_SERVER_MINORVERSION_NUMBER,
                      AP_SERVER_PATCHLEVEL_NUMBER);
+
+        if (version.major < 2 || (version.major == 2 && version.minor < 4) ||
+            (version.major == 2 && version.minor == 4 && version.patch < 53)) {
+            ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
+                         "Unsupported version (%d.%d.%d) of httpd detected, 2.4.53 or newer is required", version.major,
+                         version.minor, version.patch);
+            return !OK;
+        }
     }
     if (SIZEOFSCORE <= sizeof(proxy_worker_shared)) {
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "SIZEOFSCORE too small for mod_proxy shared stat structure %d <= %ld",
