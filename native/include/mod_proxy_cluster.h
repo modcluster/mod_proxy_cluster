@@ -30,6 +30,11 @@
 
 #define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"
 
+/* We don't care about versions older then 2.4.x, i.e., MODULE_MAGIC_NUMBER_MAJOR < 20120211 */
+#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR <= 124
+#error Please update your HTTPD, mod_proxy_cluster requires version 2.4.53 or newer.
+#endif
+
 struct balancer_method
 {
     /**
