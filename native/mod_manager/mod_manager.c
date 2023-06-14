@@ -602,8 +602,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
         sessionid = apr_pstrcat(ptemp, mconf->basefilename, "/manager.sessionid", NULL);
         domain = apr_pstrcat(ptemp, mconf->basefilename, "/manager.domain", NULL);
         version = apr_pstrcat(ptemp, mconf->basefilename, "/manager.version", NULL);
-    }
-    else {
+    } else {
         node = ap_server_root_relative(ptemp, "logs/manager.node");
         context = ap_server_root_relative(ptemp, "logs/manager.context");
         host = ap_server_root_relative(ptemp, "logs/manager.host");
@@ -679,8 +678,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
 
     if (is_child_process()) {
         rv = apr_shm_attach(&versionipc_shm, (const char *)version, p);
-    }
-    else {
+    } else {
         /* Use anonymous shm by default, fall back on name-based. */
         rv = apr_shm_create(&versionipc_shm, sizeof(version_data), NULL, p);
         if (rv == APR_ENOTIMPL) {
@@ -849,8 +847,7 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
                 if (ret != APR_SUCCESS) {
                     return ret;
                 }
-            }
-            else {
+            } else {
                 read_remove_context(mem, &info);
             }
 
@@ -862,8 +859,7 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
     strncpy(info.context, previous, sizeof(info.context));
     if (status != REMOVE) {
         ret = insert_update_context(mem, &info);
-    }
-    else {
+    } else {
         read_remove_context(mem, &info);
     }
     return ret;
@@ -972,8 +968,7 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
     /* CPING for AJP and OPTIONS for HTTP/1.1 */
     if (strcmp(node->mess.Type, "ajp")) {
         apr_table_set(params, "w_hm", "OPTIONS");
-    }
-    else {
+    } else {
         apr_table_set(params, "w_hm", "CPING");
     }
     /* Use 10 sec for the moment, the idea is to adjust it with the STATUS frequency */
@@ -1064,8 +1059,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         normalize_balancer_name(mconf->balancername, r->server);
         strncpy(nodeinfo.mess.balancer, mconf->balancername, sizeof(nodeinfo.mess.balancer));
         nodeinfo.mess.balancer[sizeof(nodeinfo.mess.balancer) - 1] = '\0';
-    }
-    else {
+    } else {
         strcpy(nodeinfo.mess.balancer, "mycluster");
     }
     strcpy(nodeinfo.mess.Host, "localhost");
@@ -1090,8 +1084,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         normalize_balancer_name(mconf->balancername, r->server);
         strncpy(balancerinfo.balancer, mconf->balancername, sizeof(balancerinfo.balancer));
         balancerinfo.balancer[sizeof(balancerinfo.balancer) - 1] = '\0';
-    }
-    else {
+    } else {
         strcpy(balancerinfo.balancer, "mycluster");
     }
     balancerinfo.StickySession = 1;
@@ -1182,8 +1175,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                     *p_write = *p_read++;
                     if ((*p_write == '%' || flag) && *p_write != ']') {
                         flag = 1;
-                    }
-                    else {
+                    } else {
                         p_write++;
                     }
                 }
@@ -1214,8 +1206,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         if (strcasecmp(ptr[i], "flushpackets") == 0) {
             if (strcasecmp(ptr[i + 1], "on") == 0) {
                 nodeinfo.mess.flushpackets = flush_on;
-            }
-            else if (strcasecmp(ptr[i + 1], "auto") == 0) {
+            } else if (strcasecmp(ptr[i + 1], "auto") == 0) {
                 nodeinfo.mess.flushpackets = flush_auto;
             }
         }
@@ -1247,8 +1238,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                 phost->next = NULL;
                 phost->host = ptr[i + 1];
                 phost->context = NULL;
-            }
-            else {
+            } else {
                 phost->host = ptr[i + 1];
             }
         }
@@ -1279,12 +1269,10 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         if (mconf->ws_upgrade_header) {
             strncpy(nodeinfo.mess.Upgrade, mconf->ws_upgrade_header, sizeof(nodeinfo.mess.Upgrade));
             nodeinfo.mess.Upgrade[sizeof(nodeinfo.mess.Upgrade) - 1] = '\0';
-        }
-        else {
+        } else {
             strcpy(nodeinfo.mess.Upgrade, "websocket");
         }
-    }
-    else {
+    } else {
         nodeinfo.mess.Upgrade[0] = '\0';
     }
 
@@ -1342,8 +1330,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         if (node != NULL && (unsigned)node->mess.id == id) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: proxy_node_getid() worker exist and should be OK");
-        }
-        else {
+        } else {
             /* Here that is the tricky part, we will insert_update the whole node including proxy_worker_shared */
             char *pptr;
             unsigned long offset;
@@ -1363,13 +1350,11 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                         /* Something to clean ? */
                         removed = -1;
                         strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
-                    }
-                    else {
+                    } else {
                         /* if the workernode->mess is zeroed we are going to reinsert it */
                         if (workernode->mess.JVMRoute[0] == '\0') {
                             removed = -1;
-                        }
-                        else {
+                        } else {
                             ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                                          "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT %s!!!",
                                          id, workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
@@ -1389,8 +1374,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             memcpy(pptr, worker->s, sizeof(proxy_worker_shared)); /* restore the information we are going to reuse */
             ap_assert(the_conf);
         }
-    }
-    else {
+    } else {
         nodeinfo_t *workernode;
         rv = find_node_byhostport(nodestatsmem, &workernode, nodeinfo.mess.Host, nodeinfo.mess.Port);
         if (rv == APR_SUCCESS) {
@@ -1403,12 +1387,10 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                 strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
                 workernode->mess.remove = 0;
                 workernode->mess.num_remove_check = 0;
-            }
-            else {
+            } else {
                 ap_assert(0); /* we need to figure out what to do... */
             }
-        }
-        else {
+        } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s", nodeinfo.mess.JVMRoute,
                          nodeinfo.mess.Port);
         }
@@ -1455,8 +1437,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                      worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name,
                      worker->s->index);
 #endif
-    }
-    else {
+    } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s inserted in worker %d",
                      nodeinfo.mess.JVMRoute, nodeinfo.mess.Port, id);
     }
@@ -1470,8 +1451,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         if (balancer_manage) {
             apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: balancer-manager returned %d", rv);
-        }
-        else {
+        } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
         }
         return NULL; /* Alias and Context missing */
@@ -1495,8 +1475,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     if (balancer_manage) {
         apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: balancer-manager returned %d", rv);
-    }
-    else {
+    } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
     }
 
@@ -1536,8 +1515,7 @@ static char *process_dump(request_rec *r, int *errtype)
         ap_set_content_type(r, "text/xml");
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
-    }
-    else {
+    } else {
         ap_set_content_type(r, "text/plain");
         type = TEXT_PLAIN;
     }
@@ -1723,8 +1701,7 @@ static char *process_info(request_rec *r, int *errtype)
         ap_set_content_type(r, "text/xml");
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
-    }
-    else {
+    } else {
         ap_set_content_type(r, "text/plain");
         type = TEXT_PLAIN;
     }
@@ -1939,8 +1916,7 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
                 if (status != REMOVE) {
                     context->status = status;
                     insert_update_context(contextstatsmem, context);
-                }
-                else {
+                } else {
                     remove_context(contextstatsmem, context->id);
                 }
             }
@@ -2042,8 +2018,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         loc_unlock_nodes();
         if (status == REMOVE) {
             return NULL; /* Already done */
-        }
-        else {
+        } else {
             /* Act has if the node wasn't found */
             *errtype = TYPEMEM;
             return apr_psprintf(r->pool, MNODERD, node->mess.JVMRoute);
@@ -2070,8 +2045,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             s++;
         }
         *s = '\0';
-    }
-    else {
+    } else {
         hostinfo.host[0] = '\0';
     }
     hostinfo.id = 0;
@@ -2081,8 +2055,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         if (status == REMOVE) {
             loc_unlock_nodes();
             return NULL;
-        }
-        else {
+        } else {
             int vid, size, *id;
             /* Find the first available vhost id */
             vid = 0;
@@ -2114,8 +2087,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             if (vhost->host != NULL) {
                 strncpy(hostinfo.host, vhost->host, sizeof(hostinfo.host));
                 hostinfo.host[sizeof(hostinfo.host) - 1] = '\0';
-            }
-            else {
+            } else {
                 hostinfo.host[0] = '\0';
             }
             host = read_host(hoststatsmem, &hostinfo);
@@ -2189,8 +2161,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                 }
             }
         }
-    }
-    else if (status == STOPPED) {
+    } else if (status == STOPPED) {
         /* insert_update_contexts in fact makes that vhost->context corresponds only to the first context... */
         contextinfo_t in;
         contextinfo_t *ou;
@@ -2209,8 +2180,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                            vhost->host, (int)sizeof(vhost->context), vhost->context, ou->nbrequests);
                 ap_rprintf(r, "\n");
             }
-        }
-        else {
+        } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP can't read_context");
         }
     }
@@ -2279,11 +2249,9 @@ static char *process_status(request_rec *r, char **ptr, int *errtype)
             }
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = 0;
-        }
-        else if (strcasecmp(ptr[i], "Load") == 0) {
+        } else if (strcasecmp(ptr[i], "Load") == 0) {
             Load = atoi(ptr[i + 1]);
-        }
-        else {
+        } else {
             *errtype = TYPESYNTAX;
             return apr_psprintf(r->pool, SBADFLD, ptr[i]);
         }
@@ -2309,8 +2277,7 @@ static char *process_status(request_rec *r, char **ptr, int *errtype)
 
     if (isnode_up(r, node->mess.id, Load) != OK) {
         ap_rprintf(r, "&State=NOTOK");
-    }
-    else {
+    } else {
         ap_rprintf(r, "&State=OK");
     }
     ap_rprintf(r, "&id=%d", (int)ap_scoreboard_image->global->restart_time);
@@ -2333,8 +2300,7 @@ static char *process_version(request_rec *r, char **ptr, int *errtype)
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
         ap_rprintf(r, "<version><release>%s</release><protocol>%s</protocol></version>", MOD_CLUSTER_EXPOSED_VERSION,
                    VERSION_PROTOCOL);
-    }
-    else {
+    } else {
         ap_set_content_type(r, "text/plain");
         ap_rprintf(r, "release: %s, protocol: %s", MOD_CLUSTER_EXPOSED_VERSION, VERSION_PROTOCOL);
     }
@@ -2369,17 +2335,13 @@ static char *process_ping(request_rec *r, char **ptr, int *errtype)
             }
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = 0;
-        }
-        else if (strcasecmp(ptr[i], "Scheme") == 0) {
+        } else if (strcasecmp(ptr[i], "Scheme") == 0) {
             scheme = apr_pstrdup(r->pool, ptr[i + 1]);
-        }
-        else if (strcasecmp(ptr[i], "Host") == 0) {
+        } else if (strcasecmp(ptr[i], "Host") == 0) {
             host = apr_pstrdup(r->pool, ptr[i + 1]);
-        }
-        else if (strcasecmp(ptr[i], "Port") == 0) {
+        } else if (strcasecmp(ptr[i], "Port") == 0) {
             port = apr_pstrdup(r->pool, ptr[i + 1]);
-        }
-        else {
+        } else {
             *errtype = TYPESYNTAX;
             return apr_psprintf(r->pool, SBADFLD, ptr[i]);
         }
@@ -2391,8 +2353,7 @@ static char *process_ping(request_rec *r, char **ptr, int *errtype)
         if (scheme == NULL && host == NULL && port == NULL) {
             ap_set_content_type(r, "text/plain");
             ap_rprintf(r, "Type=PING-RSP&State=OK");
-        }
-        else {
+        } else {
             if (scheme == NULL || host == NULL || port == NULL) {
                 *errtype = TYPESYNTAX;
                 return apr_psprintf(r->pool, SMISFLD);
@@ -2402,13 +2363,11 @@ static char *process_ping(request_rec *r, char **ptr, int *errtype)
 
             if (ishost_up(r, scheme, host, port) != OK) {
                 ap_rprintf(r, "&State=NOTOK");
-            }
-            else {
+            } else {
                 ap_rprintf(r, "&State=OK");
             }
         }
-    }
-    else {
+    } else {
 
         /* Read the node */
         loc_lock_nodes();
@@ -2428,8 +2387,7 @@ static char *process_ping(request_rec *r, char **ptr, int *errtype)
 
         if (isnode_up(r, node->mess.id, -2) != OK) {
             ap_rprintf(r, "&State=NOTOK");
-        }
-        else {
+        } else {
             ap_rprintf(r, "&State=OK");
         }
     }
@@ -2454,11 +2412,9 @@ static int mod_manager_hex2c(const char *x)
     ch = x[0];
     if (apr_isdigit(ch)) {
         i = ch - '0';
-    }
-    else if (apr_isupper(ch)) {
+    } else if (apr_isupper(ch)) {
         i = ch - ('A' - 10);
-    }
-    else {
+    } else {
         i = ch - ('a' - 10);
     }
     i <<= 4;
@@ -2466,11 +2422,9 @@ static int mod_manager_hex2c(const char *x)
     ch = x[1];
     if (apr_isdigit(ch)) {
         i += ch - '0';
-    }
-    else if (apr_isupper(ch)) {
+    } else if (apr_isupper(ch)) {
         i += ch - ('A' - 10);
-    }
-    else {
+    } else {
         i += ch - ('a' - 10);
     }
     return i;
@@ -2493,8 +2447,7 @@ static int mod_manager_hex2c(const char *x)
         buf[0] = i & 0xFF;
         ap_xlate_proto_from_ascii(buf, 1);
         return buf[0];
-    }
-    else {
+    } else {
         return 0;
     }
 #endif /*APR_CHARSET_EBCDIC */
@@ -2542,44 +2495,31 @@ static int check_method(request_rec *r)
     int ours = 0;
     if (strcasecmp(r->method, "CONFIG") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "ENABLE-APP") == 0) {
+    } else if (strcasecmp(r->method, "ENABLE-APP") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "DISABLE-APP") == 0) {
+    } else if (strcasecmp(r->method, "DISABLE-APP") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "STOP-APP") == 0) {
+    } else if (strcasecmp(r->method, "STOP-APP") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "REMOVE-APP") == 0) {
+    } else if (strcasecmp(r->method, "REMOVE-APP") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "STATUS") == 0) {
+    } else if (strcasecmp(r->method, "STATUS") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "DUMP") == 0) {
+    } else if (strcasecmp(r->method, "DUMP") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "ERROR") == 0) {
+    } else if (strcasecmp(r->method, "ERROR") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "INFO") == 0) {
+    } else if (strcasecmp(r->method, "INFO") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "PING") == 0) {
+    } else if (strcasecmp(r->method, "PING") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "ADDID") == 0) {
+    } else if (strcasecmp(r->method, "ADDID") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "REMOVEID") == 0) {
+    } else if (strcasecmp(r->method, "REMOVEID") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "QUERY") == 0) {
+    } else if (strcasecmp(r->method, "QUERY") == 0) {
         ours = 1;
-    }
-    else if (strcasecmp(r->method, "VERSION") == 0) {
+    } else if (strcasecmp(r->method, "VERSION") == 0) {
         ours = 1;
     }
     return ours;
@@ -2617,8 +2557,7 @@ static int manager_trans(request_rec *r)
         i = strlen(r->uri);
         if (strcmp(r->uri, "*") == 0 || (i >= 2 && r->uri[i - 1] == '*' && r->uri[i - 2] == '/')) {
             r->filename = apr_pstrdup(r->pool, NODE_COMMAND);
-        }
-        else {
+        } else {
             r->filename = apr_pstrdup(r->pool, r->uri);
         }
         return OK;
@@ -2792,8 +2731,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
             manager_info_contexts(r, reduce_display, allow_cmd, ou->node, ou->vhost, ou->host, JVMRoute);
             if (reduce_display) {
                 ap_rprintf(r, "Aliases: ");
-            }
-            else {
+            } else {
                 ap_rprintf(r, "<h3>Aliases:</h3>");
                 ap_rprintf(r, "<pre>");
             }
@@ -2801,8 +2739,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
 
             if (reduce_display) {
                 ap_rprintf(r, "%.*s ", (int)sizeof(ou->host), ou->host);
-            }
-            else {
+            } else {
                 ap_rprintf(r, "%.*s\n", (int)sizeof(ou->host), ou->host);
             }
 
@@ -2827,8 +2764,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
                 }
                 if (reduce_display) {
                     ap_rprintf(r, "%.*s ", (int)sizeof(pv->host), pv->host);
-                }
-                else {
+                } else {
                     ap_rprintf(r, "%.*s\n", (int)sizeof(pv->host), pv->host);
                 }
             }
@@ -2876,8 +2812,7 @@ static void manager_domain(request_rec *r, int reduce_display)
     /* Process the domain information: the removed node belonging to a domain are stored there */
     if (reduce_display) {
         ap_rprintf(r, "<br/>LBGroup:");
-    }
-    else {
+    } else {
         ap_rprintf(r, "<h1>LBGroup:</h1>");
     }
     ap_rprintf(r, "<pre>");
@@ -2997,14 +2932,11 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
         ptr[pos + 1] = apr_pstrdup(r->pool, ou->mess.JVMRoute);
         if (strcasecmp(cmd, "ENABLE-APP") == 0) {
             errstring = process_enable(r, ptr, errtype, RANGENODE);
-        }
-        else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
+        } else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
             errstring = process_disable(r, ptr, errtype, RANGENODE);
-        }
-        else if (strcasecmp(cmd, "STOP-APP") == 0) {
+        } else if (strcasecmp(cmd, "STOP-APP") == 0) {
             errstring = process_stop(r, ptr, errtype, RANGENODE, 0);
-        }
-        else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
+        } else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
             errstring = process_remove(r, ptr, errtype, RANGENODE);
         }
     }
@@ -3017,14 +2949,12 @@ static void printproxy_stat(request_rec *r, int reduce_display, proxy_worker_sha
     char *status = NULL;
     if (proxystat->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
         status = "NOTOK";
-    }
-    else {
+    } else {
         status = "OK";
     }
     if (reduce_display) {
         ap_rprintf(r, " %s ", status);
-    }
-    else {
+    } else {
         ap_rprintf(r, ",Status: %s,Elected: %d,Read: %d,Transferred: %d,Connected: %d,Load: %d", status,
                    (int)proxystat->elected, (int)proxystat->read, (int)proxystat->transferred, (int)proxystat->busy,
                    proxystat->lbfactor);
@@ -3036,15 +2966,13 @@ static void modules_info(request_rec *r)
 {
     if (ap_find_linked_module("mod_proxy_cluster.c") != NULL) {
         ap_rputs("mod_proxy_cluster.c: OK<br/>", r);
-    }
-    else {
+    } else {
         ap_rputs("mod_proxy_cluster.c: missing<br/>", r);
     }
 
     if (ap_find_linked_module("mod_sharedmem.c") != NULL) {
         ap_rputs("mod_sharedmem.c: OK<br/>", r);
-    }
-    else {
+    } else {
         ap_rputs("mod_sharedmem.c: missing<br/>", r);
     }
 
@@ -3062,8 +2990,7 @@ static void modules_info(request_rec *r)
 
     if (ap_find_linked_module("mod_advertise.c") != NULL) {
         ap_rputs("mod_advertise.c: OK<br/>", r);
-    }
-    else {
+    } else {
         ap_rputs("mod_advertise.c: not loaded<br/>", r);
     }
 }
@@ -3102,8 +3029,7 @@ static int manager_info(request_rec *r)
                 }
                 apr_table_setn(params, args, val);
                 args = tok;
-            }
-            else {
+            } else {
                 return HTTP_BAD_REQUEST;
             }
         }
@@ -3137,8 +3063,7 @@ static int manager_info(request_rec *r)
                 if (!errstring) {
                     return OK;
                 }
-            }
-            else if (strcasecmp(cmd, "INFO") == 0) {
+            } else if (strcasecmp(cmd, "INFO") == 0) {
                 errstring = process_info(r, &errtype);
                 if (!errstring) {
                     return OK;
@@ -3159,15 +3084,13 @@ static int manager_info(request_rec *r)
 
             if (strcasecmp(typ, "NODE") == 0) {
                 global = RANGENODE;
-            }
-            else if (strcasecmp(typ, "DOMAIN") == 0) {
+            } else if (strcasecmp(typ, "DOMAIN") == 0) {
                 global = RANGEDOMAIN;
             }
 
             if (global == RANGEDOMAIN) {
                 ptr = apr_palloc(r->pool, sizeof(char *) * (arr->nelts + 2) * 2);
-            }
-            else {
+            } else {
                 ptr = apr_palloc(r->pool, sizeof(char *) * (arr->nelts + 1) * 2);
             }
             for (i = 0; i < arr->nelts; i++) {
@@ -3179,20 +3102,15 @@ static int manager_info(request_rec *r)
 
             if (global == RANGEDOMAIN) {
                 errstring = process_domain(r, ptr, &errtype, cmd, domain);
-            }
-            else if (strcasecmp(cmd, "ENABLE-APP") == 0) {
+            } else if (strcasecmp(cmd, "ENABLE-APP") == 0) {
                 errstring = process_enable(r, ptr, &errtype, global);
-            }
-            else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
+            } else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
                 errstring = process_disable(r, ptr, &errtype, global);
-            }
-            else if (strcasecmp(cmd, "STOP-APP") == 0) {
+            } else if (strcasecmp(cmd, "STOP-APP") == 0) {
                 errstring = process_stop(r, ptr, &errtype, global, 0);
-            }
-            else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
+            } else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
                 errstring = process_remove(r, ptr, &errtype, global);
-            }
-            else {
+            } else {
                 errstring = SCMDUNS;
                 errtype = TYPESYNTAX;
             }
@@ -3264,8 +3182,7 @@ static int manager_info(request_rec *r)
         if (strcmp(domain, ou->mess.Domain) != 0) {
             if (mconf->reduce_display) {
                 ap_rprintf(r, "<br/><br/>LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
-            }
-            else {
+            } else {
                 ap_rprintf(r, "<h1> LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
             }
             domain = ou->mess.Domain;
@@ -3278,8 +3195,7 @@ static int manager_info(request_rec *r)
         }
         if (mconf->reduce_display) {
             ap_rprintf(r, "<br/><br/>Node %.*s ", (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute);
-        }
-        else {
+        } else {
             ap_rprintf(r, "<h1> Node %.*s (%.*s://%.*s:%.*s): </h1>\n", (int)sizeof(ou->mess.JVMRoute),
                        ou->mess.JVMRoute, (int)sizeof(ou->mess.Type), ou->mess.Type, (int)sizeof(ou->mess.Host),
                        ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port);
@@ -3313,8 +3229,7 @@ static int manager_info(request_rec *r)
 
         if (mconf->reduce_display) {
             ap_rprintf(r, "<br/>\n");
-        }
-        else {
+        } else {
             printproxy_stat(r, mconf->reduce_display, (proxy_worker_shared *)pptr);
         }
 
@@ -3374,8 +3289,7 @@ static int manager_handler(request_rec *r)
     /* Use a buffer to read the message */
     if (mconf->maxmesssize) {
         maxbufsiz = mconf->maxmesssize;
-    }
-    else {
+    } else {
         /* we calculate it */
         maxbufsiz = 9 + JVMROUTESZ;
         maxbufsiz = maxbufsiz + (mconf->maxhost * HOSTALIASZ) + 7;
@@ -3428,33 +3342,25 @@ static int manager_handler(request_rec *r)
     /* Application handling */
     else if (strcasecmp(r->method, "ENABLE-APP") == 0) {
         errstring = process_enable(r, ptr, &errtype, global);
-    }
-    else if (strcasecmp(r->method, "DISABLE-APP") == 0) {
+    } else if (strcasecmp(r->method, "DISABLE-APP") == 0) {
         errstring = process_disable(r, ptr, &errtype, global);
-    }
-    else if (strcasecmp(r->method, "STOP-APP") == 0) {
+    } else if (strcasecmp(r->method, "STOP-APP") == 0) {
         errstring = process_stop(r, ptr, &errtype, global, 1);
-    }
-    else if (strcasecmp(r->method, "REMOVE-APP") == 0) {
+    } else if (strcasecmp(r->method, "REMOVE-APP") == 0) {
         errstring = process_remove(r, ptr, &errtype, global);
     }
     /* Status handling */
     else if (strcasecmp(r->method, "STATUS") == 0) {
         errstring = process_status(r, ptr, &errtype);
-    }
-    else if (strcasecmp(r->method, "DUMP") == 0) {
+    } else if (strcasecmp(r->method, "DUMP") == 0) {
         errstring = process_dump(r, &errtype);
-    }
-    else if (strcasecmp(r->method, "INFO") == 0) {
+    } else if (strcasecmp(r->method, "INFO") == 0) {
         errstring = process_info(r, &errtype);
-    }
-    else if (strcasecmp(r->method, "PING") == 0) {
+    } else if (strcasecmp(r->method, "PING") == 0) {
         errstring = process_ping(r, ptr, &errtype);
-    }
-    else if (strcasecmp(r->method, "VERSION") == 0) {
+    } else if (strcasecmp(r->method, "VERSION") == 0) {
         errstring = process_version(r, ptr, &errtype);
-    }
-    else {
+    } else {
         errstring = SCMDUNS;
         errtype = TYPESYNTAX;
     }
@@ -3508,8 +3414,7 @@ static void manager_child_init(apr_pool_t *p, server_rec *s)
         host = apr_pstrcat(p, mconf->basefilename, "/manager.host", NULL);
         balancer = apr_pstrcat(p, mconf->basefilename, "/manager.balancer", NULL);
         sessionid = apr_pstrcat(p, mconf->basefilename, "/manager.sessionid", NULL);
-    }
-    else {
+    } else {
         node = ap_server_root_relative(p, "logs/manager.node");
         context = ap_server_root_relative(p, "logs/manager.context");
         host = ap_server_root_relative(p, "logs/manager.host");
@@ -3648,11 +3553,9 @@ static const char *cmd_manager_pers(cmd_parms *cmd, void *dummy, const char *arg
     }
     if (strcasecmp(arg, "Off") == 0) {
         mconf->persistent = 0;
-    }
-    else if (strcasecmp(arg, "On") == 0) {
+    } else if (strcasecmp(arg, "On") == 0) {
         mconf->persistent = AP_SLOTMEM_TYPE_PERSIST;
-    }
-    else {
+    } else {
         return "PersistSlots must be one of: "
                "off | on";
     }
@@ -3667,11 +3570,9 @@ static const char *cmd_manager_nonce(cmd_parms *cmd, void *dummy, const char *ar
 
     if (strcasecmp(arg, "Off") == 0) {
         mconf->nonce = 0;
-    }
-    else if (strcasecmp(arg, "On") == 0) {
+    } else if (strcasecmp(arg, "On") == 0) {
         mconf->nonce = -1;
-    }
-    else {
+    } else {
         return "CheckNonce must be one of: "
                "off | on";
     }
@@ -3686,11 +3587,9 @@ static const char *cmd_manager_allow_display(cmd_parms *cmd, void *dummy, const 
 
     if (strcasecmp(arg, "Off") == 0) {
         mconf->allow_display = 0;
-    }
-    else if (strcasecmp(arg, "On") == 0) {
+    } else if (strcasecmp(arg, "On") == 0) {
         mconf->allow_display = -1;
-    }
-    else {
+    } else {
         return "AllowDisplay must be one of: "
                "off | on";
     }
@@ -3705,11 +3604,9 @@ static const char *cmd_manager_allow_cmd(cmd_parms *cmd, void *dummy, const char
 
     if (strcasecmp(arg, "Off") == 0) {
         mconf->allow_cmd = 0;
-    }
-    else if (strcasecmp(arg, "On") == 0) {
+    } else if (strcasecmp(arg, "On") == 0) {
         mconf->allow_cmd = -1;
-    }
-    else {
+    } else {
         return "AllowCmd must be one of: "
                "off | on";
     }
@@ -3724,11 +3621,9 @@ static const char *cmd_manager_reduce_display(cmd_parms *cmd, void *dummy, const
 
     if (strcasecmp(arg, "Off") == 0) {
         mconf->reduce_display = 0;
-    }
-    else if (strcasecmp(arg, "On") == 0) {
+    } else if (strcasecmp(arg, "On") == 0) {
         mconf->reduce_display = -1;
-    }
-    else {
+    } else {
         return "ReduceDisplay must be one of: "
                "off | on";
     }
@@ -3776,8 +3671,7 @@ static const char *cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
     if (ap_find_linked_module("mod_proxy_wstunnel.c") != NULL) {
         mconf->enable_ws_tunnel = -1;
         return NULL;
-    }
-    else {
+    } else {
         return "EnableWsTunnel requires mod_proxy_wstunnel.c";
     }
 }
@@ -3799,8 +3693,7 @@ static const char *cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, 
         mconf->enable_ws_tunnel = -1;
         mconf->ws_upgrade_header = apr_pstrdup(cmd->pool, word);
         return NULL;
-    }
-    else {
+    } else {
         return "WSUpgradeHeader requires mod_proxy_wstunnel.c";
     }
 }
@@ -3820,8 +3713,7 @@ static const char *cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const c
     if (ap_find_linked_module("mod_proxy_ajp.c") != NULL) {
         mconf->ajp_secret = apr_pstrdup(cmd->pool, word);
         return NULL;
-    }
-    else {
+    } else {
         return "AJPsecret requires mod_proxy_ajp.c";
     }
 }
@@ -3842,8 +3734,7 @@ static const char *cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, 
     if (ap_find_linked_module("mod_proxy_http.c") != NULL) {
         mconf->response_field_size = (s ? s : HUGE_STRING_LEN);
         return NULL;
-    }
-    else {
+    } else {
         return "ResponseFieldSize requires mod_proxy_http.c";
     }
 }
@@ -3977,113 +3868,97 @@ static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf, void
 
     if (mconf2->basefilename) {
         mconf->basefilename = apr_pstrdup(p, mconf2->basefilename);
-    }
-    else if (mconf1->basefilename) {
+    } else if (mconf1->basefilename) {
         mconf->basefilename = apr_pstrdup(p, mconf1->basefilename);
     }
 
     if (mconf2->maxcontext != DEFMAXCONTEXT) {
         mconf->maxcontext = mconf2->maxcontext;
-    }
-    else if (mconf1->maxcontext != DEFMAXCONTEXT) {
+    } else if (mconf1->maxcontext != DEFMAXCONTEXT) {
         mconf->maxcontext = mconf1->maxcontext;
     }
 
     if (mconf2->maxnode != DEFMAXNODE) {
         mconf->maxnode = mconf2->maxnode;
-    }
-    else if (mconf1->maxnode != DEFMAXNODE) {
+    } else if (mconf1->maxnode != DEFMAXNODE) {
         mconf->maxnode = mconf1->maxnode;
     }
 
     if (mconf2->maxhost != DEFMAXHOST) {
         mconf->maxhost = mconf2->maxhost;
-    }
-    else if (mconf1->maxhost != DEFMAXHOST) {
+    } else if (mconf1->maxhost != DEFMAXHOST) {
         mconf->maxhost = mconf1->maxhost;
     }
 
     if (mconf2->maxsessionid != DEFMAXSESSIONID) {
         mconf->maxsessionid = mconf2->maxsessionid;
-    }
-    else if (mconf1->maxsessionid != DEFMAXSESSIONID) {
+    } else if (mconf1->maxsessionid != DEFMAXSESSIONID) {
         mconf->maxsessionid = mconf1->maxsessionid;
     }
 
     if (mconf2->persistent != 0) {
         mconf->persistent = mconf2->persistent;
-    }
-    else if (mconf1->persistent != 0) {
+    } else if (mconf1->persistent != 0) {
         mconf->persistent = mconf1->persistent;
     }
 
     if (mconf2->nonce != -1) {
         mconf->nonce = mconf2->nonce;
-    }
-    else if (mconf1->nonce != -1) {
+    } else if (mconf1->nonce != -1) {
         mconf->nonce = mconf1->nonce;
     }
 
     if (mconf2->balancername) {
         mconf->balancername = apr_pstrdup(p, mconf2->balancername);
-    }
-    else if (mconf1->balancername) {
+    } else if (mconf1->balancername) {
         mconf->balancername = apr_pstrdup(p, mconf1->balancername);
     }
 
     if (mconf2->allow_display != 0) {
         mconf->allow_display = mconf2->allow_display;
-    }
-    else if (mconf1->allow_display != 0) {
+    } else if (mconf1->allow_display != 0) {
         mconf->allow_display = mconf1->allow_display;
     }
 
     if (mconf2->allow_cmd != -1) {
         mconf->allow_cmd = mconf2->allow_cmd;
-    }
-    else if (mconf1->allow_cmd != -1) {
+    } else if (mconf1->allow_cmd != -1) {
         mconf->allow_cmd = mconf1->allow_cmd;
     }
 
     if (mconf2->reduce_display != 0) {
         mconf->reduce_display = mconf2->reduce_display;
-    }
-    else if (mconf1->reduce_display != 0) {
+    } else if (mconf1->reduce_display != 0) {
         mconf->reduce_display = mconf1->reduce_display;
     }
 
     if (mconf2->enable_mcpm_receive != 0) {
         mconf->enable_mcpm_receive = mconf2->enable_mcpm_receive;
-    }
-    else if (mconf1->enable_mcpm_receive != 0) {
+    } else if (mconf1->enable_mcpm_receive != 0) {
         mconf->enable_mcpm_receive = mconf1->enable_mcpm_receive;
     }
 
     if (mconf2->enable_ws_tunnel != 0) {
         mconf->enable_ws_tunnel = mconf2->enable_ws_tunnel;
-    }
-    else if (mconf1->enable_ws_tunnel != 0) {
+    } else if (mconf1->enable_ws_tunnel != 0) {
         mconf->enable_ws_tunnel = mconf1->enable_ws_tunnel;
     }
 
     if (mconf2->ws_upgrade_header) {
         mconf->ws_upgrade_header = apr_pstrdup(p, mconf2->ws_upgrade_header);
-    }
-    else if (mconf1->ws_upgrade_header) {
+    } else if (mconf1->ws_upgrade_header) {
         mconf->ws_upgrade_header = apr_pstrdup(p, mconf1->ws_upgrade_header);
     }
 
     if (mconf2->ajp_secret) {
         mconf->ajp_secret = apr_pstrdup(p, mconf2->ajp_secret);
-    }
-    else if (mconf1->ajp_secret) {
+    } else if (mconf1->ajp_secret) {
         mconf->ajp_secret = apr_pstrdup(p, mconf1->ajp_secret);
     }
 
     if (mconf2->response_field_size) {
         mconf->response_field_size = mconf2->response_field_size;
-    }
-    else if (mconf1->response_field_size) {
+    } else if (mconf1->response_field_size) {
         mconf->response_field_size = mconf1->response_field_size;
     }
 

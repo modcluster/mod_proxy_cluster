@@ -8,7 +8,6 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 BreakBeforeBraces: Custom
 BraceWrapping:
-  BeforeElse: true
   AfterFunction: true
   AfterStruct: true
   AfterUnion: true

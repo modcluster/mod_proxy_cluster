@@ -59,8 +59,7 @@ static mem_t *create_attach_mem_context(char *string, unsigned *num, int type, i
     storename = apr_pstrcat(p, string, CONTEXTEXE, NULL);
     if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(contextinfo_t), *num, type, p);
-    }
-    else {
+    } else {
         apr_size_t size = sizeof(contextinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }

@@ -74,8 +74,7 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, proxy_balance
         }
         if (!mycandidate) {
             mycandidate = worker;
-        }
-        else {
+        } else {
             nodeinfo_t *node1;
             int id1;
             node1 = table_get_node_route(node_table, mycandidate->s->route, &id1);
@@ -211,8 +210,7 @@ static int lbmethod_cluster_trans(request_rec *r)
         /* It is safer to use r->uri */
         if (strncmp(r->uri, "balancer://", 11)) {
             r->filename = apr_pstrcat(r->pool, "proxy:balancer://", balancer, r->uri, NULL);
-        }
-        else {
+        } else {
             r->filename = apr_pstrcat(r->pool, "proxy:", r->uri, NULL);
         }
         r->handler = "proxy-server";
@@ -326,12 +324,10 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
                                         ou->mess.remove = 1;
                                         ou->updatetime = now;
                                     }
-                                }
-                                else {
+                                } else {
                                     ou->mess.num_failure_idle = 0;
                                 }
-                            }
-                            else {
+                            } else {
                                 ou->mess.num_failure_idle = 0;
                             }
                             node_storage->unlock_nodes();

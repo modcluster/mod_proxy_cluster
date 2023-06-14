@@ -59,8 +59,7 @@ static mem_t *create_attach_mem_sessionid(char *string, unsigned *num, int type,
     storename = apr_pstrcat(p, string, SESSIONIDEXE, NULL);
     if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(sessionidinfo_t), *num, type, p);
-    }
-    else {
+    } else {
         apr_size_t size = sizeof(sessionidinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -182,8 +181,7 @@ apr_status_t remove_sessionid(mem_t *s, sessionidinfo_t *sessionid)
     sessionidinfo_t *ou = sessionid;
     if (sessionid->id) {
         rv = s->storage->release(s->slotmem, sessionid->id);
-    }
-    else {
+    } else {
         /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
         rv = s->storage->doall(s->slotmem, loc_read_sessionid, &ou, s->p);
         if (rv == APR_EEXIST) {

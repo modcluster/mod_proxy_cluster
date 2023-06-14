@@ -63,8 +63,7 @@ static mem_t *create_attach_mem_node(char *string, unsigned *num, int type, int 
     storename = apr_pstrcat(p, string, NODEEXE, NULL);
     if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(nodeinfo_t), *num, type, p);
-    }
-    else {
+    } else {
         apr_size_t size = sizeof(nodeinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -144,8 +143,7 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned *id, int cl
         if (rv != APR_SUCCESS) {
             return rv;
         }
-    }
-    else {
+    } else {
         rv = s->storage->fgrab(s->slotmem, *id);
         if (rv != APR_SUCCESS) {
             return rv;

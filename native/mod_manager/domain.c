@@ -59,8 +59,7 @@ static mem_t *create_attach_mem_domain(char *string, unsigned *num, int type, in
     storename = apr_pstrcat(p, string, DOMAINEXE, NULL);
     if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(domaininfo_t), *num, type, p);
-    }
-    else {
+    } else {
         apr_size_t size = sizeof(domaininfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -182,8 +181,7 @@ apr_status_t remove_domain(mem_t *s, domaininfo_t *domain)
     domaininfo_t *ou = domain;
     if (domain->id) {
         rv = s->storage->release(s->slotmem, domain->id);
-    }
-    else {
+    } else {
         /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
         rv = s->storage->doall(s->slotmem, loc_read_domain, &ou, s->p);
         if (rv == APR_EEXIST) {

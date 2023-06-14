@@ -37,8 +37,7 @@ proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method
     vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
     if (for_cache) {
         vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * size);
-    }
-    else {
+    } else {
         vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
     }
     for (i = 0; i < vhost_table->sizevhost; i++) {
@@ -90,8 +89,7 @@ proxy_context_table *read_context_table(apr_pool_t *pool, struct context_storage
     context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
     if (for_cache) {
         context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * size);
-    }
-    else {
+    } else {
         context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * context_table->sizecontext);
     }
     for (i = 0; i < context_table->sizecontext; i++) {
@@ -144,8 +142,7 @@ proxy_balancer_table *read_balancer_table(apr_pool_t *pool, struct balancer_stor
     balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
     if (for_cache) {
         balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * size);
-    }
-    else {
+    } else {
         balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
     }
     for (i = 0; i < balancer_table->sizebalancer; i++) {
@@ -198,8 +195,7 @@ proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *
     if (for_cache) {
         node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * size);
         node_table->ptr_node = apr_palloc(pool, sizeof(char *) * size);
-    }
-    else {
+    } else {
         node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * node_table->sizenode);
         node_table->ptr_node = apr_palloc(pool, sizeof(char *) * node_table->sizenode);
     }
@@ -210,8 +206,7 @@ proxy_node_table *read_node_table(apr_pool_t *pool, struct node_storage_method *
         if (rv == APR_SUCCESS) {
             node_table->node_info[i] = *h;
             node_table->ptr_node[i] = (char *)h;
-        }
-        else {
+        } else {
             /* we can't read the node! */
             node_table->ptr_node[i] = NULL;
             memset(&node_table->node_info[i], 0, sizeof(nodeinfo_t));
@@ -240,8 +235,7 @@ proxy_node_table *update_node_table_cached(proxy_node_table *node_table, struct 
         if (rv == APR_SUCCESS) {
             node_table->node_info[i] = *h;
             node_table->ptr_node[i] = (char *)h;
-        }
-        else {
+        } else {
             /* we can't read the node! */
             node_table->ptr_node[i] = NULL;
             memset(&node_table->node_info[i], 0, sizeof(nodeinfo_t));
@@ -264,8 +258,7 @@ char *get_cookie_param(request_rec *r, const char *name, int in)
 
     if (in) {
         cookies = apr_table_get(r->headers_in, "Cookie");
-    }
-    else {
+    } else {
         cookies = apr_table_get(r->headers_out, "Set-Cookie");
     }
     if (cookies) {
@@ -421,8 +414,7 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, proxy_node_
 
     if (r->filename) {
         uri = r->filename + 6;
-    }
-    else {
+    } else {
         /* We are coming from proxy_cluster_trans */
         uri = r->unparsed_uri;
     }
@@ -472,13 +464,11 @@ node_context *find_node_context_host(request_rec *r, proxy_balancer *balancer, c
     uri = ap_strchr_c(luri, '?');
     if (uri) {
         uri = apr_pstrndup(r->pool, luri, uri - luri);
-    }
-    else {
+    } else {
         uri = ap_strchr_c(luri, ';');
         if (uri) {
             uri = apr_pstrndup(r->pool, luri, uri - luri);
-        }
-        else {
+        } else {
             uri = luri;
         }
     }
@@ -778,8 +768,7 @@ const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_t
                 proxy_balancer *balancer = ap_proxy_get_balancer(r->pool, conf, name, 0);
                 if (balancer) {
                     return node->mess.balancer;
-                }
-                else {
+                } else {
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                                  "get_context_host_balancer: balancer %s not found", name);
                 }

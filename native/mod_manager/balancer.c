@@ -59,8 +59,7 @@ static mem_t *create_attach_mem_balancer(char *string, unsigned *num, int type, 
     storename = apr_pstrcat(p, string, BALANCEREXE, NULL);
     if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(balancerinfo_t), *num, type, p);
-    }
-    else {
+    } else {
         apr_size_t size = sizeof(balancerinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -182,8 +181,7 @@ apr_status_t remove_balancer(mem_t *s, balancerinfo_t *balancer)
     balancerinfo_t *ou = balancer;
     if (balancer->id) {
         rv = s->storage->release(s->slotmem, balancer->id);
-    }
-    else {
+    } else {
         /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
         rv = s->storage->doall(s->slotmem, loc_read_balancer, &ou, s->p);
         if (rv == APR_EEXIST) {

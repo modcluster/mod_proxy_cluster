@@ -141,11 +141,9 @@ static const char *cmd_advertise_m(cmd_parms *cmd, void *dummy, const char *arg,
 
     if (strcasecmp(arg, "Off") == 0) {
         mconf->ma_advertise_mode = ma_advertise_off;
-    }
-    else if (strcasecmp(arg, "On") == 0) {
+    } else if (strcasecmp(arg, "On") == 0) {
         mconf->ma_advertise_mode = ma_advertise_on;
-    }
-    else {
+    } else {
         return "ServerAdvertise must be Off or On";
     }
     if (opt) {
@@ -550,8 +548,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
                 ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                              "mod_advertise: directive in more than one VirtualHost: not supported");
                 return !OK;
-            }
-            else {
+            } else {
                 advertisefound = -1;
             }
         }
@@ -596,8 +593,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
         apr_md5_init(&mc);
         apr_md5_update(&mc, mconf->ma_advertise_skey, strlen(mconf->ma_advertise_skey));
         apr_md5_final(magd->ssalt, &mc);
-    }
-    else {
+    } else {
         /* If security key is not configured, the digest is calculated from zero bytes */
         memset(magd->ssalt, '\0', APR_MD5_DIGESTSIZE);
     }
@@ -615,8 +611,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
             ap_log_error(APLOG_MARK, APLOG_ERR, rv, s, "mod_advertise: multicast join failed for %s:%d.",
                          mconf->ma_advertise_adrs, mconf->ma_advertise_port);
             ma_advertise_run = 0;
-        }
-        else {
+        } else {
             ma_advertise_run = 1;
             ma_advertise_stat = 200;
         }
@@ -627,8 +622,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
         if (ma_server_rec && ma_server_rec->server_scheme) {
             /* ServerName scheme://fully-qualified-domain-name[:port] */
             mconf->ma_advertise_srvm = apr_pstrdup(pconf, ma_server_rec->server_scheme);
-        }
-        else {
+        } else {
             mconf->ma_advertise_srvm = apr_pstrdup(pconf, "http");
         }
     }
@@ -649,8 +643,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
                 if (ma_server_rec->addrs->host_addr->port != 0) {
                     port = ma_server_rec->addrs->host_addr->port;
                 }
-            }
-            else {
+            } else {
                 port = ma_server_rec->port;
             }
             ptr = apr_psprintf(pproc, "%s:%u", ma_server_rec->server_hostname, port);
@@ -717,8 +710,7 @@ static void advertise_info(request_rec *r)
             ap_rprintf(r, " Advertising on Group %s Port %d ", mconf->ma_advertise_adrs, mconf->ma_advertise_port);
             ap_rprintf(r, "for %s://%s:%d every %ld seconds<br/>", mconf->ma_advertise_srvm, mconf->ma_advertise_srvs,
                        mconf->ma_advertise_srvp, apr_time_sec(mconf->ma_advertise_freq));
-        }
-        else {
+        } else {
             ap_rputs("<br/>", r);
         }
         s = s->next;

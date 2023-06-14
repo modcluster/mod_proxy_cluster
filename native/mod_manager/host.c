@@ -59,8 +59,7 @@ static mem_t *create_attach_mem_host(char *string, unsigned *num, int type, int 
     storename = apr_pstrcat(p, string, HOSTEXE, NULL);
     if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(hostinfo_t), *num, type, p);
-    }
-    else {
+    } else {
         apr_size_t size = sizeof(hostinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
