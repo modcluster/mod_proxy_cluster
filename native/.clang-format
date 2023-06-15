@@ -8,10 +8,10 @@ AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 BreakBeforeBraces: Custom
 BraceWrapping:
-  BeforeElse: true
   AfterFunction: true
   AfterStruct: true
   AfterUnion: true
+InsertBraces: true
 IndentCaseLabels: false
 IndentExternBlock: false
 MaxEmptyLinesToKeep: 2

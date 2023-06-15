@@ -48,7 +48,7 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_node(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+static mem_t *create_attach_mem_node(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                      slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -63,8 +63,7 @@ static mem_t *create_attach_mem_node(char *string, unsigned int *num, int type, 
     storename = apr_pstrcat(p, string, NODEEXE, NULL);
     if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(nodeinfo_t), *num, type, p);
-    }
-    else {
+    } else {
         apr_size_t size = sizeof(nodeinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -121,7 +120,7 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     return APR_SUCCESS;
 }
 
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned int *id, int clean)
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned *id, int clean)
 {
     apr_status_t rv;
     nodeinfo_t *ou;
@@ -144,8 +143,7 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned int *id, in
         if (rv != APR_SUCCESS) {
             return rv;
         }
-    }
-    else {
+    } else {
         rv = s->storage->fgrab(s->slotmem, *id);
         if (rv != APR_SUCCESS) {
             return rv;
@@ -198,12 +196,14 @@ nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node)
 
     if (!node->mess.id) {
         rv = s->storage->doall(s->slotmem, loc_read_node, node, s->p);
-        if (rv != APR_EEXIST)
+        if (rv != APR_EEXIST) {
             return NULL;
+        }
     }
     rv = s->storage->dptr(s->slotmem, node->mess.id, (void **)&ou);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return ou;
+    }
     return NULL;
 }
 
@@ -245,8 +245,9 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
     strncpy(ou.mess.JVMRoute, route, sizeof(ou.mess.JVMRoute));
     ou.mess.JVMRoute[sizeof(ou.mess.JVMRoute) - 1] = '\0';
     rv = s->storage->doall(s->slotmem, loc_read_node, &ou, s->p);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return APR_NOTFOUND;
+    }
     if (rv == APR_EEXIST) {
         rv = s->storage->dptr(s->slotmem, ou.mess.id, (void **)node);
     }
@@ -257,6 +258,7 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
     struct counter *count = (struct counter *)data;
     nodeinfo_t *ou = (nodeinfo_t *)mem;
+    (void)pool;
     *count->values = ou->mess.id;
     count->values++;
     count->count++;
@@ -274,8 +276,9 @@ int get_ids_used_node(mem_t *s, int *ids)
     struct counter count;
     count.count = 0;
     count.values = ids;
-    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS) {
         return 0;
+    }
     return count.count;
 }
 
@@ -297,7 +300,7 @@ int get_max_size_node(mem_t *s)
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_node(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_node(string, num, 0, 0, p, storage);
 }
@@ -311,9 +314,9 @@ mem_t *get_mem_node(char *string, unsigned int *num, apr_pool_t *p, slotmem_stor
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_node(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_node(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
-    return create_attach_mem_node(string, num, (unsigned int)persist, 1, p, storage);
+    return create_attach_mem_node(string, num, (unsigned)persist, 1, p, storage);
 }
 
 
@@ -353,7 +356,8 @@ apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host,
         rv = s->storage->dptr(s->slotmem, ou.mess.id, (void **)node);
         return rv;
     }
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return APR_NOTFOUND;
+    }
     return rv;
 }

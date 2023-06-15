@@ -44,7 +44,7 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_host(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+static mem_t *create_attach_mem_host(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                      slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -57,9 +57,9 @@ static mem_t *create_attach_mem_host(char *string, unsigned int *num, int type, 
     }
     ptr->storage = storage;
     storename = apr_pstrcat(p, string, HOSTEXE, NULL);
-    if (create)
+    if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(hostinfo_t), *num, type, p);
-    else {
+    } else {
         apr_size_t size = sizeof(hostinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -97,7 +97,7 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
 {
     apr_status_t rv;
     hostinfo_t *ou;
-    unsigned int id = 0;
+    unsigned id = 0;
 
     rv = s->storage->doall(s->slotmem, update, host, s->p);
     if (rv == APR_EEXIST) {
@@ -110,8 +110,9 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
         return rv;
     }
     rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
-    if (rv != APR_SUCCESS)
+    if (rv != APR_SUCCESS) {
         return rv;
+    }
     memcpy(ou, host, sizeof(hostinfo_t));
     ou->id = id;
     ou->updatetime = apr_time_sec(apr_time_now());
@@ -145,12 +146,14 @@ hostinfo_t *read_host(mem_t *s, hostinfo_t *host)
 
     if (!host->id) {
         rv = s->storage->doall(s->slotmem, loc_read_host, host, s->p);
-        if (rv != APR_EEXIST)
+        if (rv != APR_EEXIST) {
             return NULL;
+        }
     }
     rv = s->storage->dptr(s->slotmem, host->id, (void **)&ou);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return ou;
+    }
 
     return NULL;
 }
@@ -183,6 +186,7 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
     struct counter *count = (struct counter *)data;
     hostinfo_t *ou = (hostinfo_t *)mem;
     *count->values = ou->id;
+    (void)pool;
     count->values++;
     count->count++;
     return APR_SUCCESS;
@@ -199,8 +203,9 @@ int get_ids_used_host(mem_t *s, int *ids)
     struct counter count;
     count.count = 0;
     count.values = ids;
-    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS) {
         return 0;
+    }
     return count.count;
 }
 
@@ -221,7 +226,7 @@ int get_max_size_host(mem_t *s)
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_host(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_host(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_host(string, num, 0, 0, p, storage);
 }
@@ -234,7 +239,7 @@ mem_t *get_mem_host(char *string, unsigned int *num, apr_pool_t *p, slotmem_stor
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_host(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_host(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_host(string, num, persist, 1, p, storage);
 }

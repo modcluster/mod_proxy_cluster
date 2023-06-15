@@ -44,7 +44,7 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_domain(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+static mem_t *create_attach_mem_domain(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                        slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -57,9 +57,9 @@ static mem_t *create_attach_mem_domain(char *string, unsigned int *num, int type
     }
     ptr->storage = storage;
     storename = apr_pstrcat(p, string, DOMAINEXE, NULL);
-    if (create)
+    if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(domaininfo_t), *num, type, p);
-    else {
+    } else {
         apr_size_t size = sizeof(domaininfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -97,7 +97,7 @@ apr_status_t insert_update_domain(mem_t *s, domaininfo_t *domain)
 {
     apr_status_t rv;
     domaininfo_t *ou;
-    unsigned int id = 0;
+    unsigned id = 0;
 
     rv = s->storage->doall(s->slotmem, update, domain, s->p);
     if (rv == APR_EEXIST) {
@@ -146,12 +146,14 @@ domaininfo_t *read_domain(mem_t *s, domaininfo_t *domain)
 
     if (!domain->id) {
         rv = s->storage->doall(s->slotmem, loc_read_domain, domain, s->p);
-        if (rv != APR_EEXIST)
+        if (rv != APR_EEXIST) {
             return NULL;
+        }
     }
     rv = s->storage->dptr(s->slotmem, domain->id, (void **)&ou);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return ou;
+    }
     return NULL;
 }
 
@@ -179,12 +181,12 @@ apr_status_t remove_domain(mem_t *s, domaininfo_t *domain)
     domaininfo_t *ou = domain;
     if (domain->id) {
         rv = s->storage->release(s->slotmem, domain->id);
-    }
-    else {
+    } else {
         /* XXX: for the moment January 2007 ap_slotmem_free only uses ident to remove */
         rv = s->storage->doall(s->slotmem, loc_read_domain, &ou, s->p);
-        if (rv == APR_EEXIST)
+        if (rv == APR_EEXIST) {
             rv = s->storage->release(s->slotmem, ou->id);
+        }
     }
     return rv;
 }
@@ -211,8 +213,9 @@ apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, con
         rv = s->storage->dptr(s->slotmem, ou.id, (void **)domain);
         return rv;
     }
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return APR_NOTFOUND;
+    }
     return rv;
 }
 
@@ -220,6 +223,7 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
     struct counter *count = (struct counter *)data;
     domaininfo_t *ou = (domaininfo_t *)mem;
+    (void)pool;
     *count->values = ou->id;
     count->values++;
     count->count++;
@@ -237,8 +241,9 @@ int get_ids_used_domain(mem_t *s, int *ids)
     struct counter count;
     count.count = 0;
     count.values = ids;
-    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS) {
         return 0;
+    }
     return count.count;
 }
 
@@ -259,7 +264,7 @@ int get_max_size_domain(mem_t *s)
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_domain(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_domain(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_domain(string, num, 0, 0, p, storage);
 }
@@ -272,7 +277,7 @@ mem_t *get_mem_domain(char *string, unsigned int *num, apr_pool_t *p, slotmem_st
  * @param p pool to use for allocations.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_domain(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_domain(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_domain(string, num, persist, 1, p, storage);
 }

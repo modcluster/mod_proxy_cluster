@@ -44,7 +44,7 @@
 
 #include "mod_manager.h"
 
-static mem_t *create_attach_mem_context(char *string, unsigned int *num, int type, int create, apr_pool_t *p,
+static mem_t *create_attach_mem_context(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                         slotmem_storage_method *storage)
 {
     mem_t *ptr;
@@ -57,9 +57,9 @@ static mem_t *create_attach_mem_context(char *string, unsigned int *num, int typ
     }
     ptr->storage = storage;
     storename = apr_pstrcat(p, string, CONTEXTEXE, NULL);
-    if (create)
+    if (create) {
         rv = ptr->storage->create(&ptr->slotmem, storename, sizeof(contextinfo_t), *num, type, p);
-    else {
+    } else {
         apr_size_t size = sizeof(contextinfo_t);
         rv = ptr->storage->attach(&ptr->slotmem, storename, &size, num, p);
     }
@@ -97,7 +97,7 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
 {
     apr_status_t rv;
     contextinfo_t *ou;
-    unsigned int id = 0;
+    unsigned id = 0;
 
     rv = s->storage->doall(s->slotmem, update, context, s->p);
     if (rv == APR_EEXIST) {
@@ -110,8 +110,9 @@ apr_status_t insert_update_context(mem_t *s, contextinfo_t *context)
         return rv;
     }
     rv = s->storage->dptr(s->slotmem, id, (void **)&ou);
-    if (rv != APR_SUCCESS)
+    if (rv != APR_SUCCESS) {
         return rv;
+    }
     memcpy(ou, context, sizeof(contextinfo_t));
     ou->id = id;
     ou->nbrequests = 0;
@@ -146,12 +147,14 @@ contextinfo_t *read_context(mem_t *s, contextinfo_t *context)
 
     if (!context->id) {
         rv = s->storage->doall(s->slotmem, loc_read_context, context, s->p);
-        if (rv != APR_EEXIST)
+        if (rv != APR_EEXIST) {
             return NULL;
+        }
     }
     rv = s->storage->dptr(s->slotmem, context->id, (void **)&ou);
-    if (rv == APR_SUCCESS)
+    if (rv == APR_SUCCESS) {
         return ou;
+    }
     return NULL;
 }
 
@@ -182,6 +185,7 @@ static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
 {
     struct counter *count = (struct counter *)data;
     contextinfo_t *ou = (contextinfo_t *)mem;
+    (void)pool;
     *count->values = ou->id;
     count->values++;
     count->count++;
@@ -199,8 +203,9 @@ int get_ids_used_context(mem_t *s, int *ids)
     struct counter count;
     count.count = 0;
     count.values = ids;
-    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS)
+    if (s->storage->doall(s->slotmem, loc_get_id, &count, s->p) != APR_SUCCESS) {
         return 0;
+    }
     return count.count;
 }
 
@@ -222,7 +227,7 @@ int get_max_size_context(mem_t *s)
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *get_mem_context(char *string, unsigned int *num, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *get_mem_context(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_context(string, num, 0, 0, p, storage);
 }
@@ -236,7 +241,7 @@ mem_t *get_mem_context(char *string, unsigned int *num, apr_pool_t *p, slotmem_s
  * @param storage slotmem logic provider.
  * @return address of struct used to access the table.
  */
-mem_t *create_mem_context(char *string, unsigned int *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
+mem_t *create_mem_context(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_context(string, num, persist, 1, p, storage);
 }
