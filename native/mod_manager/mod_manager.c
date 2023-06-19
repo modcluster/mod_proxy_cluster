@@ -811,10 +811,9 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
 {
     contextinfo_t *info;
     info = read_context(mem, context);
-    if (info == NULL) {
-        return;
+    if (info != NULL) {
+        remove_context(mem, info->id);
     }
-    remove_context(mem, info->id);
 }
 
 /*
@@ -822,7 +821,6 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
  * Note:
  * 1 - if status is REMOVE remove_context will be called.
  * 2 - return codes of REMOVE are ignored (always success).
- *
  */
 static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int vhost, int status)
 {
@@ -1239,11 +1237,9 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                 phost->next = apr_palloc(r->pool, sizeof(struct cluster_host));
                 phost = phost->next;
                 phost->next = NULL;
-                phost->host = ptr[i + 1];
                 phost->context = NULL;
-            } else {
-                phost->host = ptr[i + 1];
             }
+            phost->host = ptr[i + 1];
         }
         if (strcasecmp(ptr[i], "Context") == 0) {
             if (phost->context) {
