@@ -527,7 +527,7 @@ static void mc_initialize_cleanup(apr_pool_t *p)
     apr_pool_cleanup_register(p, NULL, cleanup_manager, apr_pool_cleanup_null);
 }
 
-static void normalize_balancer_name(char *balancer_name, server_rec *s)
+static void normalize_balancer_name(char *balancer_name, const server_rec *s)
 {
     int upper_case_char_found = 0;
     char *balancer_name_start = balancer_name;
@@ -868,7 +868,7 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
 /*
  * Check that the node could be handle as is there were the same.
  */
-static int is_same_node(nodeinfo_t *nodeinfo, nodeinfo_t *node)
+static int is_same_node(const nodeinfo_t *nodeinfo, const nodeinfo_t *node)
 {
     if (strcmp(nodeinfo->mess.balancer, node->mess.balancer)) {
         return 0;
@@ -901,7 +901,7 @@ static int is_same_node(nodeinfo_t *nodeinfo, nodeinfo_t *node)
 /*
  * Check if another node has the same worker.
  */
-static int is_same_worker_existing(request_rec *r, nodeinfo_t *node)
+static int is_same_worker_existing(const request_rec *r, const nodeinfo_t *node)
 {
     int size, i;
     int *id;
@@ -939,7 +939,7 @@ static int is_same_worker_existing(request_rec *r, nodeinfo_t *node)
 /*
  * Builds the parameter for mod_balancer
  */
-static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, balancerinfo_t *bal)
+static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *node, const balancerinfo_t *bal)
 {
     apr_table_t *params;
     params = apr_table_make(r->pool, 10);
@@ -980,7 +980,8 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, nodeinfo_t *node, 
  * Check if the proxy balancer module already has a worker
  * and return the id
  */
-static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, unsigned *id, proxy_server_conf **the_conf)
+static proxy_worker *proxy_node_getid(request_rec *r, const nodeinfo_t *nodeinfo, unsigned *id,
+                                      const proxy_server_conf **the_conf)
 {
     if (balancerhandler != NULL) {
         return balancerhandler->proxy_node_getid(r, nodeinfo->mess.balancer, nodeinfo->mess.Type, nodeinfo->mess.Host,
@@ -990,7 +991,7 @@ static proxy_worker *proxy_node_getid(request_rec *r, nodeinfo_t *nodeinfo, unsi
 }
 
 static void reenable_proxy_worker(request_rec *r, nodeinfo_t *node, proxy_worker *worker, nodeinfo_t *nodeinfo,
-                                  proxy_server_conf *the_conf)
+                                  const proxy_server_conf *the_conf)
 {
     if (balancerhandler != NULL) {
         balancerhandler->reenable_proxy_worker(r->server, node, worker, nodeinfo, the_conf);
@@ -1042,7 +1043,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     mod_manager_config *mconf = ap_get_module_config(sconf, &manager_module);
     int clean = -1;
     proxy_worker *worker;
-    proxy_server_conf *the_conf = NULL;
+    const proxy_server_conf *the_conf = NULL;
     apr_status_t rv;
 
     vhost = apr_palloc(r->pool, sizeof(struct cluster_host));
@@ -2232,7 +2233,7 @@ static int ishost_up(request_rec *r, char *scheme, char *host, char *port)
  * Load 0  : Standby.
  * Load 1-100 : Load factor.
  */
-static char *process_status(request_rec *r, char **ptr, int *errtype)
+static char *process_status(request_rec *r, const char *const *ptr, int *errtype)
 {
     int Load = -1;
     nodeinfo_t nodeinfo;
@@ -2289,7 +2290,7 @@ static char *process_status(request_rec *r, char **ptr, int *errtype)
 /*
  * Process the VERSION command
  */
-static char *process_version(request_rec *r, char **ptr, int *errtype)
+static char *process_version(request_rec *r, const char *const *const ptr, int *errtype)
 {
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
     (void)ptr;
@@ -2315,7 +2316,7 @@ static char *process_version(request_rec *r, char **ptr, int *errtype)
  * NOTE: It is hard to cping/cpong a host + port but CONFIG + PING + REMOVE_APP *
  *       would do the same.
  */
-static char *process_ping(request_rec *r, char **ptr, int *errtype)
+static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
 {
     nodeinfo_t nodeinfo;
     nodeinfo_t *node;
@@ -2490,7 +2491,7 @@ static apr_status_t decodeenc(char **ptr)
 }
 
 /* Check that the method is one of ours */
-static int check_method(request_rec *r)
+static int check_method(const request_rec *r)
 {
     int ours = 0;
     if (strcasecmp(r->method, "CONFIG") == 0) {
@@ -2589,7 +2590,7 @@ static int manager_map_to_storage(request_rec *r)
 }
 
 /* Create the commands that are possible on the context */
-static char *context_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
+static char *context_string(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
 {
     char context[CONTEXTSZ + 1];
     char *raw;
@@ -2609,7 +2610,7 @@ static char *balancer_nonce_string(request_rec *r)
     return ret;
 }
 
-static void context_command_string(request_rec *r, contextinfo_t *ou, char *Alias, char *JVMRoute)
+static void context_command_string(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
 {
     if (ou->status == DISABLED) {
         ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=CONTEXT&%s\">Enable</a> ", r->uri, balancer_nonce_string(r),
@@ -2632,13 +2633,13 @@ static void context_command_string(request_rec *r, contextinfo_t *ou, char *Alia
 }
 
 /* Create the commands that are possible on the node */
-static char *node_string(request_rec *r, char *JVMRoute)
+static char *node_string(request_rec *r, const char *JVMRoute)
 {
     char *raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, NULL);
     return raw;
 }
 
-static void node_command_string(request_rec *r, char *JVMRoute)
+static void node_command_string(request_rec *r, const char *JVMRoute)
 {
     ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=NODE&%s\">Enable Contexts</a> ", r->uri,
                balancer_nonce_string(r), node_string(r, JVMRoute));
@@ -2648,7 +2649,7 @@ static void node_command_string(request_rec *r, char *JVMRoute)
                node_string(r, JVMRoute));
 }
 
-static void domain_command_string(request_rec *r, char *Domain)
+static void domain_command_string(request_rec *r, const char *Domain)
 {
     ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=DOMAIN&Domain=%s\">Enable Nodes</a> ", r->uri,
                balancer_nonce_string(r), Domain);
@@ -2661,8 +2662,8 @@ static void domain_command_string(request_rec *r, char *Domain)
 /*
  * Process the parameters and display corresponding informations.
  */
-static void manager_info_contexts(request_rec *r, int reduce_display, int allow_cmd, int node, int host, char *Alias,
-                                  char *JVMRoute)
+static void manager_info_contexts(request_rec *r, int reduce_display, int allow_cmd, int node, int host,
+                                  const char *Alias, const char *JVMRoute)
 {
     int size, i;
     int *id;
@@ -2695,7 +2696,7 @@ static void manager_info_contexts(request_rec *r, int reduce_display, int allow_
     ap_rprintf(r, "</pre>");
 }
 
-static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd, int node, char *JVMRoute)
+static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd, int node, const char *JVMRoute)
 {
     int size, i, j;
     int *id, *idChecker;
@@ -2834,7 +2835,7 @@ static void manager_domain(request_rec *r, int reduce_display)
 }
 #endif
 
-static int count_sessionid(request_rec *r, char *route)
+static int count_sessionid(request_rec *r, const char *route)
 {
     int size, i;
     int *id;
@@ -2944,7 +2945,7 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
 }
 
 /* XXX: move to mod_proxy_cluster as a provider ? */
-static void printproxy_stat(request_rec *r, int reduce_display, proxy_worker_shared *proxystat)
+static void printproxy_stat(request_rec *r, int reduce_display, const proxy_worker_shared *proxystat)
 {
     char *status = NULL;
     if (proxystat->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
@@ -3351,15 +3352,15 @@ static int manager_handler(request_rec *r)
     }
     /* Status handling */
     else if (strcasecmp(r->method, "STATUS") == 0) {
-        errstring = process_status(r, ptr, &errtype);
+        errstring = process_status(r, (const char *const *)ptr, &errtype);
     } else if (strcasecmp(r->method, "DUMP") == 0) {
         errstring = process_dump(r, &errtype);
     } else if (strcasecmp(r->method, "INFO") == 0) {
         errstring = process_info(r, &errtype);
     } else if (strcasecmp(r->method, "PING") == 0) {
-        errstring = process_ping(r, ptr, &errtype);
+        errstring = process_ping(r, (const char *const *)ptr, &errtype);
     } else if (strcasecmp(r->method, "VERSION") == 0) {
-        errstring = process_version(r, ptr, &errtype);
+        errstring = process_version(r, (const char *const *)ptr, &errtype);
     } else {
         errstring = SCMDUNS;
         errtype = TYPESYNTAX;
