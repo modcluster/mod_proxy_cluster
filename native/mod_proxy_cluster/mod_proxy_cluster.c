@@ -1307,6 +1307,109 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
 }
 
 /*
+ * Returns 1 if the caller function should continue processing.
+ */
+static int internal_update_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server, apr_time_t now,
+                                    nodeinfo_t *ou, int id, const proxy_worker_shared *stat)
+{
+    char sport[7];
+    watchdog_thread_args_t targs;
+    proxy_worker *worker;
+    worker = get_worker_from_id_stat(conf, id, stat, ou);
+
+    if (worker == NULL) {
+        node_storage->unlock_nodes();
+        return 1; /* skip it */
+    }
+    apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
+
+    if (strcmp(worker->s->scheme, ou->mess.Type) || compare_hostname(worker->s->hostname, ou->mess.Host) ||
+        strcmp(sport, ou->mess.Port)) {
+        node_storage->unlock_nodes();
+        /* the worker doesn't correspond to the node something is very broken */
+        ap_assert(0);
+        return 1; /* won't reach this one... */
+    }
+
+    /* Here we should decide about using hcheck result or a request that pings the node */
+    if (proxyhctemplate != NULL) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus Using hcheck!");
+        if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
+            /* marked errored by hcheck */
+            ou->mess.num_failure_idle++;
+            if (ou->mess.num_failure_idle > 60) {
+                /* Failing for 5 minutes: time to mark it removed */
+                ou->mess.remove = 1;
+                ou->updatetime = now;
+            }
+        } else {
+            ou->mess.num_failure_idle = 0;
+        }
+        node_storage->unlock_nodes();
+        return 1; /* Done in this case */
+    } else {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus Using old logic!");
+    }
+    node_storage->unlock_nodes();
+
+    /* We are going to check the worker... check if we are told to stop */
+    if (child_stopping) {
+        return 0;
+    }
+
+    /* We need threads to process that "blocking" logic */
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus Using old logic!!!!");
+#if MC_USE_THREADS
+    if (mc_thread_pool) {
+        apr_status_t res;
+        apr_pool_t *targs_pool;
+        watchdog_thread_args_t *targs_ptr;
+        apr_pool_create(&targs_pool, server->process->pool);
+        apr_pool_tag(targs_pool, "mc_watchdog_targs");
+        targs_ptr = apr_palloc(targs_pool, sizeof(watchdog_thread_args_t));
+        if (targs_ptr != NULL) {
+            targs_ptr->server = server;
+            targs_ptr->pool = targs_pool;
+            targs_ptr->conf = conf;
+            targs_ptr->ou = ou;
+            targs_ptr->worker = worker;
+            targs_ptr->now = now;
+            targs_ptr->id = id;
+            res = apr_thread_pool_push(mc_thread_pool, check_proxy_worker, (void *)targs_ptr,
+                                       APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
+            if (res == APR_SUCCESS) {
+                /* Early return. Task was scheduled! */
+                return 0;
+            }
+            /* Log about failed scheduling and execute without threads below. */
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "thread push was NOT successful: %d", res);
+        } else {
+            ap_log_error(APLOG_MARK, APLOG_ERR, 0, server, "Memory allocation for thread args failed");
+        }
+        /* Thread alloc or push failed, so run it without threads!
+         * That means the execution continues after the endif below!
+         */
+    }
+#endif
+    targs.server = server;
+    targs.pool = pool;
+    targs.conf = conf;
+    targs.ou = ou;
+    targs.worker = worker;
+    targs.now = now;
+    targs.id = id;
+
+    check_proxy_worker(NULL, (void *)&targs);
+
+    /* We have checked the worker... check if we were told to stop */
+    if (child_stopping) {
+        return 0;
+    }
+
+    return 1;
+}
+
+/*
  * update the lbfactor of each node if needed,
  */
 static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
@@ -1368,98 +1471,9 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 /* it is set to zero when the back-end is back to normal.        */
                 /* worker->s->retries is also set to zero is a connection is     */
                 /* establish so we use read to check for changes                 */
-                char sport[7];
-                watchdog_thread_args_t targs;
-                proxy_worker *worker;
-                worker = get_worker_from_id_stat(conf, id[i], stat, ou);
-
-                if (worker == NULL) {
-                    node_storage->unlock_nodes();
-                    continue; /* skip it */
-                }
-                apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
-
-                if (strcmp(worker->s->scheme, ou->mess.Type) || compare_hostname(worker->s->hostname, ou->mess.Host) ||
-                    strcmp(sport, ou->mess.Port)) {
-                    node_storage->unlock_nodes();
-                    /* the worker doesn't correspond to the node something is very broken */
-                    ap_assert(0);
-                    continue; /* won't reach this one... */
-                }
-
-                /* Here we should decide about using hcheck result or a request that pings the node */
-                if (proxyhctemplate != NULL) {
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus Using hcheck!");
-                    if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
-                        /* marked errored by hcheck */
-                        ou->mess.num_failure_idle++;
-                        if (ou->mess.num_failure_idle > 60) {
-                            /* Failing for 5 minutes: time to mark it removed */
-                            ou->mess.remove = 1;
-                            ou->updatetime = now;
-                        }
-                    } else {
-                        ou->mess.num_failure_idle = 0;
-                    }
-                    node_storage->unlock_nodes();
-                    continue; /* Done in this case */
-                } else {
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus Using old logic!");
-                }
-                node_storage->unlock_nodes();
-
-                /* We are going to check the worker... check if we are told to stop */
-                if (child_stopping) {
-                    return;
-                }
-
-                /* We need threads to process that "blocking" logic */
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus Using old logic!!!!");
-#if MC_USE_THREADS
-                if (mc_thread_pool) {
-                    apr_status_t res;
-                    apr_pool_t *targs_pool;
-                    watchdog_thread_args_t *targs_ptr;
-                    apr_pool_create(&targs_pool, server->process->pool);
-                    apr_pool_tag(targs_pool, "mc_watchdog_targs");
-                    targs_ptr = apr_palloc(targs_pool, sizeof(watchdog_thread_args_t));
-                    if (targs_ptr != NULL) {
-                        targs_ptr->server = server;
-                        targs_ptr->pool = targs_pool;
-                        targs_ptr->conf = conf;
-                        targs_ptr->ou = ou;
-                        targs_ptr->worker = worker;
-                        targs_ptr->now = now;
-                        targs_ptr->id = id[i];
-                        res = apr_thread_pool_push(mc_thread_pool, check_proxy_worker, (void *)targs_ptr,
-                                                   APR_THREAD_TASK_PRIORITY_NORMAL, NULL);
-                        if (res == APR_SUCCESS) {
-                            /* Early return. Task was scheduled! */
-                            return;
-                        }
-                        /* Log about failed scheduling and execute without threads below. */
-                        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "thread push was NOT successful: %d", res);
-                    } else {
-                        ap_log_error(APLOG_MARK, APLOG_ERR, 0, server, "Memory allocation for thread args failed");
-                    }
-                    /* Thread alloc or push failed, so run it without threads!
-                     * That means the execution continues after the endif below!
-                     */
-                }
-#endif
-
-                targs.server = server;
-                targs.pool = pool;
-                targs.conf = conf;
-                targs.ou = ou;
-                targs.worker = worker;
-                targs.now = now;
-                targs.id = id[i];
-
-                check_proxy_worker(NULL, (void *)&targs);
-
-                /* We have checked the worker... check if we were told to stop */
-                if (child_stopping) {
+                int cont;
+                cont = internal_update_lbstatus(conf, pool, server, now, ou, id[i], stat);
+                if (!cont) {
                     return;
                 }
             } else {
