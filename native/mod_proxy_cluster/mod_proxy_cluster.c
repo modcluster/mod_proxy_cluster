@@ -1554,6 +1554,107 @@ static int isnode_domain_ok(const request_rec *r, const nodeinfo_t *node, const 
     return 0;
 }
 
+static proxy_worker *internal_process_worker(proxy_worker *worker, int checking_standby, int checked_domain,
+                                             const char *domain, const node_context *best,
+                                             const node_context **mynodecontext, const request_rec *r,
+                                             proxy_worker **mycandidate, nodeinfo_t **node1, const char *balancer_name)
+{
+    nodeinfo_t *node;
+    const node_context *best1;
+    proxy_cluster_helper *helper = (proxy_cluster_helper *)worker->context;
+
+    if (!worker->s || !worker->context) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: byrequests balancer %s skipping BAD worker %s",
+                     balancer_name, worker->s ? worker->s->name_ex : "NULL");
+        return NULL;
+    }
+    if (helper->index == 0) {
+        ap_assert(0);
+        return NULL; /* marked removed */
+    }
+    if (helper->index != worker->s->index) {
+        /* something is very bad */
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: byrequests balancer skipping BAD worker");
+        return NULL; /* probably used by different worker */
+    }
+
+    /* standby logic
+     * lbfactor: -1 broken node.
+     *            0 standby.
+     *           >0 factor to use.
+     */
+    if (worker->s->lbfactor < 0 || (worker->s->lbfactor == 0 && !checking_standby)) {
+        return NULL;
+    }
+
+    /* If the worker is in error state the STATUS logic will retry it */
+    if (!PROXY_WORKER_IS_USABLE(worker)) {
+        return NULL;
+    }
+
+    /* Take into calculation only the workers that are
+     * not in error state or not disabled.
+     * and that can map the context.
+     */
+    if (best == NULL) {
+        apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", "");
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: byrequests balancer FAILED");
+        return NULL;
+    }
+    best1 = best;
+
+    while (best1->node != -1) {
+        if (best1->node == worker->s->index) {
+            break;
+        }
+        best1++;
+    }
+    if (best1->node == -1) {
+        return NULL; /* not found */
+    }
+
+    /* Let's do the table read only now after we know the worker is usable and matches */
+    if (read_node_worker(worker->s->index, &node, worker) != APR_SUCCESS) {
+        return NULL; /* Can't read node */
+    }
+    if (worker->s != (proxy_worker_shared *)((char *)node + node->offset)) {
+        return NULL; /* wrong shared memory address */
+    }
+
+    /* First try only nodes in the domain */
+    if (!checked_domain && !isnode_domain_ok(r, node, domain)) {
+        return NULL;
+    }
+
+    if (worker->s->lbfactor == 0 && checking_standby) {
+        *mycandidate = worker;
+        *mynodecontext = best1;
+        return worker; /* Done */
+    } else if (!(*mycandidate)) {
+        *mycandidate = worker;
+        *mynodecontext = best1;
+        *node1 = node;
+    } else {
+        int lbstatus, lbstatus1;
+
+        /* Let's avoid repeat reads of mycandidate through our loop iterations */
+        if (!(*node1) && node_storage->read_node((*mycandidate)->s->index, node1) != APR_SUCCESS) {
+            *mycandidate = NULL;
+            return worker;
+        }
+
+        lbstatus1 = (((*mycandidate)->s->elected - (*node1)->mess.oldelected) * 1000) / (*mycandidate)->s->lbfactor +
+                    (*mycandidate)->s->lbstatus;
+        lbstatus = ((worker->s->elected - node->mess.oldelected) * 1000) / worker->s->lbfactor + worker->s->lbstatus;
+        if (lbstatus1 > lbstatus) {
+            *mycandidate = worker;
+            *mynodecontext = best1;
+        }
+    }
+
+    return worker;
+}
+
 /*
  * The ModClusterService from the cluster fills the lbfactor values.
  * Our logic is a bit different the mod_balancer one. We check the
@@ -1569,10 +1670,8 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
 {
     int i, hash = 0;
     proxy_worker *mycandidate = NULL;
-    node_context *mynodecontext = NULL;
+    const node_context *mynodecontext = NULL;
     node_context *best = NULL;
-    nodeinfo_t *node1 = NULL;
-    proxy_worker *worker;
     int checking_standby = 0;
     int checked_standby = 0;
     int checked_domain = 1;
@@ -1617,117 +1716,17 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
         char *ptr = balancer->workers->elts;
         int sizew = balancer->workers->elt_size;
         for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
-            node_context *nodecontext;
-            nodeinfo_t *node;
-            proxy_cluster_helper *helper;
-            proxy_worker **run = (proxy_worker **)ptr;
-            char *pptr;
-
-            worker = *run;
-            helper = (proxy_cluster_helper *)worker->context;
-            if (!worker->s || !worker->context) {
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                             "proxy: byrequests balancer %s skipping BAD worker %s", balancer->s->name,
-                             worker->s ? worker->s->name_ex : "NULL");
-                continue;
+            nodeinfo_t *node1 = NULL;
+            proxy_worker *worker =
+                internal_process_worker(*(proxy_worker **)ptr, checking_standby, checked_domain, domain, best,
+                                        &mynodecontext, r, &mycandidate, &node1, balancer->s->name);
+            if (worker == NULL && best == NULL) {
+                return NULL;
             }
-            if (helper->index == 0) {
-                ap_assert(0);
-                continue; /* marked removed */
-            }
-            if (helper->index != worker->s->index) {
-                /* something is very bad */
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: byrequests balancer skipping BAD worker");
-                continue; /* probably used by different worker */
-            }
-
-            /* standby logic
-             * lbfactor: -1 broken node.
-             *            0 standby.
-             *           >0 factor to use.
-             */
-            if (worker->s->lbfactor < 0 || (worker->s->lbfactor == 0 && !checking_standby)) {
-                continue;
-            }
-
-            /* If the worker is in error state the STATUS logic will retry it */
-            if (!PROXY_WORKER_IS_USABLE(worker)) {
-                continue;
-            }
-
-            /* Take into calculation only the workers that are
-             * not in error state or not disabled.
-             * and that can map the context.
-             */
-            if (PROXY_WORKER_IS_USABLE(worker)) {
-                node_context *best1;
-                if (best == NULL) {
-                    apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", "");
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: byrequests balancer FAILED");
-                    return NULL;
-                }
-                best1 = best;
-
-                while (best1->node != -1) {
-                    if (best1->node == worker->s->index) {
-                        break;
-                    }
-                    best1++;
-                }
-                if (best1->node == -1) {
-                    continue; /* not found */
-                }
-
-                nodecontext = best1;
-
-                /* Let's do the table read only now after we know the worker is usable and matches */
-                if (read_node_worker(worker->s->index, &node, worker) != APR_SUCCESS) {
-                    continue; /* Can't read node */
-                }
-                pptr = (char *)node;
-                pptr = pptr + node->offset;
-                if (worker->s != (proxy_worker_shared *)pptr) {
-                    continue; /* wrong shared memory address */
-                }
-
-                if (!checked_domain) {
-                    /* First try only nodes in the domain */
-                    if (!isnode_domain_ok(r, node, domain)) {
-                        continue;
-                    }
-                }
+            if (worker != NULL) {
                 workers[workers_length++] = worker;
                 if (worker->s->lbfactor == 0 && checking_standby) {
-                    mycandidate = worker;
-                    mynodecontext = nodecontext;
-                    break; /* Done */
-                } else {
-                    if (!mycandidate) {
-                        mycandidate = worker;
-                        mynodecontext = nodecontext;
-                        node1 = node;
-                    } else {
-                        int lbstatus, lbstatus1;
-
-                        /* Let's avoid repeat reads of mycandidate through our loop iterations */
-                        if (!node1) {
-                            if (node_storage->read_node(mycandidate->s->index, &node1) != APR_SUCCESS) {
-                                mycandidate = NULL;
-                                continue;
-                            }
-                        }
-
-                        lbstatus1 =
-                            ((mycandidate->s->elected - node1->mess.oldelected) * 1000) / mycandidate->s->lbfactor;
-                        lbstatus = ((worker->s->elected - node->mess.oldelected) * 1000) / worker->s->lbfactor;
-                        lbstatus1 = lbstatus1 + mycandidate->s->lbstatus;
-                        lbstatus = lbstatus + worker->s->lbstatus;
-                        if (lbstatus1 > lbstatus) {
-                            mycandidate = worker;
-                            mynodecontext = nodecontext;
-                            node1 = node;
-                        }
-                    }
+                    break;
                 }
             }
         }
