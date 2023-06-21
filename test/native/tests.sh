@@ -11,8 +11,12 @@ fi
 if [ -z ${ITERATION_COUNT+x} ]; then
     ITERATION_COUNT=50 # the number of iteration of starting/stopping a tomcat
 fi
+if [ -z ${IMG+x} ]; then
+    IMG=IMG=quay.io/$USER/tomcat_mod_cluster
+fi
 
-echo "Test values are FOREVER_PAUSE=$FOREVER_PAUSE, TOMCAT_CYCLE_COUNT=$TOMCAT_CYCLE_COUNT, ITERATION_COUNT=$ITERATION_COUNT"
+echo -n "Test values are FOREVER_PAUSE=$FOREVER_PAUSE, TOMCAT_CYCLE_COUNT=$TOMCAT_CYCLE_COUNT,"
+echo " ITERATION_COUNT=$ITERATION_COUNT, IMG=$IMG"
 
 #
 # Stop running given dockered tomcat
