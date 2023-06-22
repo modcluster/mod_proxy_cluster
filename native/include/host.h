@@ -49,12 +49,13 @@ typedef struct mem mem_t;
 /* status of the host as read/store in httpd. */
 struct hostinfo
 {
+    /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
+    int id;                    /* id in table */
     char host[HOSTALIASZ + 1]; /* Alias element of the virtual host */
     int vhost;                 /* id of the correspond virtual host */
     int node;                  /* id of the node containing the virtual host */
 
     apr_time_t updatetime; /* time of last received message */
-    int id;                /* id in table */
 };
 typedef struct hostinfo hostinfo_t;
 

@@ -47,6 +47,8 @@
 #include "sessionid.h"
 #include "domain.h"
 
+#include "common.h"
+
 #include "mod_proxy_cluster.h"
 
 #if APR_HAVE_UNISTD_H

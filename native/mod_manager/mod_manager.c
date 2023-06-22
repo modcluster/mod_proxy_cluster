@@ -50,6 +50,8 @@
 #include "sessionid.h"
 #include "domain.h"
 
+#include "common.h"
+
 #include "mod_proxy_cluster.h"
 
 #define DEFMAXCONTEXT         100

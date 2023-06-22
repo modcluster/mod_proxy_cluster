@@ -55,6 +55,8 @@ typedef struct mem mem_t;
 /* status of the context as read/store in httpd. */
 struct contextinfo
 {
+    /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
+    int id;                      /* id in table */
     char context[CONTEXTSZ + 1]; /* Context where the application is mapped. */
     int vhost;                   /* id of the correspond virtual host in hosts table */
     int node;                    /* id of the correspond node in nodes table */
@@ -62,7 +64,6 @@ struct contextinfo
     int nbrequests;              /* number of request been processed */
 
     apr_time_t updatetime; /* time of last received message */
-    int id;                /* id in table */
 };
 typedef struct contextinfo contextinfo_t;
 

@@ -49,6 +49,8 @@ typedef struct mem mem_t;
 /* status of the balancer as read/store in httpd. */
 struct balancerinfo
 {
+    /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
+    int id;                    /* id in table */
     char balancer[BALANCERSZ]; /* Name of the balancer */
     int StickySession;         /* 0 : Don't use, 1: Use it */
     char StickySessionCookie[COOKNAMESZ];
@@ -59,7 +61,6 @@ struct balancerinfo
     int Maxattempts;
 
     apr_time_t updatetime; /* time of last received message */
-    int id;                /* id in table */
 };
 typedef struct balancerinfo balancerinfo_t;
 

@@ -28,6 +28,8 @@
 #include "context.h"
 #include "balancer.h"
 
+#include "common.h"
+
 #include "mod_proxy_cluster.h"
 
 #define LB_CLUSTER_WATHCHDOG_NAME ("_lb_cluster_")

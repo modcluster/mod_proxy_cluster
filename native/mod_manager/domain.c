@@ -42,6 +42,8 @@
 #include "ap_slotmem.h"
 #include "domain.h"
 
+#include "common.h"
+
 #include "mod_manager.h"
 
 static mem_t *create_attach_mem_domain(char *string, unsigned *num, int type, int create, apr_pool_t *p,
@@ -217,17 +219,6 @@ apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, con
         return APR_NOTFOUND;
     }
     return rv;
-}
-
-static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
-{
-    struct counter *count = (struct counter *)data;
-    domaininfo_t *ou = (domaininfo_t *)mem;
-    (void)pool;
-    *count->values = ou->id;
-    count->values++;
-    count->count++;
-    return APR_SUCCESS;
 }
 
 /*

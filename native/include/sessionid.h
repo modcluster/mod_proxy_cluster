@@ -49,11 +49,12 @@ typedef struct mem mem_t;
 /* status of the sessionid as read/store in httpd. */
 struct sessionidinfo
 {
+    /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
+    int id;                          /* id in table */
     char sessionid[SESSIONIDSZ + 1]; /* Sessionid value */
     char JVMRoute[JVMROUTESZ + 1];   /* corresponding node */
 
     apr_time_t updatetime; /* time of last received message */
-    int id;                /* id in table */
 };
 typedef struct sessionidinfo sessionidinfo_t;
 

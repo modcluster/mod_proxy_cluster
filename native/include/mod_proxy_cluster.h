@@ -28,6 +28,8 @@
 #ifndef MOD_PROXY_CLUSTER_H
 #define MOD_PROXY_CLUSTER_H
 
+#include "balancer.h"
+
 #define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"
 
 /* We don't care about versions older then 2.4.x, i.e., MODULE_MAGIC_NUMBER_MAJOR < 20120211 */
@@ -132,44 +134,5 @@ struct node_context
     int context;
 };
 typedef struct node_context node_context;
-
-/* common routines */
-proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage, int for_cache);
-proxy_context_table *read_context_table(apr_pool_t *pool, const struct context_storage_method *context_storage,
-                                        int for_cache);
-proxy_balancer_table *read_balancer_table(apr_pool_t *pool, const struct balancer_storage_method *balancer_storage,
-                                          int for_cache);
-proxy_node_table *read_node_table(apr_pool_t *pool, const struct node_storage_method *node_storage, int for_cache);
-proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *proxy_vhost_table,
-                                             const struct host_storage_method *host_storage);
-proxy_context_table *update_context_table_cached(proxy_context_table *context_table,
-                                                 const struct context_storage_method *context_storage);
-proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table,
-                                                   const struct balancer_storage_method *balancer_storage);
-proxy_node_table *update_node_table_cached(proxy_node_table *node_table,
-                                           const struct node_storage_method *node_storage);
-
-const char *get_route_balancer(request_rec *r, const proxy_server_conf *conf, const proxy_vhost_table *vhost_table,
-                               const proxy_context_table *context_table, const proxy_balancer_table *balancer_table,
-                               const proxy_node_table *node_table, int use_alias);
-
-const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_table,
-                                      proxy_context_table *context_table, proxy_node_table *node_table, int use_alias);
-
-const nodeinfo_t *table_get_node(const proxy_node_table *node_table, int id);
-char *cluster_get_sessionid(request_rec *r, const char *stickyval, char *uri, char **sticky_used);
-char *get_cookie_param(request_rec *r, const char *name, int in);
-char *get_path_param(apr_pool_t *pool, char *url, const char *name);
-node_context *find_node_context_host(request_rec *r, const proxy_balancer *balancer, const char *route, int use_alias,
-                                     const proxy_vhost_table *vhost_table, const proxy_context_table *context_table,
-                                     const proxy_node_table *node_table);
-int hassession_byname(request_rec *r, int nodeid, const char *route, const proxy_node_table *node_table);
-
-nodeinfo_t *table_get_node_route(proxy_node_table *node_table, char *route, int *id);
-
-const node_context *context_host_ok(request_rec *r, const proxy_balancer *balancer, int node, int use_alias,
-                                    const proxy_vhost_table *vhost_table, const proxy_context_table *context_table,
-                                    const proxy_node_table *node_table);
-
 
 #endif /*MOD_PROXY_CLUSTER_H*/

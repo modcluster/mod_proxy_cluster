@@ -43,6 +43,7 @@
 #include "host.h"
 
 #include "mod_manager.h"
+#include "common.h"
 
 static mem_t *create_attach_mem_host(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                      slotmem_storage_method *storage)
@@ -179,17 +180,6 @@ apr_status_t get_host(mem_t *s, hostinfo_t **host, int id)
 apr_status_t remove_host(mem_t *s, int id)
 {
     return s->storage->release(s->slotmem, id);
-}
-
-static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
-{
-    struct counter *count = (struct counter *)data;
-    hostinfo_t *ou = (hostinfo_t *)mem;
-    *count->values = ou->id;
-    (void)pool;
-    count->values++;
-    count->count++;
-    return APR_SUCCESS;
 }
 
 /*
