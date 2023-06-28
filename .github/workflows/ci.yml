@@ -59,11 +59,12 @@ jobs:
               echo 'COPY mod_proxy_cluster mod_proxy_cluster'
               echo 'WORKDIR /mod_proxy_cluster/native'
               echo 'RUN \'
-              echo 'for module in advertise/ mod_*; do \'
+              echo 'for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager; do \'
               echo '  echo Building: $module; \'
               echo '  cd $module; \'
               echo '  sh buildconf; \'
               echo '  ./configure --with-apxs=$APACHE_DIR/bin/apxs; \'
+              echo '  make clean; \'
               # Ensure the build fails in case of a failure in any of the module builds!
               echo '  make || exit 1; \'
               echo '  cd ..; \'
@@ -113,10 +114,11 @@ jobs:
       - name: Build
         run: |
           cd native
-          for module in advertise/ mod_*; do \
+          for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager/; do \
             cd $module; \
             sh buildconf; \
             ./configure  --with-apxs=/usr/local/apache2/bin/apxs; \
+            make clean; \
             make || exit 1; \
             cd ..; \
           done;
