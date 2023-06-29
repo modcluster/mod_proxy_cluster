@@ -1,5 +1,5 @@
 #==================================
-# mod_cluster_slotmem CMake file
+# mod_manager CMake file
 # @author: Michal Karm Babacek
 #==================================
 
