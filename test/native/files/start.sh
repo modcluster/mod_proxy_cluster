@@ -47,7 +47,7 @@ fi
 sed -i "s/proxyport/${cluster_port}/" ./conf/server.xml
 sed -i "s/proxyaddress/127.0.0.1/" ./conf/server.xml
 
-echo "jvm_route: ${jvm_route} and tomcat_port: ${tomcat_port}"
+echo "jvm_route: ${jvm_route} and tomcat_port: ${tomcat_port} and tomcat_address: ${tomcat_address}"
 if [ ! -z ${jvm_route} ]; then
   sed -i "/<Engine name=\"Catalina\"/c\<Engine name=\"Catalina\" defaultHost=\"localhost\" jvmRoute=\"${jvm_route}\">" ./conf/server.xml
 fi

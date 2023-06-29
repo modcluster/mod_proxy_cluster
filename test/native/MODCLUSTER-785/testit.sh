@@ -1,10 +1,14 @@
 #!/bin/bash
-source ../includes/script.bash
 
-# USe default if IMG not defined.
-if [ -z ${IMG+x} ]; then
-    IMG=quay.io/$USER/tomcat_mod_cluster
+# if ran from main testsuite, change directory
+pwd | grep MODCLUSTER-785
+if [ $? ]; then
+    PREFIX=MODCLUSTER-785
+else
+    PREFIX="."
 fi
+
+. includes/common.sh
 
 # check for a fork or modcluster repository.
 if [ -z $SOURCESFORK ]; then
@@ -21,37 +25,30 @@ else
 fi
 
 # first stop any previously running tests.
-stoptomcats
-removetomcats
+tomcat_all_stop
+tomcat_all_remove
+httpd_all_clean
 
-# and httpd
-docker stop MODCLUSTER-785
-docker rm MODCLUSTER-785
 
 # build httpd + mod_proxy_cluster
 #
 REPOORIGIN=`git remote -v | grep origin | grep fetch | awk ' { print $2 } ' | awk -F/ ' { print $4 } '`
+BRANCH=`git branch -v | awk ' { print $2 } '`
+# MPCCONF="https://raw.githubusercontent.com/${REPOORIGIN}/mod_proxy_cluster/${BRANCH}/test/MODCLUSTER-785/mod_proxy_cluster.conf"
 MPCCONF="https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/MODCLUSTER-785/mod_proxy_cluster.conf"
-if [ $REPOORIGIN != "modcluster" ]; then
-  BRANCH=`git branch -v | awk ' { print $2 } '`
-  MPCCONF="https://raw.githubusercontent.com/$REPOORIGIN/mod_proxy_cluster/${BRANCH}/test/native/MODCLUSTER-785/mod_proxy_cluster.conf"
-fi
-rm -f nohup.out
-nohup docker run --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.57.tar.gz -e SOURCES=${SOURCES} -e BRANCH=${MDBRANCH} -e CONF=$MPCCONF --name MODCLUSTER-785 quay.io/${USER}/mod_cluster_httpd &
 
-# wait until httpd is started
-waitforhttpd || exit 1
-#docker cp mod_proxy_cluster.conf MODCLUSTER-785:/usr/local/apache2/conf/mod_proxy_cluster.conf
-#docker exec -it  MODCLUSTER-785 /usr/local/apache2/bin/apachectl restart
+rm -f nohup.out
+MPC_SOURCES=${SOURCES} MPC_BRANCH=${MDBRANCH} MPC_CONF=$MPCCONF MPC_NAME=MODCLUSTER-785 httpd_run
+
 
 # start tomcat1 on 8080
-starttomcat 1 0 8080
+tomcat_start 1
 
 # wait until tomcat1 is in mod_proxy_cluster tables
-waitnodes 1
+tomcat_wait_for_n_nodes 1
 
 # copy the test page in app to tomcat8080
-docker cp app tomcat1:/usr/local/tomcat/webapps/app
+docker cp $PREFIX/app tomcat1:/usr/local/tomcat/webapps/app
 
 # check that the app is answering
 sleep 15
@@ -62,8 +59,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # Stop abruptly
-docker stop tomcat1
-docker container rm tomcat1
+tomcat_stop 1
+tomcat_remove 1
 
 # it return 503
 # make sure we use enough workers
@@ -77,13 +74,13 @@ fi
 sleep 15
 
 # start tomcat1 on 8080
-starttomcat 1 0 8080
+tomcat_start 1
 
 # wait until tomcat1 is in mod_proxy_cluster tables
-sleep 5
-waitnodes 1
+tomcat_wait_for_n_nodes 1
+
 # copy the test page in app to tomcat8080
-docker cp app tomcat1:/usr/local/tomcat/webapps/app
+docker cp $PREFIX/app tomcat1:/usr/local/tomcat/webapps/app
 sleep 15
 
 # check that the app is answering
@@ -128,5 +125,10 @@ do
   fi
   echo "*${http_code}*"
 done
+
+# clean tomcats
+tomcat_all_remove
+# and httpd
+httpd_all_clean
 
 echo "MODCLUSTER-785 Done!"

@@ -2,7 +2,7 @@ FROM tomcat:8.5
 
 WORKDIR /usr/local/tomcat
 
-COPY target/*.jar ./lib/
+COPY target/dependency/*.jar ./lib/
 COPY ./files/server.xml ./conf/
 COPY ./files/context.xml ./conf/
 COPY ./files/start.sh ./
