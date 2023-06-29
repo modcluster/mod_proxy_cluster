@@ -3,11 +3,11 @@ The module requires mod_balancer
 
 # to use it (example)
 ```
-LoadModule    proxy_hcheck_module  modules/mod_proxy_hcheck.so
-LoadModule    watchdog_module  modules/mod_watchdog.so
-LoadModule cluster_slotmem_module modules/mod_cluster_slotmem.so
+LoadModule proxy_hcheck_module modules/mod_proxy_hcheck.so
+LoadModule watchdog_module modules/mod_watchdog.so
 LoadModule manager_module modules/mod_manager.so
 LoadModule lbmethod_cluster_module modules/mod_lbmethod_cluster.so
+
 <Location "/balancer-manager">
     SetHandler balancer-manager
 </Location>
