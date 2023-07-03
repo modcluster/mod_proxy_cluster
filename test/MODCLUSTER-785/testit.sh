@@ -34,8 +34,7 @@ httpd_all_clean
 #
 REPOORIGIN=`git remote -v | grep origin | grep fetch | awk ' { print $2 } ' | awk -F/ ' { print $4 } '`
 BRANCH=`git branch -v | awk ' { print $2 } '`
-# MPCCONF="https://raw.githubusercontent.com/${REPOORIGIN}/mod_proxy_cluster/${BRANCH}/test/MODCLUSTER-785/mod_proxy_cluster.conf"
-MPCCONF="https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/MODCLUSTER-785/mod_proxy_cluster.conf"
+MPCCONF="https://raw.githubusercontent.com/${REPOORIGIN}/mod_proxy_cluster/${BRANCH}/test/MODCLUSTER-785/mod_proxy_cluster.conf"
 
 rm -f nohup.out
 MPC_SOURCES=${SOURCES} MPC_BRANCH=${MDBRANCH} MPC_CONF=$MPCCONF MPC_NAME=MODCLUSTER-785 httpd_run
