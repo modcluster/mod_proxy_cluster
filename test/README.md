@@ -1,108 +1,64 @@
-# tomcat_mod_cluster
-Tomcat9 image with mod_cluster enabled.  
-Start Apache Httpd with mod cluster enabled.
-
-Make sure you have checkout and build mod_cluster in sub directory at the same level you checkout mod_proxy_cluster.
-
-There are two variables worth setting: `APACHE_BASE` which is by default set to `/usr/local/apache` and which should
-correspond to the path where apache is present, then `IMG` which is set by default to
-`quay.io/${USER}/tomcat_mod_cluster`.
-
-If your setup differs, set those variables to appropriate values simply by running `export APACHE_BASE=/your/path`.
-
-## Building and pushing the image
-
-You can build the image by running
-
-```
-make docker-build
-```
-and then push it by
-
-```
-make docker-push
-```
-
-Do not forget to log into quay.io before you run those commands. You can log in using `docker login quay.io`.
-
-If you use `podman` instead of `docker`, you can use `podman-docker` package if it is available for you platform.
-
-## Running the image
-```
-docker run --network=host -e tomcat_port=[port1] -e cluster_port=[port3] [image]
-Or
-docker run --network=host -e tomcat_ajp_port=[port1] -e cluster_port=[port3] [image]
-# You can also add the variable -e tomcat_shutdown_port=true if u want to have a shutdown port
-```
-
-To load webapps into the container:
-```
-docker cp webapp.war <containerName>:/usr/local/tomcat/webapps/
-```
-
-# mod_cluster_tests
-Tests can be run by invoking `make tests` or manually by running `sh tests.sh` but in that case
-make sure you have exported the IMG variable as described above.
-
-The docker image should be build and you might push it before, make sure you have exported the IMG variable.
-```
-export IMG=quay.io/${USER}/tomcat_mod_cluster
-```
-# Testing websocket
-Using com.ning.http.client.ws.WebSocketTextListener
-To be able to run the test please use https://github.com/jfclere/httpd_websocket just build it:
-```
-git clone https://github.com/jfclere/httpd_websocket
-cd https://github.com/jfclere/httpd_websocket
-mvn install
-cd ..
-```
-Build the groovy jar
-```
-mvn install
-```
-run the groovy stuff
-```
-java -jar target/test-1.0.jar
-```
-
-*NOTE: You'll probably need an older JAVA version – version 11 should be ok. You can change it via JAVA env variable.*
-
 # Running tests
-You need an Apache httpd with the mod_cluster.so installed and running. You can run it in docker -- checkout the `httpd/`
-subdirectory or simply run `make setup-httpd`. You should have following piece in httpd.conf/mod_proxy_cluster.conf:
 
-```
-LoadModule manager_module modules/mod_manager.so
-LoadModule proxy_cluster_module modules/mod_proxy_cluster.so
+There are several tests within the repository. Some common tests are within the root directory, more specialized tests
+live within their own subdirectories. All tests can be run by a single shell script `testsuite.sh`. The script itself
+is a bit parametrized so that you can influence the duration of testing. Upon invocation, the script outputs values of
+its parameters. You can change the value by passing the environment variable of the same name with a desired value.
 
-ServerName localhost
-Listen 6666
-ManagerBalancerName mycluster
-EnableWsTunnel
-WSUpgradeHeader "websocket"
-<VirtualHost *:6666>
- <Directory />
-     Require ip 127.0.0.1
-  </Directory>
-
-  KeepAliveTimeout 300
-  MaxKeepAliveRequests 0
-
-  EnableMCPMReceive
-  <Location /mod_cluster_manager>
-     Require ip 127.0.0.1
-  </Location>
-</VirtualHost>
+```sh
+# to execute the whole testsuite
+sh testsuite.sh
+# to execute the testsuite with DEBUG on and only one Tomcat cycle, execute
+DEBUG=1 TOMCAT_CYCLE_COUNT=1 sh testsuite.sh
 ```
 
-Make sure you disable `mod_proxy` module.
+You can also run the individual testsuites by yourself, just execute the corresponsing script.
 
-You can run tests running `sh tests.sh`. There are a few variables by which you can influence the duration/number of
-repetitions (those are printed out with their respective values right after executions starts).
+```sh
+sh basetests.sh
+# alternatively, you can use the run_test function
+source includes/common.sh           # load definitions
+run_test basetests.sh "Basic tests" # run tests
+```
 
-If tests fail or you interupt them, make sure that docker tomcat container that were created are removed first
-(you need to run `docker container stop <container>` and `docker container rm <container>`).
+You might find useful `includes` directory, especially `common.sh` script that contains shared functions for the tests
+(mainly for controlling container images, see the section below).
+
+You should be able to check tests results based on the `$?` as usual so that you can use it in your scripts and automations.
+
+## Test images
+
+If you use the main `testsuite.sh` script, you don't have to worry about this too much. Just make sure that you have checked
+out and built [mod_cluster](https://github.com/modcluster/mod_cluster) in sub directory at the same level you checked out this
+repository.
+
+Also, if you use `podman` instead of `docker`, make sure you have `podman-docker` package installed (tests are using `docker`).
+
+If you don't want to use quay.io (the default), just set `IMG` and `HTTPD_IMG` variables to docker, local repository or some
+other service.
+
+There are a few helper functions for both images, however, if you want to control the images manually, use the corresponding
+Dockerfiles. See the testsuite, mainly `includes/common.sh`, to see how the images are run.
+
+### httpd_mod_cluster
+
+There are two types of images we use in tests. The first one is the httpd image with mod_proxy_cluster. Its Dockerfile can
+be found in `httpd` subdirectory and you can create it (as tests do) with the `httpd_create` function. All functions with
+the prefix `httpd_` are using this image.
+
+### tomcat_mod_cluster
+
+The second image is a Tomcat image with mod_cluster enabled. Its Dockerfile is in the test root directory and tests use
+`tomcat_create` function. As for httpd, all functions orking with tomcat image are prefixed `tomcat_`.
+
+## Dependencies
+
+There are several dependecies / other repositories you have to have checked out and built/installed, namely:
+
+* https://github.com/jfclere/httpd_websocket
+* https://github.com/modcluster/mod_cluster
+
+Alternatively, you can use `setup-dependencies.sh` script that prepares everything for you.
 
 # Testing with miniserver
 There is also a python script that can be run to check mod_proxy_cluster. You can find it within `includes` directory

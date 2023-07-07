@@ -1,4 +1,4 @@
-# build the image
+# Build the image
 ```bash
 docker build -t quay.io/${USER}/mod_cluster_httpd .
 ```
@@ -6,20 +6,17 @@ docker build -t quay.io/${USER}/mod_cluster_httpd .
 # run it
 **Note the ENV variables:**
 
-HTTPD: URL to a released httpd tar.gz
+* HTTPD: URL to a released httpd tar.gz
+* SOURCES: The mod_proxy_sources, url (github)
+* BRANCH: A branch, or a tag or a commitid
+* CONF: The mod_proxy_cluster configuration file to include in httpd.conf (The *conf files are added to image at build time)
 
-SOURCES: The mod_proxy_sources, url (github)
-
-BRANCH: A branch, or a tag or a commitid
-
-CONF: The mod_proxy_cluster configuration file to include in httpd.conf (The *conf files are added to image at build time)
-
-For example (the default)
+For example (the default):
 ```bash
-docker run -d --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.57.tar.gz -e SOURCES=https://github.com/modcluster/mod_proxy_cluster -e BRANCH=main -e CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/native/httpd/mod_proxy_cluster.conf quay.io/${USER}/mod_cluster_httpd
+docker run -d --network=host -e HTTPD=https://dlcdn.apache.org/httpd/httpd-2.4.57.tar.gz -e SOURCES=https://github.com/modcluster/mod_proxy_cluster -e BRANCH=main -e CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/httpd/mod_proxy_cluster.conf quay.io/${USER}/mod_cluster_httpd
 ```
 
-# test with different mod_proxy_cluster.conf without rebuilding httpd and mod_proxy_cluster
+# Test with different configs without rebuilding httpd or mod_proxy_cluster
 ```bash
 docker ps
 ```
