@@ -51,12 +51,6 @@ if [ -f /tmp/$FILECONF ]; then
   echo "Include conf/$FILECONF" >> /usr/local/apache2/conf/httpd.conf
 fi
 
-# With the default settings and recent changes c83aff820705cdf4a399c1d748d9cedb66593b9f,
-# removed nodes are hanging indefinitely in mod_cluster_manager whose outputs are parsed
-# by tests. Setting MaxConnectionPerChild will cause they get removed eventually without
-# a need to change tests.
-echo -e "\nMaxConnectionsPerChild    16"  >> /usr/local/apache2/conf/httpd.conf
-
 # start apache httpd server in foreground
 
 /usr/local/apache2/bin/apachectl start
