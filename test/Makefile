@@ -1,7 +1,7 @@
 APACHE_BASE ?= /usr/local/apache
 APACHE_INC  ?= ${APACHE_BASE}/include
 IMG ?= quay.io/${USER}/tomcat_mod_cluster:latest
-MOD_CLUSTER_VERSION ?= 2.0.2.Final-SNAPSHOT
+MOD_CLUSTER_VERSION ?= 2.0.3.Final-SNAPSHOT
 
 Advertise: Advertise.c
 	cc -c -I$(APACHE_INC) Advertise.c
