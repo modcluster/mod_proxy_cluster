@@ -125,3 +125,31 @@ waitforhttpd () {
     exit 1
   fi
 }
+
+# Start tomcat$1 container on 127.0.0.$1
+starttomcat() {
+    ADDR="127.0.0.$1"
+    AJPPORT="8010"
+    HTTPPORT=""
+    if [ "x$2" != "x" ]; then
+      if [ $2 -ne 0 ];then
+         echo "Starting tomcat$1 on 127.0.0.$2"
+          ADDR="127.0.0.$2"
+      fi
+    fi
+    if [ "x$3" != "x" ]; then
+      if [ $3 -ne 0 ];then
+         echo "Starting tomcat$1 on 127.0.0.$2 with http on port $3"
+         AJPPORT=""
+         HTTPPORT="$3"
+      fi
+    fi
+    echo "Doing: docker run --network=host -e tomcat_ajp_port=${AJPPORT} -e tomcat_port=${HTTPPORT} -e tomcat_address=$ADDR -e tomcat_shutdown_port=8005 -e jvm_route=tomcat$1 --name tomcat$1 ${IMG}"
+    nohup docker run --network=host -e tomcat_ajp_port=${AJPPORT} -e tomcat_port=${HTTPPORT} -e tomcat_address=$ADDR -e tomcat_shutdown_port=8005 -e jvm_route=tomcat$1 --name tomcat$1 ${IMG} &
+    ps -q $! > /dev/null
+    if [[ $? -ne 0 ]]; then
+            echo "docker run failed"
+            exit 1
+    fi
+}
+
