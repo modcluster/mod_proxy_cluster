@@ -73,7 +73,6 @@ You need an Apache httpd with the mod_cluster.so installed and running. You can 
 subdirectory or simply run `make setup-httpd`. You should have following piece in httpd.conf/mod_proxy_cluster.conf:
 
 ```
-LoadModule cluster_slotmem_module modules/mod_cluster_slotmem.so
 LoadModule manager_module modules/mod_manager.so
 LoadModule proxy_cluster_module modules/mod_proxy_cluster.so
 
