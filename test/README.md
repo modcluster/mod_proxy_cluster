@@ -48,7 +48,7 @@ the prefix `httpd_` are using this image.
 
 ### tomcat_mod_cluster
 
-The second image is a Tomcat image with mod_cluster enabled. Its Dockerfile is in the test root directory and tests use
+The second image is a Tomcat image with mod_cluster enabled. Its Dockerfile is in the `tomcat` directory and tests use
 `tomcat_create` function. As for httpd, all functions orking with tomcat image are prefixed `tomcat_`.
 
 ## Dependencies

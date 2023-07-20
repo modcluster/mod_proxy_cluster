@@ -2,10 +2,10 @@ FROM tomcat:8.5
 
 WORKDIR /usr/local/tomcat
 
-COPY target/dependency/*.jar ./lib/
-COPY ./files/server.xml ./conf/
-COPY ./files/context.xml ./conf/
-COPY ./files/start.sh ./
+COPY target/*.jar ./lib/
+COPY server.xml ./conf/
+COPY context.xml ./conf/
+COPY start.sh ./
 RUN chmod +x start.sh
 
 

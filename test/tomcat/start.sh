@@ -41,7 +41,7 @@ else
 fi
 
 
-if [ ${cluster_port}==0 ]; then
+if [ "${cluster_port}" -eq "0" ]; then
   cluster_port=6666
 fi
 sed -i "s/proxyport/${cluster_port}/" ./conf/server.xml
@@ -53,7 +53,7 @@ if [ ! -z ${jvm_route} ]; then
 fi
 
 # copy webapp war file.
-mv  *.war webapps/ || true
+mv *.war webapps/ || true
 
 catalina.sh run
 
