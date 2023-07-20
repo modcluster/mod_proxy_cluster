@@ -4,7 +4,7 @@ IMG=${IMG:=quay.io/$USER/tomcat_mod_cluster}
 HTTPD_IMG=${HTTPD_IMG:=quay.io/${USER}/httpd_mod_cluster}
 
 # Runs a test file ($1) under given name ($2, if given)
-function run_test() {
+run_test() {
     local ret=0
     if [ -z ${2+x} ]; then
         printf "Running %-42s ..." $2
