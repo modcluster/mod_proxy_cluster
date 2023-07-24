@@ -16,4 +16,3 @@ cd $TEST_DIR
 
 # prepare jars
 mvn install
-
