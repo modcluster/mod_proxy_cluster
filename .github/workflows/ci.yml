@@ -139,3 +139,43 @@ jobs:
       - name: Build
         run: |
           ./native/scripts/windows-build.bat
+  tests:
+    runs-on: ubuntu-latest
+    env:
+      IMG: local-tomcat
+      HTTPD_IMG: local-httpd
+      MPC_CONF: https://raw.githubusercontent.com/jajik/mod_proxy_cluster/rework-test-add-ci/test/httpd/mod_proxy_cluster.conf
+      DEBUG: on
+      ITERATION_COUNT: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y moby* maven git curl iproute2
+          cd test
+          sh setup-dependencies.sh
+      - name: Setup images
+        run: |
+          cd test
+          source includes/common.sh
+          httpd_create
+          tomcat_create
+      - name: Basic tests
+        run: |
+          cd test
+          mkdir logs
+          # set vars
+          export MPC_SOURCES=$(git remote -v | grep "origin.*fetch" | awk ' { print $2 } ')
+          export MPC_BRANCH=$(git branch --show-current)
+          # run tests
+          source includes/common.sh
+          run_test basetests.sh "Basic tests"
+      - name: Preserve test logs
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: Test logs
+          path: test/logs/*
+          retention-days: 7

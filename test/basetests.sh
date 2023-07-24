@@ -5,7 +5,7 @@
 httpd_all_clean
 tomcat_all_remove
 
-httpd_run
+httpd_run || clean_and_exit
 
 # Start 2 tomcats, on 8080 and 8081
 tomcat_start_two || clean_and_exit
