@@ -19,13 +19,15 @@ run_test() {
     if [ $? = 0 ]; then
         echo "  OK"
     else
-        # if test failed, clean httpd but preserve logs
-        docker logs $(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ') &> logs/${2:-$1}-httpd.logs
-        httpd_shutdown &> /dev/null
         echo " NOK"
         ret=1
     fi
+    # preserve httpd's logs too if DEBUG
+    if [ $DEBUG ]; then
+        docker logs $(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ') &> logs/${2:-$1}-httpd.logs
+    fi
     # Clean all after run
+    httpd_shutdown &> /dev/null
     tomcat_all_remove &> /dev/null
     return $ret
 }
