@@ -74,7 +74,7 @@ runtomcatbatch() {
 singlecycle() {
     echo "singlecycle: Testing tomcat$1"
     R=$1
-    if [ "X$2" = "Xuseran" ]; then
+    if [ "X$2" -eq "Xuseran" ]; then
         R=$(expr 1 + $RANDOM % 10 + 10)
         R=$(expr $R + 2)
         # TODO

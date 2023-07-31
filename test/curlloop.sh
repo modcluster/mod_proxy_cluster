@@ -14,7 +14,7 @@ do
   http_code=`curl -s -m10 -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp`
   for var in "$@"
   do 
-    if [ "${http_code}" == "${var}" ]; then
+    if [ "${http_code}" -eq "${var}" ]; then
       found=1
       break
     fi

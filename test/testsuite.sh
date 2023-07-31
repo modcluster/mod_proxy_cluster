@@ -31,8 +31,8 @@ fi
 
 . includes/common.sh
 
-httpd_create  &> /dev/null || exit 2
-tomcat_create &> /dev/null || exit 3
+httpd_create  > /dev/null 2>&1 || exit 2
+tomcat_create > /dev/null 2>&1 || exit 3
 
 # clean everything at first
 httpd_all_clean

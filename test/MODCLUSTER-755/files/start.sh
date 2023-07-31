@@ -6,7 +6,7 @@
 
 NODE_COUNT=1000
 
-for ((i=0; i <= $NODE_COUNT; i++))
+for i in $(seq 0 $NODE_COUNT)
 do
    PORT=`expr $i + 8999`
    echo "    <Connector protocol=\"AJP/1.3\" address=\"127.0.0.1\" port=\"$PORT\" secretRequired=\"false\" />" >>add.txt

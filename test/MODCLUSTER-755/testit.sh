@@ -31,12 +31,12 @@ if [ "x$USE_MULTI_APP" = "xtrue" ]; then
   echo "The webapp are going to be 1-9000/2-9000 until count (1-9499/2-9499)"
 fi
 
-for ((i=9000; i < `expr 9000+$NODE_COUNT`; i++))
+for i in $(seq 9000 $(expr 9000 + $NODE_COUNT - 1))
 do
    curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X CONFIG --data "JVMRoute=appserver$i&Host=127.0.0.1&Maxattempts=1&Port=$i&StickySessionForce=No&Timeout=20&Type=ajp&ping=20"
    curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X STATUS --data "JVMRoute=appserver$i&Load=100"
 
-   for ((j=1; j <= $APP_COUNT; j++))
+   for j in $(seq 1 $APP_COUNT)
    do
       if [ "x$USE_MULTI_APP" = "xtrue" ]; then
          curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X ENABLE-APP --data "JVMRoute=appserver$i&Alias=default-host%2Clocalhost&Context=%2Fwebapp$j-$i"
@@ -49,7 +49,7 @@ done
 i=0
 while [ true ]
 do
-   for ((i=9000; i < 9000+$NODE_COUNT; i++))
+   for i in $(seq 9000 $(expr 9000 + $NODE_COUNT - 1))
    do
       curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X STATUS --data "JVMRoute=appserver$i&Load=100"
       if [ $? -ne 0 ]; then
