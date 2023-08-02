@@ -171,7 +171,7 @@ jobs:
           source includes/common.sh
           res=0
           # Those are currently all tests we have. In CI only MODCLUSTER-{734,755}/testit.sh pass, so until we fix the issue, only these tests are enabled.
-          # basetests.sh hangingtests.sh maintests.sh JBCS-1236/testit.sh MODCLUSTER-640/testit.sh MODCLUSTER-734/testit.sh MODCLUSTER-755/testit.sh MODCLUSTER-785/testit.sh
+          # hangingtests.sh maintests.sh JBCS-1236/testit.sh MODCLUSTER-640/testit.sh MODCLUSTER-734/testit.sh MODCLUSTER-755/testit.sh MODCLUSTER-785/testit.sh MODCLUSTER-794/testit.sh
           for testcase in basetests.sh MODCLUSTER-734/testit.sh MODCLUSTER-755/testit.sh
           do
             run_test $testcase $(echo $testcase | cut -f1 -d/)
