@@ -2,6 +2,8 @@
  * Common routines
  */
 
+#include "common.h"
+
 #include "httpd.h"
 #include "http_config.h"
 #include "http_log.h"
@@ -781,6 +783,16 @@ const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_t
     return NULL;
 }
 
+apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
+{
+    struct counter *count = (struct counter *)data;
+    int *ou = (int *)mem;
+    (void)pool;
+    *count->values = *ou;
+    count->values++;
+    count->count++;
+    return APR_SUCCESS;
+}
 
 /*
  * Return the node cotenxt Check that the worker will handle the host/context.

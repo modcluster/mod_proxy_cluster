@@ -42,6 +42,8 @@
 #include "ap_slotmem.h"
 #include "sessionid.h"
 
+#include "common.h"
+
 #include "mod_manager.h"
 
 static mem_t *create_attach_mem_sessionid(char *string, unsigned *num, int type, int create, apr_pool_t *p,
@@ -189,17 +191,6 @@ apr_status_t remove_sessionid(mem_t *s, sessionidinfo_t *sessionid)
         }
     }
     return rv;
-}
-
-static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
-{
-    struct counter *count = (struct counter *)data;
-    sessionidinfo_t *ou = (sessionidinfo_t *)mem;
-    (void)pool;
-    *count->values = ou->id;
-    count->values++;
-    count->count++;
-    return APR_SUCCESS;
 }
 
 /*

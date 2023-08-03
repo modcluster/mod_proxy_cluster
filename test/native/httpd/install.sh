@@ -37,6 +37,7 @@ do
   cd $dir
   ./buildconf
   ./configure --with-apxs=/usr/local/apache2/bin/apxs
+  make clean
   make
   cp *.so /usr/local/apache2/modules
   cd ../../..

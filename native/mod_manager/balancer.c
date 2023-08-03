@@ -42,6 +42,8 @@
 #include "ap_slotmem.h"
 #include "balancer.h"
 
+#include "common.h"
+
 #include "mod_manager.h"
 
 static mem_t *create_attach_mem_balancer(char *string, unsigned *num, int type, int create, apr_pool_t *p,
@@ -189,17 +191,6 @@ apr_status_t remove_balancer(mem_t *s, balancerinfo_t *balancer)
         }
     }
     return rv;
-}
-
-static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
-{
-    struct counter *count = (struct counter *)data;
-    balancerinfo_t *ou = (balancerinfo_t *)mem;
-    (void)pool;
-    *count->values = ou->id;
-    count->values++;
-    count->count++;
-    return APR_SUCCESS;
 }
 
 /*

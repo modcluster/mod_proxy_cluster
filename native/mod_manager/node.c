@@ -48,6 +48,8 @@
 
 #include "mod_manager.h"
 
+#include "common.h"
+
 static mem_t *create_attach_mem_node(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                      slotmem_storage_method *storage)
 {
@@ -252,17 +254,6 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
         rv = s->storage->dptr(s->slotmem, ou.mess.id, (void **)node);
     }
     return rv;
-}
-
-static apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool)
-{
-    struct counter *count = (struct counter *)data;
-    nodeinfo_t *ou = (nodeinfo_t *)mem;
-    (void)pool;
-    *count->values = ou->mess.id;
-    count->values++;
-    count->count++;
-    return APR_SUCCESS;
 }
 
 /*

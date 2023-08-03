@@ -51,6 +51,10 @@ typedef struct mem mem_t;
 /* configuration of the node received from jboss cluster. */
 struct nodemess
 {
+    /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
+    int id; /* id in table and worker id */
+
+    /* balancer info */
     char balancer[BALANCERSZ]; /* name of the balancer */
     char JVMRoute[JVMROUTESZ];
     char Domain[DOMAINNDSZ];
@@ -72,7 +76,6 @@ struct nodemess
     apr_time_t timeout;
 
     /* part updated in httpd */
-    int id;                  /* id in table and worker id */
     apr_time_t updatetimelb; /* time of last update of the lbstatus value */
     int num_failure_idle;    /* number of time the cping/cpong failed while calculating the lbstatus value */
     apr_size_t oldelected;   /* value of s->elected when calculating the lbstatus */

@@ -15,9 +15,9 @@ all: mod_manager.so
 mod_manager.so: mod_manager.la
 	 $(top_builddir)/build/instdso.sh SH_LIBTOOL='$(LIBTOOL)' mod_manager.la `pwd`
 
-mod_manager.la: mod_manager.slo node.slo context.slo host.slo balancer.slo sessionid.slo domain.slo
-	$(SH_LINK) -rpath $(libexecdir) -module -avoid-version  mod_manager.lo node.lo context.lo host.lo balancer.lo sessionid.lo domain.lo
+mod_manager.la: mod_manager.slo node.slo context.slo host.slo balancer.slo sessionid.slo domain.slo ../common/common.slo
+	$(SH_LINK) -rpath $(libexecdir) -module -avoid-version  mod_manager.lo node.lo context.lo host.lo balancer.lo sessionid.lo domain.lo common.lo
 
 clean:
-	rm -f *.o *.lo *.slo *.so
+	rm -f *.o *.lo *.slo *.so ../common/common.slo
 	rm -rf .libs

@@ -33,9 +33,3 @@ struct mem
     apr_pool_t *p;
     apr_status_t laststatus;
 };
-
-struct counter
-{
-    unsigned count;
-    int *values;
-};
