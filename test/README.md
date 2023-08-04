@@ -60,6 +60,16 @@ There are several dependecies / other repositories you have to have checked out 
 
 Alternatively, you can use `setup-dependencies.sh` script that prepares everything for you.
 
+These tools are required for running tests:
+
+* git
+* docker (or podman with podman-docker package)
+* maven
+* curl
+* jdb (java)
+* ss
+* ab
+
 # Testing with miniserver
 There is also a python script that can be run to check mod_proxy_cluster. You can find it within `includes` directory
 as `miniserver.py`. Execute it simply as `./includes/miniserver.py <port-number>`.
