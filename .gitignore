@@ -30,3 +30,12 @@ target/
 
 # Folder usually used for CMake
 **/build
+
+# war files (usually in tests)
+**/*.war
+
+# test logs
+**/*.logs
+
+# test nohup files
+**/nohup.out
