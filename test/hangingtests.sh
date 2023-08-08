@@ -50,12 +50,12 @@ tomcat_wait_for_n_nodes 2 || clean_and_exit
 docker cp testapp tomcat8080:/usr/local/tomcat/webapps
 docker cp testapp tomcat8081:/usr/local/tomcat/webapps
 docker cp setenv.sh tomcat${PORT}:/usr/local/tomcat/bin
-docker commit tomcat${PORT} quay.io/${USER}/tomcat_mod_cluster-debug
+docker commit tomcat${PORT} ${IMG}-debug
 docker stop tomcat${PORT}
 tomcat_wait_for_n_nodes 1
 docker container rm tomcat${PORT}
 # Start the node.
-nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=true --name tomcat${PORT} quay.io/${USER}/tomcat_mod_cluster-debug &
+nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=true --name tomcat${PORT} ${IMG}-debug &
 sleep 10
 docker exec tomcat${PORT} jdb -attach 6660 < continue.txt
 tomcat_wait_for_n_nodes 2  || clean_and_exit

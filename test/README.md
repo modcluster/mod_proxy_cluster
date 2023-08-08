@@ -34,8 +34,8 @@ repository.
 
 Also, if you use `podman` instead of `docker`, make sure you have `podman-docker` package installed (tests are using `docker`).
 
-If you don't want to use quay.io (the default), just set `IMG` and `HTTPD_IMG` variables to docker, local repository or some
-other service.
+By default local `httpd` and `tomcat` images are used. You can control the names by setting `IMG` and `HTTPD_IMG` variables
+(by default, they are set to `mod_proxy_cluster-testsuite-httpd` and `mod_proxy_cluster-testsuite-tomcat` respectively).
 
 There are a few helper functions for both images, however, if you want to control the images manually, use the corresponding
 Dockerfiles. See the testsuite, mainly `includes/common.sh`, to see how the images are run.

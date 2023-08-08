@@ -159,12 +159,12 @@ docker cp tomcat8081:/usr/local/tomcat/conf/server.xml .
 sed '/Host name=.*/i <Host name=\"example.com\"  appBase="examples" />' server.xml > new.xml
 docker cp new.xml tomcat8081:/usr/local/tomcat/conf/server.xml
 docker cp examples tomcat8081:/usr/local/tomcat
-docker commit tomcat8081 quay.io/${USER}/tomcat_mod_cluster-examples
+docker commit tomcat8081 ${IMG}-temporary
 docker stop tomcat8081
 docker container rm tomcat8081
 tomcat_wait_for_n_nodes 1
 # Start the node.
-nohup docker run --network=host -e tomcat_port=8081 -e tomcat_shutdown_port=true --name tomcat8081 quay.io/${USER}/tomcat_mod_cluster-examples &
+nohup docker run --network=host -e tomcat_port=8081 -e tomcat_shutdown_port=true --name tomcat8081 ${IMG}-temporary &
 tomcat_wait_for_n_nodes 2  || exit 1
 # Basically curl --header "Host: example.com" http://127.0.0.1:8000/test/test.jsp gives 200
 # in fact the headers are:

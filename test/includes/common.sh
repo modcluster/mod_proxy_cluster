@@ -1,7 +1,7 @@
 #!/usr/bin/sh
 
-IMG=${IMG:=quay.io/$USER/tomcat_mod_cluster}
-HTTPD_IMG=${HTTPD_IMG:=quay.io/${USER}/httpd_mod_cluster}
+IMG=${IMG:-mod_proxy_cluster-testsuite-tomcat}
+HTTPD_IMG=${HTTPD_IMG:-mod_proxy_cluster-testsuite-httpd}
 
 # Runs a test file ($1) under given name ($2, if given)
 run_test() {
