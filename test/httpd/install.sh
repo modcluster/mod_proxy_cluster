@@ -38,9 +38,9 @@ do
   ./buildconf
   ./configure --with-apxs=/usr/local/apache2/bin/apxs
   make clean
-  make
+  make || exit 1
   cp *.so /usr/local/apache2/modules
-  cd ../../..
+  cd $OLDPWD
 done
 
 # wget and copy the prepared conf file and include it

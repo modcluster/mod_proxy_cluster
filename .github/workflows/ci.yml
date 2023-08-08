@@ -177,5 +177,6 @@ jobs:
         if: always()
         with:
           name: Test logs
-          path: test/logs/*
+          path: |
+            test/logs/*
           retention-days: 7
