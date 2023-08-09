@@ -1,6 +1,6 @@
 # Build the image
 ```bash
-docker build -t quay.io/${USER}/mod_cluster_tomcat .
+docker build -t tomcat .
 ```
 
 # Run image
@@ -15,7 +15,7 @@ docker build -t quay.io/${USER}/mod_cluster_tomcat .
 
 For example:
 ```bash
-docker run --network=host -e tomcat_ajp_port=8010 -e tomcat_address=127.0.0.15 -e jvm_route=tomcat15 --name tomcat15 quay.io/${USER}/mod_cluster_tomcat
+docker run --network=host -e tomcat_ajp_port=8010 -e tomcat_address=127.0.0.15 -e jvm_route=tomcat15 --name tomcat15 tomcat
 ```
 
 then you can uload a webapp into your running instance by executing
