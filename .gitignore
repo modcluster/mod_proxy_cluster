@@ -12,7 +12,6 @@
 .vscode/
 
 # Native built files
-native/*/*.log
 native/*/*.slo
 native/*/*.so
 native/*/*.lo
@@ -34,8 +33,8 @@ target/
 # war files (usually in tests)
 **/*.war
 
-# test logs
-**/*.logs
+# Log files
+**/*.log
 
 # test nohup files
 **/nohup.out
