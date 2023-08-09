@@ -198,8 +198,8 @@ if [ ${CODE} != "404" ]; then
 fi
 
 # Shutdown the 2 tomcats
-docker exec -it tomcat8080 /usr/local/tomcat/bin/shutdown.sh
-docker exec -it tomcat8081 /usr/local/tomcat/bin/shutdown.sh
+docker exec tomcat8080 /usr/local/tomcat/bin/shutdown.sh
+docker exec tomcat8081 /usr/local/tomcat/bin/shutdown.sh
 tomcat_wait_for_n_nodes 0
 docker container rm tomcat8080
 docker container rm tomcat8081

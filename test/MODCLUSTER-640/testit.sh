@@ -52,7 +52,7 @@ fi
 sed 's:UseNocanon On::'  $PREFIX/mod_proxy_cluster.conf > $PREFIX/mod_proxy_cluster_new.conf
 
 docker cp $PREFIX/mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
-docker exec -it  MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
+docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 2
@@ -74,7 +74,7 @@ sed 's:UseNocanon On::'  $PREFIX/mod_proxy_cluster.conf > mod_proxy_cluster_new.
 echo "ProxyPass / balancer://mycluster/ nocanon" >> $PREFIX/mod_proxy_cluster_new.conf
 
 docker cp $PREFIX/mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
-docker exec -it  MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
+docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 2
