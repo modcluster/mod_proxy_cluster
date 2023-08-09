@@ -10,14 +10,6 @@ fi
 
 . includes/common.sh
 
-clean() {
-    tomcat_all_remove
-    # clean httpd
-    docker stop MODCLUSTER-734
-    docker rm MODCLUSTER-734
-}
-
-
 # first stop any previously running tests.
 tomcat_all_stop
 tomcat_all_remove
@@ -28,7 +20,7 @@ rm -f nohup.out
 MPC_CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/MODCLUSTER-734/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-734 httpd_run
 
 # wait until httpd is started
-httpd_wait_until_ready || clean_and_exit
+httpd_wait_until_ready || exit 1
 
 sleep 10
 
@@ -50,8 +42,8 @@ if [ $? -eq 0 ]; then
     echo "MODCLUSTER-734 Done!"
 else
     echo "MODCLUSTER-734 Failed!"
-    clean
+    tomcat_all_remove
     exit 1
 fi
 
-clean
+tomcat_all_remove

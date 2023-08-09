@@ -40,12 +40,12 @@ sleep 10
 code=$(/usr/bin/curl -o /dev/null --silent --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
 if [ "${code}" != "200" ]; then
     echo "nocanon test failed, we get ${code} on http://localhost:8000/webapp1/index.html"
-    clean_and_exit
+    exit 1
 fi
 curl -v "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
 if [ $? -eq 0 ]; then
     echo "nocanon test failed, we get \"jsr:root\"!!!"
-    clean_and_exit
+    exit 1
 fi
 
 # Test without UseNocanon On
@@ -61,12 +61,12 @@ tomcat_wait_for_n_nodes 2
 code=$(/usr/bin/curl -o /dev/null --silent --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
 if [ "${code}" != "200" ]; then
     echo "nocanon test failed, we get ${code} on http://localhost:8000/webapp1/index.html"
-    clean_and_exit
+    exit 1
 fi
 curl -v "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
 if [ $? -ne 0 ]; then
     echo "NO nocanon test failed, we don't get \"jsr:root\"!!!"
-    clean_and_exit
+    exit 1
 fi
 
 # Test for just a proxypass / nocanon
@@ -83,16 +83,14 @@ tomcat_wait_for_n_nodes 2
 code=$(/usr/bin/curl -o /dev/null --silent --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
 if [ "${code}" != "200" ]; then
     echo "nocanon test failed, we get ${code} on http://localhost:8000/webapp1/index.html"
-    clean_and_exit
+    exit 1
 fi
 curl -v "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
 if [ $? -eq 0 ]; then
     echo "nocanon test failed, we get \"jsr:root\"!!!"
     tomcat_all_remove
-    clean_and_exit
+    exit 1
 fi
 
 # clean tomcats
 tomcat_all_remove
-# and httpd
-httpd_all_clean
