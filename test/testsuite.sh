@@ -12,10 +12,10 @@ if [ -z ${ITERATION_COUNT+x} ]; then
     export ITERATION_COUNT=50 # the number of iteration of starting/stopping a tomcat
 fi
 if [ -z ${IMG+x} ]; then
-    export IMG=quay.io/$USER/tomcat_mod_cluster
+    export IMG=mod_proxy_cluster-testsuite-tomcat
 fi
 if [ -z ${HTTPD_IMG+x} ]; then
-    export HTTPD_IMG=quay.io/${USER}/httpd_mod_cluster
+    export HTTPD_IMG=mod_proxy_cluster-testsuite-httpd
 fi
 
 echo "Test parameters are:"
