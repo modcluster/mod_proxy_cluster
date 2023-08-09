@@ -1,5 +1,8 @@
 FROM tomcat:8.5
 
+# install ss
+RUN apt update && apt install -y iproute2
+
 WORKDIR /usr/local/tomcat
 
 COPY target/*.jar ./lib/

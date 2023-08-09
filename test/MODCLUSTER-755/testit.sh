@@ -54,7 +54,7 @@ do
       curl $HTTPD -H "User-Agent: ClusterListener/1.0" -X STATUS --data "JVMRoute=appserver$i&Load=100"
       if [ $? -ne 0 ]; then
         echo "htttpd stopped!!!"
-        clean_and_exit
+        exit 1
       fi
    done
    sleep 10
@@ -64,5 +64,4 @@ do
    fi
 done
 
-httpd_all_clean
 tomcat_all_remove

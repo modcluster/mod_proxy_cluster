@@ -126,7 +126,5 @@ done
 
 # clean tomcats
 tomcat_all_remove
-# and httpd
-httpd_all_clean
 
 echo "MODCLUSTER-785 Done!"

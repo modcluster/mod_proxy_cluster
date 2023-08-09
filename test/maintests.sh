@@ -19,8 +19,8 @@ tomcat_all_remove
 # run a fresh httpd
 httpd_run
 
-tomcat_start_two || clean_and_exit
-tomcat_wait_for_n_nodes 2 || clean_and_exit
+tomcat_start_two || exit 1
+tomcat_wait_for_n_nodes 2 || exit 1
 
 # Copy testapp and wait for its start
 docker cp testapp tomcat8081:/usr/local/tomcat/webapps
@@ -38,7 +38,7 @@ echo ${SESSIONCO}
 NEWCO=$(curl -v --cookie "${SESSIONCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${NEWCO}" != "" ]; then
   echo "Failed not sticky received : ${NEWCO}???"
-  clean_and_exit
+  exit 1
 fi
 
 # Copy testapp and wait for starting
@@ -62,14 +62,14 @@ do
   i=$(expr $i + 1)
   if [ $i -gt 40 ]; then
     echo "Can't find the 2 webapps"
-    clean_and_exit
+    exit 1
   fi
   if [ "${NEWNODE}" == "" ]; then
     echo "Can't find node in request"
-    clean_and_exit
+    exit 1
   fi
   echo "trying other webapp try: ${i}"
-  clean_and_exit
+  exit 1
 done
 echo "${i} try gives: ${NEWCO} node: ${NEWNODE}"
 
@@ -77,12 +77,12 @@ echo "${i} try gives: ${NEWCO} node: ${NEWNODE}"
 CO=$(curl -v --cookie "${SESSIONCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${CO}" != "" ]; then
   echo "Failed not sticky received : ${CO}???"
-  clean_and_exit
+  exit 1
 fi
 CO=$(curl -v --cookie "${NEWCO}" http://localhost:8000/testapp/test.jsp -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${CO}" != "" ]; then
   echo "Failed not sticky received : ${CO}???"
-  clean_and_exit
+  exit 1
 fi
 
 # Stop one of the while running requests.
@@ -111,7 +111,7 @@ done
 if [ ${CODE} != "200" ]; then
   echo "Something was wrong... got: ${CODE}"
   curl -v --cookie "${NEWCO}" http://localhost:8000/testapp/test.jsp
-  clean_and_exit
+  exit 1
 fi
 
 # Restart the tomcat
@@ -125,7 +125,7 @@ if [ $? -ne 0 ]; then
   echo "Something was wrong... can't find org.apache.tomcat:websocket:hello:0.0.1:war"
   cp $HOME/.m2/repository/org/apache/tomcat/websocket-hello/0.0.1/websocket-hello-0.0.1.war .
   if [ $? -ne 0 ]; then
-    clean_and_exit
+    exit 1
   fi
 fi
 docker cp websocket-hello-0.0.1.war tomcat8080:/usr/local/tomcat/webapps
@@ -137,7 +137,7 @@ mvn -f pom-groovy.xml install
 java -jar target/test-1.0.jar WebSocketsTest
 if [ $? -ne 0 ]; then
   echo "Something was wrong... with websocket tests"
-  clean_and_exit
+  exit 1
 fi
 
 #
@@ -149,7 +149,7 @@ sleep 10
 java -jar target/test-1.0.jar HTTPTest
 if [ $? -ne 0 ]; then
   echo "Something was wrong... with HTTP tests"
-  clean_and_exit
+  exit 1
 fi
 
 #
@@ -176,19 +176,19 @@ tomcat_wait_for_n_nodes 2  || exit 1
 CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8000/test/test.jsp)
 if [ ${CODE} != "200" ]; then
   echo "Failed can't rearch webapp at example.com: ${CODE}"
-  clean_and_exit
+  exit 1
 fi
 # Basically curl --header "Host: localhost" http://127.0.0.1:8000/test/test.jsp gives 400
 CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8000/test/test.jsp)
 if [ ${CODE} != "404" ]; then
   echo "Failed should NOT rearch webapp at localhost: ${CODE}"
-  clean_and_exit
+  exit 1
 fi
 # Same using localhost/testapp2 and curl --header "Host: localhost" http://127.0.0.1:8000/testapp2/test.jsp
 CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8000/testapp2/test.jsp)
 if [ ${CODE} != "200" ]; then
   echo "Failed can't rearch webapp at localhost: ${CODE}"
-  clean_and_exit
+  exit 1
 fi
 # Basically curl --header "Host: example.com" http://127.0.0.1:8000/testapp2/test.jsp gives 400
 CODE=$(curl -s -o /dev/null -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8000/testapp2/test.jsp)
@@ -198,8 +198,8 @@ if [ ${CODE} != "404" ]; then
 fi
 
 # Shutdown the 2 tomcats
-docker exec -it tomcat8080 /usr/local/tomcat/bin/shutdown.sh
-docker exec -it tomcat8081 /usr/local/tomcat/bin/shutdown.sh
+docker exec tomcat8080 /usr/local/tomcat/bin/shutdown.sh
+docker exec tomcat8081 /usr/local/tomcat/bin/shutdown.sh
 tomcat_wait_for_n_nodes 0
 docker container rm tomcat8080
 docker container rm tomcat8081
