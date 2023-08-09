@@ -15,4 +15,5 @@ mvn install || exit 2
 cd $TEST_DIR
 
 # prepare jars
-mvn dependency:copy-dependencies
+mvn install
+

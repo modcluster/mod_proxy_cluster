@@ -12,7 +12,7 @@ run_test() {
         printf "Running %-42s ..." $1
     fi
     if [ $DEBUG ]; then
-        sh $1 > logs/${2:-$1}.logs 2>&1
+        sh $1 > "logs/${2:-$1}.logs" 2>&1
     else
         sh $1 > /dev/null 2>&1
     fi
@@ -24,7 +24,7 @@ run_test() {
     fi
     # preserve httpd's logs too if DEBUG
     if [ $DEBUG ]; then
-        docker logs $(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ') > logs/${2:-$1}-httpd.logs 2>&1
+        docker logs $(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ') > "logs/${2:-$1}-httpd.logs" 2>&1
     fi
     # Clean all after run
     httpd_shutdown > /dev/null 2>&1
@@ -58,6 +58,7 @@ httpd_run() {
                -e BRANCH=${MPC_BRANCH:-main} \
                -e CONF=${MPC_CONF:-https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/httpd/mod_proxy_cluster.conf} \
                $HTTPD_IMG
+
     httpd_wait_until_ready
 }
 
@@ -74,6 +75,7 @@ httpd_wait_until_ready() {
         sleep 10;
         curl localhost:6666 > /dev/null 2>&1
     done
+    echo "httpd ready after $i attempts"
 }
 
 httpd_shutdown() {

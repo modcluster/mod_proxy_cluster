@@ -32,15 +32,15 @@ cd $DIRSOURCES
 # exit if branch does not exist, because main would be used otherwise
 git checkout $BRANCH || exit 1
 cd ..
-for dir in `echo $DIRSOURCES/native/mod_manager $DIRSOURCES/native/mod_proxy_cluster`
+for dir in `echo $DIRSOURCES/native/advertise $DIRSOURCES/native/mod_proxy_cluster $DIRSOURCES/native/balancers $DIRSOURCES/native/mod_manager`
 do
   cd $dir
   ./buildconf
   ./configure --with-apxs=/usr/local/apache2/bin/apxs
   make clean
-  make
+  make || exit 1
   cp *.so /usr/local/apache2/modules
-  cd ../../..
+  cd $OLDPWD
 done
 
 # wget and copy the prepared conf file and include it

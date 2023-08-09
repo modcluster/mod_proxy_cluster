@@ -21,10 +21,10 @@ runtomcatbatch() {
     done
 
     tomcat_count=$(expr 3 + 11 - $t)
-    tomcat_wait_for_n_nodes $tomcat_count || clean_and_exit
+    tomcat_wait_for_n_nodes $tomcat_count || exit 1
     for i in $(seq $t 10);
     do
-      tomcat_start_webapp $i || clean_and_exit
+      tomcat_start_webapp $i || exit 1
     done
 
     # test the tomcats
@@ -32,21 +32,21 @@ runtomcatbatch() {
     tomcat_all_test_app $tomcat_count
     if [ $? -ne 0 ]; then
       echo "runtomcatbatch tomcat_all_test_app 9 FAILED!"
-      clean_and_exit
+      exit 1
     fi
 
     # "load test" 9 of them
     tomcat_all_run_ab $tomcat_count
     if [ $? -ne 0 ]; then
       echo "runtomcatbatch tomcat_all_run_ab 9 FAILED!"
-      clean_and_exit
+      exit 1
     fi
 
     # retest
     tomcat_all_test_app $tomcat_count
     if [ $? -ne 0 ]; then
       echo "runtomcatbatch tomcat_all_test_app 9 FAILED!"
-      clean_and_exit
+      exit 1
     fi
 
     # stop the tomcats
@@ -58,7 +58,7 @@ runtomcatbatch() {
     tomcat_wait_for_n_nodes 3
     if [ $? -ne 0 ]; then
       echo "runtomcatbatch tomcat_wait_for_n_nodes 3 FAILED!"
-      clean_and_exit
+      exit 1
     fi
 
     # remove the tomcats
@@ -78,10 +78,10 @@ singlecycle() {
         R=$(expr 1 + $RANDOM % 10 + 10)
         R=$(expr $R + 2)
         # TODO
-        tomcat_start $1 $R || clean_and_exit
+        tomcat_start $1 $R || exit 1
     else
         R=0
-        tomcat_start $1 $R || clean_and_exit
+        tomcat_start $1 $R || exit 1
     fi
     # Wait for it to start
     echo "Testing(0) tomcat$1 waiting..."
@@ -94,7 +94,7 @@ singlecycle() {
         sleep 1
     done
     echo "Testing(0) tomcat$1 started"
-    tomcat_start_webapp $1 || clean_and_exit
+    tomcat_start_webapp $1 || exit 1
     echo "Testing(0) tomcat$1 with webapp"
     while true
     do
@@ -106,12 +106,12 @@ singlecycle() {
         sleep 1
     done
     echo "Testing(1) tomcat$1"
-    tomcat_test_app $1 || clean_and_exit
+    tomcat_test_app $1 || exit 1
     echo "Testing(2) tomcat$1"
-    tomcat_test_app $1 || clean_and_exit
-    tomcat_run_ab $1 || clean_and_exit
+    tomcat_test_app $1 || exit 1
+    tomcat_run_ab $1 || exit 1
     echo "Testing(3) tomcat$1"
-    tomcat_shutdown $1 $R || clean_and_exit
+    tomcat_shutdown $1 $R || exit 1
     while true
     do
         curl -s http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
@@ -120,7 +120,7 @@ singlecycle() {
         fi
         sleep 1
     done
-    tomcat_remove $1 || clean_and_exit
+    tomcat_remove $1 || exit 1
     echo "singlecycle Done tomcat$1"
 }
 
@@ -128,7 +128,7 @@ singlecycle() {
 looptomcatforever() {
     while true
     do
-        singlecycle $1 || clean_and_exit
+        singlecycle $1 || exit 1
     done
 }
 
@@ -153,7 +153,7 @@ forevertomcat() {
     kill -15 $pid12 $pid13 $pid14 $pid15 $pid16
     if [ $? -ne 0 ]; then
         echo "kill -15 $pid12 $pid13 $pid14 $pid15 $pid16 failed"
-        clean_and_exit
+        exit 1
     fi
     echo "Tests done, cleaning"
     # stop & remove the containers
@@ -175,7 +175,7 @@ cyclestomcats() {
             echo "Looks OK, Done!"
             break
         fi
-        singlecycle $i useran || clean_and_exit
+        singlecycle $i useran || exit 1
     done
 }
 
@@ -186,15 +186,15 @@ runjbcs1236() {
     tomcat_start 2 0
     tomcat_start 3 0
     tomcat_start 4 0
-    tomcat_wait_for_n_nodes 3 || clean_and_exit
+    tomcat_wait_for_n_nodes 3 || exit 1
     # check them
-    tomcat_start_webapp 2 || clean_and_exit
-    tomcat_start_webapp 3 || clean_and_exit
-    tomcat_start_webapp 4 || clean_and_exit
+    tomcat_start_webapp 2 || exit 1
+    tomcat_start_webapp 3 || exit 1
+    tomcat_start_webapp 4 || exit 1
     sleep 20
-    tomcat_test_app 2 || clean_and_exit
-    tomcat_test_app 3 || clean_and_exit
-    tomcat_test_app 4 || clean_and_exit
+    tomcat_test_app 2 || exit 1
+    tomcat_test_app 3 || exit 1
+    tomcat_test_app 4 || exit 1
 
     # start a bunch of tomcats, test, shutdown, remove and try in a loop.
     runjbcs1236=0
@@ -210,14 +210,14 @@ runjbcs1236() {
 
         if [ $? -ne 0 ]; then
             echo "runtomcatbatch: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         tomcat_shutdown 2 0
 
         tomcat_wait_for_n_nodes 2
         if [ $? -ne 0 ]; then
             echo "tomcat_wait_for_n_nodes 2: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         tomcat_remove 2
         tomcat_start 5 0
@@ -225,18 +225,18 @@ runjbcs1236() {
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
             echo "tomcat_wait_for_n_nodes 3: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         tomcat_start_webapp 5
         if [ $? -ne 0 ]; then
             echo "tomcat_start_webapp 5: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         sleep 20
         tomcat_test_app 5
         if [ $? -ne 0 ]; then
             echo "tomcat_test_app 5: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         # we have 5 3 4 in shared memory
         # read 2
@@ -244,18 +244,18 @@ runjbcs1236() {
         tomcat_wait_for_n_nodes 4
         if [ $? -ne 0 ]; then
             echo "tomcat_wait_for_n_nodes 4: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         tomcat_start_webapp 2
         if [ $? -ne 0 ]; then
             echo "tomcat_start_webapp 2: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         sleep 20
         tomcat_test_app 2
         if [ $? -ne 0 ]; then
             echo "tomcat_test_app 2: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
 
         sleep 20
@@ -267,26 +267,26 @@ runjbcs1236() {
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
             echo "tomcat_wait_for_n_nodes 3: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         tomcat_remove 5
 
         tomcat_test_app 2
         if [ $? -ne 0 ]; then
             echo "tomcat_test_app 2: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
 
         tomcat_test_app 3
         if [ $? -ne 0 ]; then
             echo "tomcat_test_app 3: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
 
         tomcat_test_app 4
         if [ $? -ne 0 ]; then
             echo "tomcat_test_app 4: runjbcs1236 Failed!"
-            clean_and_exit
+            exit 1
         fi
         echo "runjbcs1236 loop: $runjbcs1236 DONE"
     done
@@ -295,7 +295,7 @@ runjbcs1236() {
     tomcat_shutdown 4 0
     tomcat_shutdown 3 0
     tomcat_shutdown 2 0
-    tomcat_wait_for_n_nodes 0 || clean_and_exit
+    tomcat_wait_for_n_nodes 0 || exit 1
     tomcat_remove 2
     tomcat_remove 3
     tomcat_remove 4
@@ -306,18 +306,17 @@ echo "Testing JBCS-1236"
 cyclestomcats ${TOMCAT_CYCLE_COUNT:-10}
 if [ $? -ne 0 ]; then
   echo "JBCS-1236 cyclestomcats 100 FAILED!"
-  clean_and_exit
+  exit 1
 fi
 forevertomcat
 if [ $? -ne 0 ]; then
   echo "JBCS-1236 forevertomcat FAILED!"
-  clean_and_exit
+  exit 1
 fi
 runjbcs1236
 if [ $? -ne 0 ]; then
   echo "JBCS-1236 runjbcs1236 FAILED!"
-  clean_and_exit
+  exit 1
 fi
 
-httpd_shutdown JBCS-1236
 tomcat_all_remove
