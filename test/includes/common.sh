@@ -107,8 +107,7 @@ clean_and_exit() {
 ### T O M C A T   H E L P E R   F U N C T I O N S ###
 #####################################################
 tomcat_create() {
-    docker build -t $IMG tomcat/
-    # docker push $IMG
+    docker build -t $IMG tomcat/ --build-arg TESTSUITE_TOMCAT_VERSION=${1:-8.5}
 }
 
 # Start tomcat$1 container on 127.0.0.$2
