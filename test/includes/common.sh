@@ -24,7 +24,9 @@ run_test() {
     fi
     # preserve httpd's logs too if DEBUG
     if [ $DEBUG ]; then
-        docker logs $(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ') > "logs/${2:-$1}-httpd.log" 2>&1
+        local httpd_cont=$(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ')
+        docker logs  $httpd_cont > "logs/${2:-$1}-httpd.log" 2>&1
+        docker cp ${httpd_cont}:/usr/local/apache2/logs/access_log "logs/${2:-$1}-httpd_access.log" > /dev/null
     fi
     # Clean all after run
     httpd_shutdown > /dev/null 2>&1
