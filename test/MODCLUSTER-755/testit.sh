@@ -11,11 +11,11 @@
 httpd_all_clean
 tomcat_all_remove
 
-MPC_CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/MODCLUSTER-755/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-755 httpd_run
+MPC_CONF=MODCLUSTER-755/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-755 httpd_run
 
 httpd_wait_until_ready
 
-tomcat_start
+tomcat_start 1
 
 NODE_COUNT="${NODE_COUNT:-500}"
 APP_COUNT="${APP_COUNT:-2}"

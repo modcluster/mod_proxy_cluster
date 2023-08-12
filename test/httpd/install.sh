@@ -3,8 +3,6 @@
 pwd
 ls -lt
 echo "HTTPD: $HTTPD"
-echo "SOURCES: $SOURCES"
-echo "BRANCH: $BRANCH"
 echo "CONF: $CONF"
 wget $HTTPD
 FILE=`filename $HTTPD`
@@ -24,17 +22,11 @@ make install
 # httpd is installed in /usr/local/apache2/bin/
 
 # build and install mod_proxy_cluster *.so files.
-cd ..
-git clone $SOURCES
-DIRSOURCES=`filename $SOURCES`
-echo "DIRSOURCES: $DIRSOURCES"
-cd $DIRSOURCES
-# exit if branch does not exist, because main would be used otherwise
-git checkout $BRANCH || exit 1
-cd ..
-for dir in `echo $DIRSOURCES/native/advertise $DIRSOURCES/native/mod_proxy_cluster $DIRSOURCES/native/balancers $DIRSOURCES/native/mod_manager`
+cd /native
+for m in advertise mod_proxy_cluster balancers mod_manager
 do
-  cd $dir
+  cd $m
+  echo "Building $m"
   ./buildconf
   ./configure --with-apxs=/usr/local/apache2/bin/apxs
   make clean
@@ -44,14 +36,17 @@ do
 done
 
 # wget and copy the prepared conf file and include it
-(cd /tmp; wget $CONF)
-FILECONF=`filename $CONF`
-if [ -f /tmp/$FILECONF ]; then
-  cp /tmp/$FILECONF /usr/local/apache2/conf/
+cd /test/
+if [ -f $CONF ]; then
+  FILECONF=$(filename $CONF)
+  cp $CONF /usr/local/apache2/conf/
   echo "Include conf/$FILECONF" >> /usr/local/apache2/conf/httpd.conf
+else
+  echo "The given CONF file: $CONF does not exist"
+  exit 1
 fi
 
 # start apache httpd server in foreground
-
+echo "Starting httpd..."
 /usr/local/apache2/bin/apachectl start
 tail -f /usr/local/apache2/logs/error_log

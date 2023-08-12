@@ -10,33 +10,14 @@ fi
 
 . includes/common.sh
 
-# check for a fork or modcluster repository.
-if [ -z $SOURCESFORK ]; then
-  SOURCESFORK="modcluster"
-fi
-
-# check mod_proxy_cluster or mod_cluster
-if [ -z $USE13 ]; then
-  SOURCES=https://github.com/${SOURCESFORK}/mod_proxy_cluster
-  MDBRANCH=main  
-else
-  SOURCES=https://github.com/${SOURCESFORK}/mod_cluster
-  MDBRANCH=1.3.x  
-fi
-
 # first stop any previously running tests.
-tomcat_all_stop
 tomcat_all_remove
 httpd_all_clean
 
 
 # build httpd + mod_proxy_cluster
-REPOORIGIN=$(git remote -v | grep "origin.*fetch" | awk ' { print $2 } ' | awk -F/ ' { print $(NF-1) } ' | awk -F"[:|/]" ' { print $(NF-0) } ')
-BRANCH=$(git branch --show-current)
-MPCCONF="https://raw.githubusercontent.com/${REPOORIGIN}/mod_proxy_cluster/${BRANCH}/test/MODCLUSTER-785/mod_proxy_cluster.conf"
-
 rm -f nohup.out
-MPC_SOURCES=${SOURCES} MPC_BRANCH=${MDBRANCH} MPC_CONF=$MPCCONF MPC_NAME=MODCLUSTER-785 httpd_run
+MPC_CONF=MODCLUSTER-785/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-785 httpd_run
 
 
 # start tomcat1 on 8080

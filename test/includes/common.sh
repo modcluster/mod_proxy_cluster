@@ -39,8 +39,11 @@ run_test() {
 #####################################################
 # create httpd container
 httpd_create() {
+    rm -rf httpd/mod_proxy_cluster /tmp/mod_proxy_cluster
+    mkdir /tmp/mod_proxy_cluster
+    cp -r ../native ../test /tmp/mod_proxy_cluster/
+    mv /tmp/mod_proxy_cluster httpd/
     docker build -t $HTTPD_IMG httpd/
-    # docker push $HTTPD_IMG
 }
 
 # Build and run httpd container
@@ -49,16 +52,12 @@ httpd_run() {
     httpd_shutdown || true
     if [ $DEBUG ]; then
         echo "httpd mod_proxy_cluster image config:"
-        echo "    SOURCES: ${MPC_SOURCES:-https://github.com/modcluster/mod_proxy_cluster}"
-        echo "    BRANCH:  ${MPC_BRANCH:-main}"
-        echo "    CONF:    ${MPC_CONF:-https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/httpd/mod_proxy_cluster.conf}"
+        echo "    CONF:    ${MPC_CONF:-httpd/mod_proxy_cluster.conf}"
         echo "    NAME:    ${MPC_NAME:-httpd-mod_proxy_cluster}"
         echo "You can config those with envars MPC_SOURCES, MPC_BRANCH, MPC_CONF, MPC_NAME respectively"
     fi
     docker run -d --network=host --name ${MPC_NAME:-httpd-mod_proxy_cluster} \
-               -e SOURCES=${MPC_SOURCES:-https://github.com/modcluster/mod_proxy_cluster} \
-               -e BRANCH=${MPC_BRANCH:-main} \
-               -e CONF=${MPC_CONF:-https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/httpd/mod_proxy_cluster.conf} \
+               -e CONF=${MPC_CONF:-httpd/mod_proxy_cluster.conf} \
                $HTTPD_IMG
 
     httpd_wait_until_ready
@@ -92,7 +91,7 @@ httpd_shutdown() {
 }
 
 httpd_all_clean() {
-    for i in $(docker ps -a | grep $HTTPD_IMG | cut -f1 -d' ');
+    for i in $(docker ps -a | grep "$HTTPD_IMG\|MODCLUSTER\|JBCS" | cut -f1 -d' ');
     do
         docker stop $i
         docker rm $i

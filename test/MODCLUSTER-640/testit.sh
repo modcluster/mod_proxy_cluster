@@ -18,7 +18,7 @@ httpd_all_clean
 
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
-MPC_CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/MODCLUSTER-640/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-640 httpd_run
+MPC_CONF=MODCLUSTER-640/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-640 httpd_run
 
 # wait until httpd is started
 httpd_wait_until_ready  || exit 1
@@ -34,7 +34,7 @@ tomcat_wait_for_n_nodes 2
 docker cp $PREFIX/webapp1 tomcat8080:/usr/local/tomcat/webapps/webapp1
 docker cp $PREFIX/webapp1 tomcat8081:/usr/local/tomcat/webapps/webapp1
 
-sleep 10
+sleep 12
 
 # test the URL
 code=$(/usr/bin/curl -o /dev/null --silent --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
