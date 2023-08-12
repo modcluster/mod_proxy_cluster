@@ -16,15 +16,15 @@ fi
 
 
 if [ ! -z ${tomcat_port} ]; then
-  sed -i "s/8080/${tomcat_port}/" ./conf/server.xml
+  sed -i "s/tomcat_port/${tomcat_port}/" ./conf/server.xml
 fi
 
 if [ ! -z ${tomcat_shutdown_port} ]; then
-  sed -i "s/8005/${tomcat_shutdown_port}/" ./conf/server.xml
+  sed -i "s/shutdown_port/${tomcat_shutdown_port}/" ./conf/server.xml
 fi
 
 if [ ! -z ${tomcat_ajp_port} ]; then
-  sed -i "s/8009/${tomcat_ajp_port}/" ./conf/server.xml
+  sed -i "s/ajp_port/${tomcat_ajp_port}/" ./conf/server.xml
 fi
 if [ ! -z ${tomcat_address} ]; then
   sed -i "s/127.0.0.1/${tomcat_address}/" ./conf/server.xml
@@ -47,7 +47,7 @@ fi
 sed -i "s/proxyport/${cluster_port}/" ./conf/server.xml
 sed -i "s/proxyaddress/127.0.0.1/" ./conf/server.xml
 
-echo "jvm_route: ${jvm_route} and tomcat_port: ${tomcat_port} and tomcat_address: ${tomcat_address}"
+echo "jvm_route: ${jvm_route:-default} tomcat_port: ${tomcat_port:-default} tomcat_address: ${tomcat_address:-default} tomcat_ajp_port: ${tomcat_ajp_port:-default} tomcat_shutdown_port: ${tomcat_shutdown_port:-default}"
 if [ ! -z ${jvm_route} ]; then
   sed -i "/<Engine name=\"Catalina\"/c\<Engine name=\"Catalina\" defaultHost=\"localhost\" jvmRoute=\"${jvm_route}\">" ./conf/server.xml
 fi
