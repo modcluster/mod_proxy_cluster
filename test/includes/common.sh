@@ -6,10 +6,10 @@ HTTPD_IMG=${HTTPD_IMG:-mod_proxy_cluster-testsuite-httpd}
 # Runs a test file ($1) under given name ($2, if given)
 run_test() {
     local ret=0
-    if [ -z ${2+x} ]; then
-        printf "Running %-42s ..." $2
+    if [ ! -z "$2" ]; then
+        printf "Running %-42s ..." "$2"
     else
-        printf "Running %-42s ..." $1
+        printf "Running %-42s ..." "$1"
     fi
     if [ $DEBUG ]; then
         sh $1 > "logs/${2:-$1}.log" 2>&1
