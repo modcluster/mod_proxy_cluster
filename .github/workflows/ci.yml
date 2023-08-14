@@ -139,58 +139,13 @@ jobs:
       - name: Build
         run: |
           ./native/scripts/windows-build.bat
-  smoke-tests:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        tomcat_version: [ 8.5, 9.0, 10.1 ]
-    env:
-      IMG: local-tomcat
-      HTTPD_IMG: local-httpd
-      DEBUG: on
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Setup dependencies
-        run: |
-          sudo apt update -y
-          sudo apt install -y moby* maven git curl iproute2
-          cd test
-          sh setup-dependencies.sh
-      - name: Setup all images
-        run: |
-          cd test
-          source includes/common.sh
-          httpd_create
-          export IMG=$IMG-${{ matrix.tomcat_version }}
-          tomcat_create ${{ matrix.tomcat_version }}
-      - name: Run test
-        shell: bash {0}
-        run: |
-          cd test
-          mkdir logs
-          # set vars
-          export MPC_SOURCES=$(git remote -v | grep "origin.*fetch" | awk ' { print $2 } ')
-          export MPC_BRANCH=$(git branch --show-current)
-          export IMG=$IMG-${{ matrix.tomcat_version }}
-          source includes/common.sh
-          run_test basetests.sh "Basic tests with tomcat${{ matrix.tomcat_version }}"
-      - name: Preserve test logs
-        uses: actions/upload-artifact@v3
-        if: always()
-        with:
-          name: Smoke logs
-          path: |
-            test/logs/*
-          retention-days: 7
   tests:
     runs-on: ubuntu-latest
     env:
       IMG: local-tomcat
       HTTPD_IMG: local-httpd
       DEBUG: on
-      FOREVER_PAUSE: 30
+      FOREVER_PAUSE: 100
       ITERATION_COUNT: 2
       TOMCAT_CYCLE_COUNT: 2
     steps:
@@ -202,27 +157,10 @@ jobs:
           sudo apt-get install -y docker maven git curl iproute2
           cd test
           sh setup-dependencies.sh
-      - name: Setup images
+      - name: Run testsuite
         run: |
           cd test
-          source includes/common.sh
-          httpd_create
-          tomcat_create
-      - name: Run test
-        shell: bash {0}
-        run: |
-          cd test
-          mkdir logs
-          source includes/common.sh
-          res=0
-          # Those are currently all tests we have. In CI only MODCLUSTER-{734,755}/testit.sh pass, so until we fix the issue, only these tests are enabled.
-          # hangingtests.sh maintests.sh JBCS-1236/testit.sh MODCLUSTER-640/testit.sh MODCLUSTER-734/testit.sh MODCLUSTER-755/testit.sh MODCLUSTER-785/testit.sh MODCLUSTER-794/testit.sh
-          for testcase in basetests.sh MODCLUSTER-734/testit.sh MODCLUSTER-755/testit.sh
-          do
-            run_test $testcase $(echo $testcase | cut -f1 -d/)
-            res=$(expr $res + $?)
-          done
-          exit $res
+          sh testsuite.sh
       - name: Preserve test logs
         uses: actions/upload-artifact@v3
         if: always()
