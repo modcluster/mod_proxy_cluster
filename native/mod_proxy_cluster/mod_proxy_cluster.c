@@ -301,7 +301,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     }
     *helper_ptr = (proxy_cluster_helper *)worker->context;
     helper = *helper_ptr;
-    if (helper->index == 0) {
+    if (helper->index == -1) {
         /* We are going to reuse a removed one */
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "Created: reusing removed worker for %s", url);
         ap_assert(0);
@@ -310,7 +310,8 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
 
     /* Check if the shared memory goes to the right place */
     ptr = ptr_node + node->offset;
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: reusing worker for %s", url);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: reusing worker (id %d) for %s", node->mess.id,
+                 url);
     if (helper->index == node->mess.id && worker->s == (proxy_worker_shared *)ptr) {
         /* the shared memory may have been removed and recreated */
         if (!worker->s->status) {
@@ -804,7 +805,7 @@ static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int 
                 apr_snprintf(sport, sizeof(sport), "%d", (*worker)->s->port);
                 if (strcmp((*worker)->s->scheme, node->mess.Type) ||
                     compare_hostname((*worker)->s->hostname, node->mess.Host) || strcmp(sport, node->mess.Port)) {
-                    (*worker)->s->index = 0;
+                    (*worker)->s->index = -1;
                     /* XXX: broken  ap_my_generation--; mark old generation that will recreate the process */
                     continue; /* skip it */
                 }
@@ -840,7 +841,7 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
     worker->s->status = worker->s->status | PROXY_WORKER_IN_ERROR;
 
     /* apr_reslist_acquired_count */
-    i = -1;
+    i = 0;
 
     helper = (proxy_cluster_helper *)worker->context;
     if (helper) {
@@ -1582,7 +1583,7 @@ static proxy_worker *internal_process_worker(proxy_worker *worker, int checking_
                      balancer_name, worker->s ? worker->s->name_ex : "NULL");
         return NULL;
     }
-    if (helper->index == 0) {
+    if (helper->index == -1) {
         ap_assert(0);
         return NULL; /* marked removed */
     }
@@ -1932,7 +1933,7 @@ static int proxy_host_isup(request_rec *r, const char *scheme, const char *host,
     return 0;
 }
 
-static proxy_worker *searchworker(request_rec *r, const char *bal, const char *ptr, unsigned *id,
+static proxy_worker *searchworker(request_rec *r, const char *bal, const char *ptr, int *id,
                                   const proxy_server_conf **the_conf)
 {
     /* search for the worker in the VirtualHosts */
@@ -1953,7 +1954,7 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
             worker = ap_proxy_get_worker(r->pool, balancer, conf, ptr);
             if (worker != NULL) {
                 proxy_cluster_helper *helper;
-                if (worker->s->index != 0) {
+                if (worker->s->index != -1) {
                     *id = worker->s->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                                  "searchworker %s: worker->s->index: %d the_conf %ld", ptr, *id, (uintptr_t)conf);
@@ -1961,7 +1962,7 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
                     return worker; /* Done current index */
                 }
                 helper = (proxy_cluster_helper *)worker->context;
-                if (helper && helper->index != 0) {
+                if (helper && helper->index != -1) {
                     *id = helper->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                                  "searchworker %s: helper->index %d the_conf %ld", ptr, *id, (uintptr_t)conf);
@@ -1986,7 +1987,7 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
 }
 
 static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, const char *scheme, const char *host,
-                                      const char *port, unsigned *id, const proxy_server_conf **the_conf)
+                                      const char *port, int *id, const proxy_server_conf **the_conf)
 {
     proxy_worker *worker = NULL;
     char *ptr, *url, *bal;
@@ -1994,7 +1995,7 @@ static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, 
     url = apr_pstrcat(r->pool, scheme, "://", host, ":", port, NULL);
     ptr = normalize_workername(r->pool, url);
     if (ptr == NULL) {
-        *id = 0;
+        *id = -1;
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_node_getid: normalize_workername returns NULL");
         return NULL; /* Should not happend */
     }
@@ -2004,7 +2005,7 @@ static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, 
     worker = searchworker(r, bal, url, id, the_conf);
 
     if (worker == NULL) {
-        *id = 0;
+        *id = -1;
         return NULL;
     }
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_node_getid: the_conf %ld", (uintptr_t)*the_conf);
@@ -2013,14 +2014,18 @@ static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, 
 
 static int proxy_node_get_free_id(request_rec *r, int node_table_size)
 {
-    int free_i;
-    int *free_id = apr_pcalloc(r->pool, sizeof(int) * node_table_size);
-    int *used_id = apr_pcalloc(r->pool, sizeof(int) * node_table_size);
-    int num_used_id;
+    int i, used_count;
+    int *ids = apr_pcalloc(r->pool, sizeof(int) * node_table_size);
+    int *used_ids = apr_pcalloc(r->pool, sizeof(int) * node_table_size);
     server_rec *s = main_server;
-    /* build the list of id used by worker */
+
+    used_count = node_storage->get_ids_used_node(used_ids);
+    for (i = 0; i < used_count; i++) {
+        ids[used_ids[i]] = 1;
+    }
+
+    /* build the list of id used by workers */
     while (s) {
-        int i;
         void *sconf = s->module_config;
         proxy_balancer *balancer;
         proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
@@ -2032,32 +2037,30 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
             for (j = 0; j < balancer->workers->nelts; j++, workers++) {
                 volatile proxy_worker *worker = *workers;
                 proxy_cluster_helper *helper;
-                helper = (proxy_cluster_helper *)worker->context;
-                ap_assert(helper); /* we are in trouble ... */
-                if (worker->s->index != 0) {
-                    free_id[worker->s->index] = worker->s->index;
+                if (worker->s->index >= node_table_size) {
+                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                                 "proxy_node_get_free_id: skipping worker index (%d) higher than node_table_size (%d)",
+                                 worker->s->index, node_table_size);
+                    continue;
                 }
-                if (helper && helper->index != 0) {
-                    free_id[helper->index] = helper->index;
+                if (worker->s->index != -1) {
+                    ids[worker->s->index] = 1;
+                }
+                helper = (proxy_cluster_helper *)worker->context;
+                if (helper && helper->index != -1) {
+                    ids[worker->s->index] = 1;
                 }
             }
         }
         s = s->next;
     }
 
-    /* Add the ones used according to the node table */
-    num_used_id = node_storage->get_ids_used_node(used_id);
-    for (free_i = 0; free_i < num_used_id; free_i++) {
-        free_id[used_id[free_i]] = used_id[free_i];
-    }
-
-    for (free_i = 1; free_i < node_table_size; free_i++) {
-        if (free_id[free_i] == 0) {
-            return free_i;
+    for (i = 0; i < node_table_size; i++) {
+        if (ids[i] == 0) {
+            return i;
         }
     }
-
-    return 0; /* nothing in workers any value is OK */
+    return -1; /* All workers are full */
 }
 
 static void init_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_worker *worker,
@@ -2137,7 +2140,7 @@ static int node_has_workers(const server_rec *server, const proxy_server_conf *c
             if (helper->index == id) {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                              "remove_removed_node %d for REMOVED node_has_workers %d", id, getpid());
-                return -1;
+                return 1;
             }
         }
     }
@@ -2854,7 +2857,7 @@ static proxy_worker *find_route_worker(request_rec *r, const proxy_balancer *bal
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: find_route_worker skipping BAD worker");
                 continue; /* skip it */
             }
-            if (index == 0) {
+            if (index == -1) {
                 continue; /* marked removed */
             }
 
@@ -3448,7 +3451,7 @@ static int proxy_cluster_post_request(proxy_worker *worker, proxy_balancer *bala
                                  "proxy_cluster_post_request sessionid changed (%s to %s)", sessionid, cookie);
 #endif
                     strncpy(ou.sessionid, sessionid, SESSIONIDSZ);
-                    ou.id = 0;
+                    ou.id = -1;
                     sessionid_storage->remove_sessionid(&ou);
                 }
                 if ((oroute = strchr(cookie, '.')) != NULL) {
