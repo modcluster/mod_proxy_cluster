@@ -69,7 +69,6 @@ do
     exit 1
   fi
   echo "trying other webapp try: ${i}"
-  exit 1
 done
 echo "${i} try gives: ${NEWCO} node: ${NEWNODE}"
 
