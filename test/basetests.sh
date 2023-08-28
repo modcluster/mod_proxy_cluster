@@ -40,7 +40,7 @@ while [ $iter -lt $ITERATION_COUNT ]
 do
    echo "Loop stopping starting the same tomcat iter: $iter"
    nohup docker run --network=host -e tomcat_port=8080 --name tomcat8080 ${IMG} &
-   sleep 10
+   sleep 12
    tomcat_wait_for_n_nodes 1 || exit 1
    docker exec tomcat8080 /usr/local/tomcat/bin/shutdown.sh
    tomcat_wait_for_n_nodes 0 || exit 1

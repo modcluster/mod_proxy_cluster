@@ -17,7 +17,7 @@ httpd_all_clean
 
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
-MPC_CONF=https://raw.githubusercontent.com/modcluster/mod_proxy_cluster/main/test/MODCLUSTER-734/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-734 httpd_run
+MPC_CONF=MODCLUSTER-734/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-734 httpd_run
 
 # wait until httpd is started
 httpd_wait_until_ready || exit 1

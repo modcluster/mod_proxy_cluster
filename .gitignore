@@ -23,9 +23,9 @@ native/*/config.status
 native/*/configure
 
 # Native testsuite
-test/java/node*/
 bin/
 target/
+test/httpd/mod_proxy_cluster
 
 # Folder usually used for CMake
 **/build

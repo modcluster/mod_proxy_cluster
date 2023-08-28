@@ -31,21 +31,21 @@ runtomcatbatch() {
     sleep 20
     tomcat_all_test_app $tomcat_count
     if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_all_test_app 9 FAILED!"
+      echo "runtomcatbatch tomcat_all_test_app $tomcat_count FAILED!"
       exit 1
     fi
 
     # "load test" 9 of them
     tomcat_all_run_ab $tomcat_count
     if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_all_run_ab 9 FAILED!"
+      echo "runtomcatbatch tomcat_all_run_ab $tomcat_count FAILED!"
       exit 1
     fi
 
     # retest
     tomcat_all_test_app $tomcat_count
     if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_all_test_app 9 FAILED!"
+      echo "runtomcatbatch tomcat_all_test_app $tomcat_count FAILED!"
       exit 1
     fi
 
@@ -57,7 +57,7 @@ runtomcatbatch() {
 
     tomcat_wait_for_n_nodes 3
     if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_wait_for_n_nodes 3 FAILED!"
+      echo "runtomcatbatch tomcat_wait_for_n_nodes $tomcat_count FAILED!"
       exit 1
     fi
 
@@ -74,7 +74,7 @@ runtomcatbatch() {
 singlecycle() {
     echo "singlecycle: Testing tomcat$1"
     R=$1
-    if [ "X$2" -eq "Xuseran" ]; then
+    if [ "$2" = "useran" ]; then
         R=$(expr 1 + $RANDOM % 10 + 10)
         R=$(expr $R + 2)
         # TODO
@@ -85,24 +85,35 @@ singlecycle() {
     fi
     # Wait for it to start
     echo "Testing(0) tomcat$1 waiting..."
+    i=0
     while true
     do
         curl -s http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
         if [ $? -eq 0 ]; then
             break
         fi
+        if [ $i -gt 300 ]; then
+            echo "Timeout: tomcat$1 is not ready"
+            exit 1
+        fi
+        i=$(expr $i + 1)
         sleep 1
     done
     echo "Testing(0) tomcat$1 started"
     tomcat_start_webapp $1 || exit 1
     echo "Testing(0) tomcat$1 with webapp"
+    i=0
     while true
     do
         curl -s http://localhost:6666/mod_cluster_manager | grep /tomcat$1 > /dev/null
         if [ $? -eq 0 ]; then
             break
         fi
-        curl -s http://localhost:6666/mod_cluster_manager | grep /tomcat$1
+        if [ $i -gt 300 ]; then
+            echo "Timeout: webapp on tomcat$1 is not ready after 300 seconds"
+            exit 1
+        fi
+        i=$(expr $i + 1)
         sleep 1
     done
     echo "Testing(1) tomcat$1"
@@ -118,6 +129,11 @@ singlecycle() {
         if [ $? -ne 0 ]; then
             break
         fi
+        if [ $i -gt 300 ]; then
+            echo "Timeout: webapp is still present on tomcat$1 after 300 seconds"
+            exit 1
+        fi
+        i=$(expr $i + 1)
         sleep 1
     done
     tomcat_remove $1 || exit 1

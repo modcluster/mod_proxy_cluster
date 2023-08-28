@@ -168,9 +168,6 @@ jobs:
         run: |
           cd test
           mkdir logs
-          # set vars
-          export MPC_SOURCES=$(git remote -v | grep "origin.*fetch" | awk ' { print $2 } ')
-          export MPC_BRANCH=$(git branch --show-current)
           source includes/common.sh
           res=0
           # Those are currently all tests we have. In CI only MODCLUSTER-{734,755}/testit.sh pass, so until we fix the issue, only these tests are enabled.
