@@ -57,7 +57,7 @@ runtomcatbatch() {
 
     tomcat_wait_for_n_nodes 3
     if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_wait_for_n_nodes $tomcat_count FAILED!"
+      echo "runtomcatbatch tomcat_wait_for_n_nodes 3 FAILED!"
       exit 1
     fi
 
@@ -324,15 +324,18 @@ if [ $? -ne 0 ]; then
   echo "JBCS-1236 cyclestomcats 100 FAILED!"
   exit 1
 fi
+echo "cycletomcats DONE"
 forevertomcat
 if [ $? -ne 0 ]; then
   echo "JBCS-1236 forevertomcat FAILED!"
   exit 1
 fi
+echo "forevertomcat DONE"
 runjbcs1236
 if [ $? -ne 0 ]; then
   echo "JBCS-1236 runjbcs1236 FAILED!"
   exit 1
 fi
+echo "runjbcs1236 DONE"
 
 tomcat_all_remove
