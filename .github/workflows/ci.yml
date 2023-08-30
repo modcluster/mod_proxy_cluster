@@ -153,8 +153,8 @@ jobs:
         uses: actions/checkout@v3
       - name: Setup dependencies
         run: |
-          sudo apt update -y
-          sudo apt install -y moby* maven git curl iproute2
+          sudo apt-get update -y
+          sudo apt-get install -y docker maven git curl iproute2
           cd test
           sh setup-dependencies.sh
       - name: Setup images
