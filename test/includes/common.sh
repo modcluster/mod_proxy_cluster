@@ -140,7 +140,7 @@ tomcat_start() {
                                     -e jvm_route=tomcat$1 \
                                 --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
-    if [[ $? -ne 0 ]]; then
+    if [ $? -ne 0 ]; then
 	    echo "docker run for tomcat$1 failed"
 	    exit 1
     fi
