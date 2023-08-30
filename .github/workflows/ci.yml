@@ -157,6 +157,8 @@ jobs:
           sudo apt-get install -y docker maven git curl iproute2
           cd test
           sh setup-dependencies.sh
+      - name: Print network environment
+        run: ss -lt
       - name: Run testsuite
         run: |
           cd test
