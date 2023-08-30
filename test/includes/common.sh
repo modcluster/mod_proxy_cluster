@@ -114,20 +114,30 @@ tomcat_create() {
 # Start tomcat$1 container on 127.0.0.$2
 # or 127.0.0.$1 if $2 is not given
 # arguments:
-#       $1 tomcat number
+#       $1 tomcat number (required)
 #       $2 tomcat's last byte of IPv4 address (if 0 or omitted, equals to $1)
-#       $3 tomcat port (if omitted it's 8080)
+#       $3 tomcat port          (if omitted it's 8080 + $1 - 1)
+#       $4 tomcat ajp port      (if omitted it's 8900 + $1 - 1)
+#       $5 tomcat shutdown port (if omitted it's 8005 + $1 - 1)
 tomcat_start() {
+    if [ -z "$1" ]; then
+        echo "tomcat_start called without arguments"
+        exit 1
+    fi
     ADDR="127.0.0.$1"
     if [ ${2:-0} -ne 0 ]; then
         ADDR="127.0.0.$2"
     fi
 
+    local portdef=$(expr 8080 + $1 - 1)
+    local ajpdef=$(expr 8900 + $1 - 1)
+    local shutdef=$(expr 8005 + $1 - 1)
+
     echo "Starting tomcat$1 on $ADDR"
-    nohup docker run --network=host -e tomcat_ajp_port=8010 \
+    nohup docker run --network=host -e tomcat_ajp_port=${4:-$ajpdef} \
                                     -e tomcat_address=$ADDR \
-                                    -e tomcat_port=${3:-8080} \
-                                    -e tomcat_shutdown_port=8005 \
+                                    -e tomcat_port=${3:-$portdef} \
+                                    -e tomcat_shutdown_port=${5:-$shutdef} \
                                     -e jvm_route=tomcat$1 \
                                 --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
@@ -250,6 +260,10 @@ tomcat_start_webapp() {
 }
 
 # Send a shutdown packet to a tomcat$1 container
+# arguments:
+#     $1 tomcat number
+#     $2 the last segment of IPv4 addr ($1 by default)
+#     $3 the shutdown port (8005 + $1 - 1 by default)
 tomcat_shutdown() {
     ADDR="127.0.0.$1"
     if [ $2 -ne 0 ]; then
@@ -257,7 +271,7 @@ tomcat_shutdown() {
     fi
 
     echo "shutting down tomcat$1 with address: $ADDR"
-    echo "SHUTDOWN" | nc $ADDR 8005
+    echo "SHUTDOWN" | nc $ADDR ${3:-$(expr 8005 + $1 - 1)}
 }
 
 # Remove the docker image tomcat$1
