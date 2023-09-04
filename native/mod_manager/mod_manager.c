@@ -980,7 +980,7 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
  * Check if the proxy balancer module already has a worker
  * and return the id
  */
-static proxy_worker *proxy_node_getid(request_rec *r, const nodeinfo_t *nodeinfo, unsigned *id,
+static proxy_worker *proxy_node_getid(request_rec *r, const nodeinfo_t *nodeinfo, int *id,
                                       const proxy_server_conf **the_conf)
 {
     if (balancerhandler != NULL) {
@@ -1003,7 +1003,7 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
     if (balancerhandler != NULL) {
         return balancerhandler->proxy_node_get_free_id(r, node_table_size);
     }
-    return 0;
+    return -1;
 }
 
 /*
@@ -1036,7 +1036,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     struct cluster_host *phost;
 
     int i = 0;
-    unsigned id = 0;
+    int id = -1;
     int vid = 1; /* zero and "" is empty */
     int removed = 0;
     void *sconf = r->server->module_config;
@@ -1076,7 +1076,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     nodeinfo.mess.smax = -1; /* let mod_proxy logic get the right one */
     nodeinfo.mess.ttl = apr_time_from_sec(60);
     nodeinfo.mess.timeout = 0;
-    nodeinfo.mess.id = 0;
+    nodeinfo.mess.id = -1;
     nodeinfo.mess.lastcleantry = 0;
 
     /* Fill default balancer values */
@@ -1324,9 +1324,9 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
 
     /* Check for corresponding proxy_worker */
     worker = proxy_node_getid(r, &nodeinfo, &id, &the_conf);
-    if (id != 0) {
+    if (id != -1) {
         /* Same node should be OK, different nodes will bring problems */
-        if (node != NULL && (unsigned)node->mess.id == id) {
+        if (node != NULL && node->mess.id == id) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: proxy_node_getid() worker exist and should be OK");
         } else {
@@ -1387,6 +1387,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                 workernode->mess.remove = 0;
                 workernode->mess.num_remove_check = 0;
             } else {
+                loc_unlock_nodes();
                 ap_assert(0); /* we need to figure out what to do... */
             }
         } else {
@@ -1394,15 +1395,23 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                          nodeinfo.mess.Port);
         }
     }
-    if (id == 0) {
+    if (id == -1) {
         /* make sure we insert in a "free" node according to the worker logic */
         id = proxy_node_get_free_id(r, node_storage.get_max_size_node());
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s %s in %d",
-                     nodeinfo.mess.JVMRoute, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
+        if (id == -1) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: NEW (%s) %s %s will not be added (Maxnode reached)", nodeinfo.mess.JVMRoute,
+                         nodeinfo.mess.Host, nodeinfo.mess.Port);
+        } else {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s %s in %d",
+                         nodeinfo.mess.JVMRoute, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
+        }
     }
 
     /* Insert or update node description */
     if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: insert_update_node failed for %s clean: %d", nodeinfo.mess.JVMRoute, clean);
         loc_unlock_nodes();
         if (removed) {
             ap_assert(0); /* troubles */
@@ -1422,7 +1431,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                      "process_config: proxy_node_getid() worker %s inserted... %d", nodeinfo.mess.JVMRoute, id);
         /* make sure we can use it */
         ap_assert(worker->context != NULL);
-        ap_assert((unsigned)workernode->mess.id == id);
+        ap_assert(workernode->mess.id == id);
         ap_assert(the_conf);
 
         /* so the scheme, hostname and port correspond to worker which was removed and readded */
@@ -1927,7 +1936,7 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
 
     /* The REMOVE-APP * removes the node (well mark it removed) */
     if (status == REMOVE) {
-        unsigned id = 0;
+        int id;
         node->mess.remove = 1;
         insert_update_node(nodestatsmem, node, &id, 0);
     }
@@ -1960,7 +1969,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                 return SROUBIG;
             }
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
-            nodeinfo.mess.id = 0;
+            nodeinfo.mess.id = -1;
         }
         if (strcasecmp(ptr[i], "Alias") == 0) {
             if (vhost->host) {
@@ -2072,8 +2081,8 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                 }
             }
             vid++; /* Use next one. */
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: adding vhost: %d node: %d", vid,
-                         node->mess.id);
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: adding vhost: %d node: %d route: %s",
+                         vid, node->mess.id, nodeinfo.mess.JVMRoute);
 
             /* If the Host doesn't exist yet create it */
             if (insert_update_hosts(hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
@@ -2247,7 +2256,7 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
                 return SROUBIG;
             }
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
-            nodeinfo.mess.id = 0;
+            nodeinfo.mess.id = -1;
         } else if (strcasecmp(ptr[i], "Load") == 0) {
             Load = atoi(ptr[i + 1]);
         } else {

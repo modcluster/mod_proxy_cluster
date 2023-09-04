@@ -56,6 +56,8 @@ run_test MODCLUSTER-755/testit.sh    "MODCLUSTER-755"
 res=$(expr $res + $?)
 run_test MODCLUSTER-785/testit.sh   "MODCLUSTER-785"
 res=$(expr $res + $?)
+run_test MODCLUSTER-794/testit.sh   "MODCLUSTER-794"
+res=$(expr $res + $?)
 
 echo "Clean remaining httpd containers"
 httpd_all_clean 

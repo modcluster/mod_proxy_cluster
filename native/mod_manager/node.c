@@ -122,7 +122,7 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     return APR_SUCCESS;
 }
 
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned *id, int clean)
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
 {
     apr_status_t rv;
     nodeinfo_t *ou;
@@ -137,14 +137,16 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned *id, int cl
 
     /*
      * we have to insert it, there are 2 cases:
-     *  *id == 0 we have to find where to put it.
-     *  *id != 0 we know where to put it.
+     *  *id == -1 we have to find where to put it.
+     *  *id != -1 we know where to put it.
      */
-    if (*id == 0) {
-        rv = s->storage->grab(s->slotmem, id);
+    if (*id == -1) {
+        unsigned tmp_id;
+        rv = s->storage->grab(s->slotmem, &tmp_id);
         if (rv != APR_SUCCESS) {
             return rv;
         }
+        *id = (int)tmp_id;
     } else {
         rv = s->storage->fgrab(s->slotmem, *id);
         if (rv != APR_SUCCESS) {
@@ -196,7 +198,7 @@ nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node)
     apr_status_t rv;
     nodeinfo_t *ou;
 
-    if (!node->mess.id) {
+    if (node->mess.id == -1) {
         rv = s->storage->doall(s->slotmem, loc_read_node, node, s->p);
         if (rv != APR_EEXIST) {
             return NULL;

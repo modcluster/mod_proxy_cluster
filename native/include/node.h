@@ -121,7 +121,7 @@ apr_status_t get_last_mem_error(mem_t *mem);
  * @return APR_SUCCESS if all went well
  *
  */
-apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, unsigned *id, int clean);
+apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean);
 
 /**
  * read a node record from the shared table
