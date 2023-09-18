@@ -145,39 +145,27 @@ jobs:
       IMG: local-tomcat
       HTTPD_IMG: local-httpd
       DEBUG: on
-      FOREVER_PAUSE: 30
+      FOREVER_PAUSE: 100
       ITERATION_COUNT: 2
       TOMCAT_CYCLE_COUNT: 2
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+# this occupies 8084 port on Ubuntu 20.04 and we don't use it.
+      - name: Remove mono blocking 8084 port
+        run: sudo kill -9 $(sudo lsof -t -i:8084)
       - name: Setup dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y docker maven git curl iproute2
           cd test
           sh setup-dependencies.sh
-      - name: Setup images
+      - name: Print network environment
+        run: ss -ltp
+      - name: Run testsuite
         run: |
           cd test
-          source includes/common.sh
-          httpd_create
-          tomcat_create
-      - name: Run test
-        shell: bash {0}
-        run: |
-          cd test
-          mkdir logs
-          source includes/common.sh
-          res=0
-          # Those are currently all tests we have. In CI only MODCLUSTER-{734,755}/testit.sh pass, so until we fix the issue, only these tests are enabled.
-          # hangingtests.sh maintests.sh JBCS-1236/testit.sh MODCLUSTER-640/testit.sh MODCLUSTER-734/testit.sh MODCLUSTER-755/testit.sh MODCLUSTER-785/testit.sh MODCLUSTER-794/testit.sh
-          for testcase in basetests.sh MODCLUSTER-734/testit.sh MODCLUSTER-755/testit.sh
-          do
-            run_test $testcase $(echo $testcase | cut -f1 -d/)
-            res=$(expr $res + $?)
-          done
-          exit $res
+          sh testsuite.sh
       - name: Preserve test logs
         uses: actions/upload-artifact@v3
         if: always()

@@ -3,6 +3,15 @@
 docker build -t tomcat .
 ```
 
+The default tomcat version on which the image is based is `8.5`. You can
+change that during the build by setting `TESTSUITE_TOMCAT_VERSION` variable
+to the version you want. For example, for using `tomcat:10.1` as a base,
+execute
+
+```
+docker build -t tomcat . --build-arg TESTSUITE_TOMCAT_VERSION=10.1
+```
+
 # Run image
 **Note the ENV variables:**
 

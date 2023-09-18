@@ -1,4 +1,6 @@
-FROM tomcat:8.5
+ARG TESTSUITE_TOMCAT_VERSION=8.5
+
+FROM tomcat:${TESTSUITE_TOMCAT_VERSION}
 
 # install ss
 RUN apt update && apt install -y iproute2
@@ -6,6 +8,7 @@ RUN apt update && apt install -y iproute2
 WORKDIR /usr/local/tomcat
 
 COPY target/*.jar ./lib/
+COPY *.war ./
 COPY server.xml ./conf/
 COPY context.xml ./conf/
 COPY start.sh ./
@@ -20,6 +23,4 @@ ENV jvm_route=
 ENV tomcat_address=
 
 CMD ["./start.sh"]
-
-
 

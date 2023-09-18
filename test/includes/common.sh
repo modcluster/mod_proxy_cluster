@@ -6,10 +6,10 @@ HTTPD_IMG=${HTTPD_IMG:-mod_proxy_cluster-testsuite-httpd}
 # Runs a test file ($1) under given name ($2, if given)
 run_test() {
     local ret=0
-    if [ -z ${2+x} ]; then
-        printf "Running %-42s ..." $2
+    if [ ! -z "$2" ]; then
+        printf "Running %-42s ..." "$2"
     else
-        printf "Running %-42s ..." $1
+        printf "Running %-42s ..." "$1"
     fi
     if [ $DEBUG ]; then
         sh $1 > "logs/${2:-$1}.log" 2>&1
@@ -107,8 +107,7 @@ clean_and_exit() {
 ### T O M C A T   H E L P E R   F U N C T I O N S ###
 #####################################################
 tomcat_create() {
-    docker build -t $IMG tomcat/
-    # docker push $IMG
+    docker build -t $IMG tomcat/ --build-arg TESTSUITE_TOMCAT_VERSION=${1:-8.5}
 }
 
 # Start tomcat$1 container on 127.0.0.$2
@@ -141,7 +140,7 @@ tomcat_start() {
                                     -e jvm_route=tomcat$1 \
                                 --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
-    if [[ $? -ne 0 ]]; then
+    if [ $? -ne 0 ]; then
 	    echo "docker run for tomcat$1 failed"
 	    exit 1
     fi
