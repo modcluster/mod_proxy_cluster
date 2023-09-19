@@ -134,7 +134,7 @@ static apr_time_t lbstatus_recalc_time =
 
 static apr_time_t wait_for_remove = apr_time_from_sec(10); /* wait until that before removing a removed node */
 
-static int enable_options = -1; /* Use OPTIONS * for CPING/CPONG */
+static int enable_options = 1; /* Use OPTIONS * for CPING/CPONG */
 
 #define TIMESESSIONID 300 /* after 5 minutes the sessionid have probably timeout */
 #define TIMEDOMAIN    300 /* after 5 minutes the sessionid have probably timeout */
@@ -631,11 +631,7 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
             return balancer; /* Done broken */
         }
         /* StickySession, StickySessionRemove we hack it via the lbpname (16 bytes) */
-        if (!balan->StickySession) {
-            strcpy(balancer->s->lbpname, MC_NOT_STICKY);
-        } else {
-            strcpy(balancer->s->lbpname, MC_STICKY); /* default is Sticky */
-        }
+        strcpy(balancer->s->lbpname, balan->StickySession ? MC_STICKY : MC_NOT_STICKY);
 
         if (balan->StickySessionRemove) {
             strcpy(balancer->s->lbpname, MC_REMOVE_SESSION);
@@ -669,40 +665,40 @@ static void reuse_balancer(proxy_balancer *balancer, const char *name, apr_pool_
     if (strncmp(balancer->s->lbpname, "MC", 2)) {
         /* replace the configured lbpname by our default one */
         strcpy(balancer->s->lbpname, MC_STICKY);
-        changed = -1;
+        changed = 1;
     }
     if (balan->StickySessionForce && !balancer->s->sticky_force) {
         balancer->s->sticky_force = 1;
         balancer->s->sticky_force_set = 1;
         strcpy(balancer->s->lbpname, MC_NO_FAILOVER);
-        changed = -1;
+        changed = 1;
     }
     if (!balan->StickySessionForce && balancer->s->sticky_force) {
         balancer->s->sticky_force = 0;
         strcpy(balancer->s->lbpname, MC_STICKY);
-        changed = -1;
+        changed = 1;
     }
     if (balan->StickySessionForce && strcmp(balancer->s->lbpname, MC_NO_FAILOVER)) {
         strcpy(balancer->s->lbpname, MC_NO_FAILOVER);
-        changed = -1;
+        changed = 1;
     }
     if (balan->StickySessionRemove && strcmp(balancer->s->lbpname, MC_REMOVE_SESSION)) {
         strcpy(balancer->s->lbpname, MC_REMOVE_SESSION);
-        changed = -1;
+        changed = 1;
     }
     if (!balan->StickySession && strcmp(balancer->s->lbpname, MC_NOT_STICKY)) {
         strcpy(balancer->s->lbpname, MC_NOT_STICKY);
-        changed = -1;
+        changed = 1;
     }
     if (strcmp(balan->StickySessionCookie, balancer->s->sticky) != 0) {
         strncpy(balancer->s->sticky, balan->StickySessionCookie, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
         balancer->s->sticky[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
-        changed = -1;
+        changed = 1;
     }
     if (strcmp(balan->StickySessionPath, balancer->s->sticky_path) != 0) {
         strncpy(balancer->s->sticky_path, balan->StickySessionPath, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
         balancer->s->sticky_path[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
-        changed = -1;
+        changed = 1;
     }
     balancer->s->timeout = balan->Timeout;
     balancer->s->max_attempts = balan->Maxattempts;
@@ -834,7 +830,6 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
     if (!worker) {
         /* XXX: Another process may use it, can't do: node_storage->remove_node(node); */
         return 0; /* Done */
-        /* Here we loop through our workers not need to check that the worker->s is OK */
     }
 
     /* prevent other threads using it */
@@ -893,7 +888,6 @@ static void update_workers_node(const proxy_server_conf *conf, apr_pool_t *pool,
                                 proxy_node_table *node_table)
 {
     int i;
-    unsigned last;
     (void)conf;
 
     if (node_table == NULL) {
@@ -902,9 +896,8 @@ static void update_workers_node(const proxy_server_conf *conf, apr_pool_t *pool,
 
     /* Check if we have to do something */
     if (check) {
-        last = node_storage->worker_nodes_need_update(main_server, pool);
         /* nodes_need_update will return 1 if last_updated is zero: first time we are called */
-        if (last == 0) {
+        if (node_storage->worker_nodes_need_update(main_server, pool) == 0) {
             return;
         }
     }
@@ -971,6 +964,7 @@ static apr_status_t ajp_handle_cping_cpong(apr_socket_t *sock, const request_rec
                      buf[2] & 0xFF, buf[3] & 0xFF, buf[4] & 0xFF);
         status = APR_EGENERAL;
     }
+
 cleanup:
     rv = apr_socket_timeout_set(sock, org);
     if (rv != APR_SUCCESS) {
@@ -1817,9 +1811,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
 
     /* Calculate the address of our shared memory that corresponds to the stat info of the worker */
     ptr = (char *)node;
-    ptr = ptr + node->offset;
-    stat = (proxy_worker_shared *)ptr;
-    ptr = (char *)node;
+    stat = (proxy_worker_shared *)(ptr + node->offset);
 
     /* create the balancers and workers (that could be the first time) */
     rv = node_storage->lock_nodes();
@@ -2104,8 +2096,7 @@ static void reenable_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_wo
     helper->isinnodes = 1;
     /* XXX: BAD IDEA!! helper->index = node->mess.id; */
     ptr = (char *)node;
-    ptr = ptr + node->offset;
-    worker->s = (proxy_worker_shared *)ptr;
+    worker->s = (proxy_worker_shared *)(ptr + node->offset);
     /* merge the "new" node information */
     init_proxy_worker(server, nodeinfo, worker, the_conf);
 }
@@ -2392,7 +2383,7 @@ static void proxy_cluster_child_stopping(apr_pool_t *pool, int graceful)
 {
     (void)pool;
     (void)graceful;
-    child_stopping = -1;
+    child_stopping = 1;
 }
 
 
@@ -3611,7 +3602,7 @@ static const char *cmd_proxy_cluster_enable_options(cmd_parms *cmd, void *dummy,
         enable_options = 0;
     } else if (strcmp(val, "") == 0 || strcasecmp(val, "On") == 0 || strcasecmp(val, "1") == 0) {
         /* No param or explicitly set default */
-        enable_options = -1;
+        enable_options = 1;
     } else {
         return "EnableOptions must be either without value or On or Off";
     }

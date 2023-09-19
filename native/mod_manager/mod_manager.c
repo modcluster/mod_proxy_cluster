@@ -616,9 +616,11 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
 
     /* Do some sanity checks */
     if (mconf->maxhost < mconf->maxnode) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "Maxhost value increased to Maxnode (%d)", mconf->maxnode);
         mconf->maxhost = mconf->maxnode;
     }
     if (mconf->maxcontext < mconf->maxhost) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "Maxcontext value increased to Maxhost (%d)", mconf->maxhost);
         mconf->maxcontext = mconf->maxhost;
     }
 
@@ -1419,6 +1421,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
     }
+
     if (clean == 0) {
         /* need to read the node */
         nodeinfo_t workernodeinfo;
@@ -1438,13 +1441,8 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         reenable_proxy_worker(r, workernode, worker, &nodeinfo, the_conf);
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "process_config: reenable_proxy_worker... scheme %s hostname %s port %d route %s name %s id: %d",
-#if MODULE_MAGIC_NUMBER_MAJOR == 20120211 && MODULE_MAGIC_NUMBER_MINOR >= 124
                      worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex,
                      worker->s->index);
-#else
-                     worker->s->scheme, worker->s->hostname, worker->s->port, worker->s->route, worker->s->name,
-                     worker->s->index);
-#endif
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s inserted in worker %d",
                      nodeinfo.mess.JVMRoute, nodeinfo.mess.Port, id);
@@ -2283,11 +2281,8 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
     ap_set_content_type(r, "text/plain");
     ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
-    if (isnode_up(r, node->mess.id, Load) != OK) {
-        ap_rprintf(r, "&State=NOTOK");
-    } else {
-        ap_rprintf(r, "&State=OK");
-    }
+    ap_rprintf(r, isnode_up(r, node->mess.id, Load) != OK ? "&State=NOTOK" : "&State=OK");
+
     ap_rprintf(r, "&id=%d", (int)ap_scoreboard_image->global->restart_time);
 
     ap_rprintf(r, "\n");
@@ -2368,12 +2363,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
             }
             ap_set_content_type(r, "text/plain");
             ap_rprintf(r, "Type=PING-RSP");
-
-            if (ishost_up(r, scheme, host, port) != OK) {
-                ap_rprintf(r, "&State=NOTOK");
-            } else {
-                ap_rprintf(r, "&State=OK");
-            }
+            ap_rprintf(r, ishost_up(r, scheme, host, port) != OK ? "&State=NOTOK" : "&State=OK");
         }
     } else {
 
@@ -2393,11 +2383,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
         ap_set_content_type(r, "text/plain");
         ap_rprintf(r, "Type=PING-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
-        if (isnode_up(r, node->mess.id, -2) != OK) {
-            ap_rprintf(r, "&State=NOTOK");
-        } else {
-            ap_rprintf(r, "&State=OK");
-        }
+        ap_rprintf(r, isnode_up(r, node->mess.id, -2) != OK ? "&State=NOTOK" : "&State=OK");
     }
     ap_rprintf(r, "&id=%d", (int)ap_scoreboard_image->global->restart_time);
 
@@ -2600,10 +2586,8 @@ static int manager_map_to_storage(request_rec *r)
 static char *context_string(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
 {
     char context[CONTEXTSZ + 1];
-    char *raw;
     strncpy(context, ou->context, CONTEXTSZ + 1);
-    raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
-    return raw;
+    return apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
 }
 
 static char *balancer_nonce_string(request_rec *r)
@@ -2642,8 +2626,7 @@ static void context_command_string(request_rec *r, contextinfo_t *ou, const char
 /* Create the commands that are possible on the node */
 static char *node_string(request_rec *r, const char *JVMRoute)
 {
-    char *raw = apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, NULL);
-    return raw;
+    return apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, NULL);
 }
 
 static void node_command_string(request_rec *r, const char *JVMRoute)
@@ -2745,11 +2728,8 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
             }
             vhost = ou->vhost;
 
-            if (reduce_display) {
-                ap_rprintf(r, "%.*s ", (int)sizeof(ou->host), ou->host);
-            } else {
-                ap_rprintf(r, "%.*s\n", (int)sizeof(ou->host), ou->host);
-            }
+            ap_rprintf(r, "%.*s", (int)sizeof(ou->host), ou->host);
+            ap_rprintf(r, reduce_display ? " " : "\n");
 
             /* Go ahead and check for any other later alias entries for this vhost and print them now */
             for (j = i + 1; j < size; j++) {
@@ -2770,11 +2750,8 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
                 if (i == j - 1) {
                     i++;
                 }
-                if (reduce_display) {
-                    ap_rprintf(r, "%.*s ", (int)sizeof(pv->host), pv->host);
-                } else {
-                    ap_rprintf(r, "%.*s\n", (int)sizeof(pv->host), pv->host);
-                }
+                ap_rprintf(r, "%.*s", (int)sizeof(pv->host), pv->host);
+                ap_rprintf(r, reduce_display ? " " : "\n");
             }
         }
     }
@@ -2955,11 +2932,8 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
 static void printproxy_stat(request_rec *r, int reduce_display, const proxy_worker_shared *proxystat)
 {
     char *status = NULL;
-    if (proxystat->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
-        status = "NOTOK";
-    } else {
-        status = "OK";
-    }
+    status = proxystat->status & PROXY_WORKER_NOT_USABLE_BITMAP ? "NOTOK" : "OK";
+
     if (reduce_display) {
         ap_rprintf(r, " %s ", status);
     } else {
@@ -3630,7 +3604,7 @@ static const char *cmd_manager_reduce_display(cmd_parms *cmd, void *dummy, const
     if (strcasecmp(arg, "Off") == 0) {
         mconf->reduce_display = 0;
     } else if (strcasecmp(arg, "On") == 0) {
-        mconf->reduce_display = -1;
+        mconf->reduce_display = 1;
     } else {
         return "ReduceDisplay must be one of: "
                "off | on";
@@ -3663,7 +3637,7 @@ static const char *cmd_manager_enable_mcpm_receive(cmd_parms *cmd, void *dummy)
     if (!cmd->server->is_virtual) {
         return "EnableMCPMReceive must be in a VirtualHost";
     }
-    mconf->enable_mcpm_receive = -1;
+    mconf->enable_mcpm_receive = 1;
     return NULL;
 }
 
@@ -3677,11 +3651,11 @@ static const char *cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
         return err;
     }
     if (ap_find_linked_module("mod_proxy_wstunnel.c") != NULL) {
-        mconf->enable_ws_tunnel = -1;
+        mconf->enable_ws_tunnel = 1;
         return NULL;
-    } else {
-        return "EnableWsTunnel requires mod_proxy_wstunnel.c";
     }
+
+    return "EnableWsTunnel requires mod_proxy_wstunnel.c";
 }
 
 static const char *cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, const char *word)
@@ -3698,12 +3672,12 @@ static const char *cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, 
                             PROXY_WORKER_MAX_SCHEME_SIZE);
     }
     if (ap_find_linked_module("mod_proxy_wstunnel.c") != NULL) {
-        mconf->enable_ws_tunnel = -1;
+        mconf->enable_ws_tunnel = 1;
         mconf->ws_upgrade_header = apr_pstrdup(cmd->pool, word);
         return NULL;
-    } else {
-        return "WSUpgradeHeader requires mod_proxy_wstunnel.c";
     }
+
+    return "WSUpgradeHeader requires mod_proxy_wstunnel.c";
 }
 
 static const char *cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const char *word)
@@ -3721,9 +3695,9 @@ static const char *cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const c
     if (ap_find_linked_module("mod_proxy_ajp.c") != NULL) {
         mconf->ajp_secret = apr_pstrdup(cmd->pool, word);
         return NULL;
-    } else {
-        return "AJPsecret requires mod_proxy_ajp.c";
     }
+
+    return "AJPsecret requires mod_proxy_ajp.c";
 }
 
 static const char *cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, const char *word)
@@ -3742,9 +3716,9 @@ static const char *cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, 
     if (ap_find_linked_module("mod_proxy_http.c") != NULL) {
         mconf->response_field_size = (s ? s : HUGE_STRING_LEN);
         return NULL;
-    } else {
-        return "ResponseFieldSize requires mod_proxy_http.c";
     }
+
+    return "ResponseFieldSize requires mod_proxy_http.c";
 }
 
 
@@ -3861,18 +3835,7 @@ static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf, void
 {
     mod_manager_config *mconf1 = (mod_manager_config *)server1_conf;
     mod_manager_config *mconf2 = (mod_manager_config *)server2_conf;
-    mod_manager_config *mconf = apr_pcalloc(p, sizeof(*mconf));
-
-    mconf->basefilename = NULL;
-    mconf->maxcontext = DEFMAXCONTEXT;
-    mconf->maxnode = DEFMAXNODE;
-    mconf->tableversion = 0;
-    mconf->persistent = 0;
-    mconf->nonce = -1;
-    mconf->balancername = NULL;
-    mconf->allow_display = 0;
-    mconf->allow_cmd = -1;
-    mconf->reduce_display = 0;
+    mod_manager_config *mconf = (mod_manager_config *)create_manager_config(p);
 
     if (mconf2->basefilename) {
         mconf->basefilename = apr_pstrdup(p, mconf2->basefilename);
