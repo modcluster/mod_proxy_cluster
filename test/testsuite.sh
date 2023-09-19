@@ -1,4 +1,8 @@
 #!/usr/bin/sh
+# exits with 0 if everything went well
+# exits with 1 if some test failed
+# exits with 2 if httpd container build failed
+# exits with 3 if tomcat container build failed
 
 # configuration of variables
 # if you want tests to pass much faster, decrease these values
@@ -35,8 +39,10 @@ httpd_create  > /dev/null 2>&1 || exit 2
 tomcat_create > /dev/null 2>&1 || exit 3
 
 # clean everything at first
-httpd_all_clean
-tomcat_all_remove
+echo -n "Cleaning possibly running containers..."
+httpd_all_clean   > /dev/null 2>&1
+tomcat_all_remove > /dev/null 2>&1
+echo " Done"
 
 res=0
 
@@ -73,6 +79,7 @@ if [ $res -eq 0 ]; then
     echo "Tests finished successfully!"
 else
     echo "Tests finished, but some failed."
+    res=1
 fi
 
 exit $res

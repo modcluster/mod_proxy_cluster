@@ -12,6 +12,11 @@ execute
 docker build -t tomcat . --build-arg TESTSUITE_TOMCAT_VERSION=10.1
 ```
 
+There are two other build arguments you can pass to control the server's
+configuration files. The first one is `TESTSUITE_TOMCAT_CONFIG` with default
+value set to `server.xml`, the second is `TESTSUITE_TOMCAT_CONTEXT` that is
+set to `context.xml` by default.
+
 # Run image
 **Note the ENV variables:**
 
