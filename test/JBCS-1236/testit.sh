@@ -17,7 +17,7 @@ runtomcatbatch() {
 
     for i in $(seq $t 10);
     do
-      tomcat_start $i 0
+      tomcat_start $i
     done
 
     tomcat_count=$(expr 3 + 11 - $t)
@@ -52,7 +52,7 @@ runtomcatbatch() {
     # stop the tomcats
     for i in $(seq $t 10);
     do
-      tomcat_shutdown $i 0
+      tomcat_shutdown $i
     done
 
     tomcat_wait_for_n_nodes 3

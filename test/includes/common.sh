@@ -232,17 +232,17 @@ tomcat_all_remove() {
 }
 
 tomcat_start_two() {
-    echo "Starting tomcat8080..."
-    nohup docker run --network=host -e tomcat_port=8080 -e tomcat_shutdown_port=true --name tomcat8080 ${IMG} &
+    echo "Starting tomcat1..."
+    tomcat_start 1
     if [ $? -ne 0 ]; then
-        echo "Can't start tomcat8080"
+        echo "Can't start tomcat1"
         exit 1
     fi
     sleep 10
-    echo "Starting tomcat8081..."
-    nohup docker run --network=host -e tomcat_port=8081 -e tomcat_shutdown_port=true --name tomcat8081 ${IMG} &
+    echo "Starting tomcat2..."
+    tomcat_start 2 1
     if [ $? -ne 0 ]; then
-        echo "Can't start tomcat8081"
+        echo "Can't start tomcat2"
         exit 1
     fi
     echo "2 Tomcats started..."

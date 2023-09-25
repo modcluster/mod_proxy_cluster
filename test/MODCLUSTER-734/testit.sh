@@ -24,15 +24,15 @@ httpd_wait_until_ready || exit 1
 
 sleep 10
 
-# start tomcat8080 and tomcat8081.
+# start tomcat1 and tomcat2
 tomcat_start_two
 
 # wait until they are in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 2
 
-# copy the test page in ROOT to tomcat8080
-docker cp $PREFIX/ROOT tomcat8080:/usr/local/tomcat/webapps/ROOT
-docker cp $PREFIX/ROOT_OK tomcat8081:/usr/local/tomcat/webapps/ROOT
+# copy the test page in ROOT to tomcat1
+docker cp $PREFIX/ROOT tomcat1:/usr/local/tomcat/webapps/ROOT
+docker cp $PREFIX/ROOT_OK tomcat8082:/usr/local/tomcat/webapps/ROOT
 
 # after a while the health check will get the Under maintenance status.jsp
 # and mark the node not OK.

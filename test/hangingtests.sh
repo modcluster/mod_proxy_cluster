@@ -40,24 +40,22 @@ EOF
 
 # Check that hanging tomcat will be removed
 echo "hanging a tomcat checking it is removed after a while no requests"
-PORT=8081
-nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=true --name tomcat${PORT} ${IMG} &
-PORT=8080
-nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=true --name tomcat${PORT} ${IMG} &
+tomcat_start_two
 sleep 10
 tomcat_wait_for_n_nodes 2 || exit 1
 # curlloop.sh checks for http://localhost:8000/testapp/test.jsp
-docker cp testapp tomcat8080:/usr/local/tomcat/webapps
-docker cp testapp tomcat8081:/usr/local/tomcat/webapps
-docker cp setenv.sh tomcat${PORT}:/usr/local/tomcat/bin
-docker commit tomcat${PORT} ${IMG}-debug
-docker stop tomcat${PORT}
+docker cp testapp tomcat1:/usr/local/tomcat/webapps
+docker cp testapp tomcat2:/usr/local/tomcat/webapps
+
+docker cp setenv.sh tomcat1:/usr/local/tomcat/bin
+docker commit tomcat1 ${IMG}-debug
+tomcat_remove 1
 tomcat_wait_for_n_nodes 1
 docker container rm tomcat${PORT}
 # Start the node.
-nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=true --name tomcat${PORT} ${IMG}-debug &
+IMG=${IMG}-debug tomcat_start 1
 sleep 10
-docker exec tomcat${PORT} jdb -attach 6660 < continue.txt
+docker exec tomcat1 jdb -attach 6660 < continue.txt
 tomcat_wait_for_n_nodes 2 || exit 1
 echo "2 tomcat started"
 # Hang the node,
@@ -87,9 +85,7 @@ tomcat_wait_for_n_nodes 2 || exit 1
 
 # Same test with requets but stop the other tomcat
 echo "single hanging tomcat removed after a while with requests"
-PORT=8081
-docker stop tomcat${PORT}
-docker container rm tomcat${PORT}
+tomcat_remove 2
 tomcat_wait_for_n_nodes 1 || exit 1
 jdbsuspend
 sleep 10

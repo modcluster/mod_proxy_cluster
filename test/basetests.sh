@@ -9,10 +9,10 @@ httpd_run || exit 1
 
 # Start 2 tomcats, on 8080 and 8081
 tomcat_start_two || exit 1
-tomcat_wait_for_n_nodes 2  || exit 1
+tomcat_wait_for_n_nodes 2 || exit 1
 
 # Copy testapp and wait for its start
-docker cp testapp tomcat8081:/usr/local/tomcat/webapps
+docker cp testapp tomcat2:/usr/local/tomcat/webapps
 
 # The above statement relies on 'autoDeploy' to be enabled in Tomcat; and while the scan interval of auto deploy is 10 seconds,
 # this needs to be adequately higher to propagate the MCMP commands to the reverse proxies in time.
@@ -39,12 +39,12 @@ iter=0
 while [ $iter -lt $ITERATION_COUNT ]
 do
    echo "Loop stopping starting the same tomcat iter: $iter"
-   nohup docker run --network=host -e tomcat_port=8080 --name tomcat8080 ${IMG} &
+   tomcat_start 1
    sleep 12
    tomcat_wait_for_n_nodes 1 || exit 1
-   docker exec tomcat8080 /usr/local/tomcat/bin/shutdown.sh
+   tomcat_shutdown 1
    tomcat_wait_for_n_nodes 0 || exit 1
-   docker container rm tomcat8080
+   tomcat_remove 1
    iter=$(expr $iter + 1)
 done
 
