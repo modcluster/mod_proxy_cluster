@@ -43,6 +43,7 @@ if [ ! -d tomcat/target ]; then
     exit 4 
 fi
 
+echo -n "Creating docker containers..."
 if [ ! -z ${DEBUG+x} ]; then
      httpd_create  || exit 2
      tomcat_create || exit 3
@@ -50,6 +51,7 @@ else
      httpd_create  > /dev/null 2>&1 || exit 2
      tomcat_create > /dev/null 2>&1 || exit 3
 fi
+echo " Done"
 
 # clean everything at first
 echo -n "Cleaning possibly running containers..."
@@ -99,8 +101,10 @@ MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test MODCLUSTER-794/testit.sh   "MO
 res=$(expr $res + $?)
 
 
-echo "Clean remaining httpd containers"
-httpd_all_clean 
+echo -n "Cleaning containers if any..."
+httpd_all_clean   > /dev/null 2>&1
+tomcat_all_remove > /dev/null 2>&1
+echo " Done" 
 
 if [ $res -eq 0 ]; then
     echo "Tests finished successfully!"
