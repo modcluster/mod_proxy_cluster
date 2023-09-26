@@ -29,7 +29,7 @@ run_test() {
         docker cp ${httpd_cont}:/usr/local/apache2/logs/access_log "logs/${2:-$1}-httpd_access.log" > /dev/null
     fi
     # Clean all after run
-    httpd_shutdown > /dev/null 2>&1
+    httpd_all_clean > /dev/null 2>&1
     tomcat_all_remove > /dev/null 2>&1
     return $ret
 }
@@ -49,7 +49,7 @@ httpd_create() {
 # Build and run httpd container
 httpd_run() {
     # if httpd is already running for some reason, end it
-    httpd_shutdown || true
+    httpd_all_clean || true
     if [ $DEBUG ]; then
         echo "httpd mod_proxy_cluster image config:"
         echo "    CONF:    ${MPC_CONF:-httpd/mod_proxy_cluster.conf}"
@@ -79,19 +79,8 @@ httpd_wait_until_ready() {
     echo "httpd ready after $i attempts"
 }
 
-httpd_shutdown() {
-    docker ps --format "{{.Names}}" | grep ${MPC_NAME:-httpd-mod_proxy_cluster}
-    if [ $? = 0 ]; then
-        docker stop ${MPC_NAME:-httpd-mod_proxy_cluster}
-    fi
-    docker ps -a --format "{{.Names}}" | grep ${MPC_NAME:-httpd-mod_proxy_cluster}
-    if [ $? = 0 ]; then
-        docker rm ${MPC_NAME:-httpd-mod_proxy_cluster}
-    fi
-}
-
 httpd_all_clean() {
-    for i in $(docker ps -a | grep "$HTTPD_IMG\|MODCLUSTER\|JBCS" | cut -f1 -d' ');
+    for i in $(docker ps -a | grep "$HTTPD_IMG\|MODCLUSTER\|JBCS\|${MPC_NAME:-httpd-mod_proxy_cluster}" | cut -f1 -d' ');
     do
         docker stop $i
         docker rm $i
