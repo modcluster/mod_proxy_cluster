@@ -1988,7 +1988,7 @@ static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, 
     ptr = normalize_workername(r->pool, url);
     if (ptr == NULL) {
         *id = -1;
-        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_node_getid: normalize_workername returns NULL");
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_node_getid: normalize_workername returns NULL");
         return NULL; /* Should not happend */
     }
     bal = apr_pstrcat(r->pool, "balancer://", balancername, NULL);
@@ -1998,9 +1998,10 @@ static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, 
 
     if (worker == NULL) {
         *id = -1;
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_node_getid: searchworker returns NULL");
         return NULL;
     }
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_node_getid: the_conf %ld", (uintptr_t)*the_conf);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_node_getid: the_conf %ld", (uintptr_t)*the_conf);
     return worker;
 }
 

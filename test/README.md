@@ -75,3 +75,9 @@ There is also a python script that can be run to check mod_proxy_cluster. You ca
 as `miniserver.py`. Execute it simply as `./includes/miniserver.py <port-number>`.
 
 You must have `httpd` with `mod_proxy_cluster` running.
+
+# Testing the lbmethod and mod_proxy_balancer
+Just run the test with CONF=httpd/mod_lbmethod_cluster.conf
+```
+MPC_CONF=httpd/mod_lbmethod_cluster.conf sh testsuite.sh
+```
