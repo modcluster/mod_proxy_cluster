@@ -19,5 +19,5 @@ mod_manager.la: mod_manager.slo node.slo context.slo host.slo balancer.slo sessi
 	$(SH_LINK) -rpath $(libexecdir) -module -avoid-version  mod_manager.lo node.lo context.lo host.lo balancer.lo sessionid.lo domain.lo common.lo
 
 clean:
-	rm -f *.o *.lo *.slo *.so ../common/common.slo
+	rm -f *.o *.lo *.slo *.so *.la ../common/common.slo
 	rm -rf .libs

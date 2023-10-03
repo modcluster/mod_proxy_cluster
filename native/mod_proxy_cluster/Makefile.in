@@ -28,5 +28,5 @@ mod_proxy_cluster.la: mod_proxy_cluster.slo ../common/common.slo
 	$(SH_LINK) -rpath $(libexecdir) -module -avoid-version mod_proxy_cluster.lo common.lo
 
 clean:
-	rm -f *.o *.lo *.slo *.so ../common/common.slo
+	rm -f *.o *.lo *.slo *.so *.la ../common/common.slo
 	rm -rf .libs

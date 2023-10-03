@@ -19,5 +19,5 @@ mod_advertise.la: mod_advertise.slo
 	$(SH_LINK) -rpath $(libexecdir) -module -avoid-version  mod_advertise.lo
 
 clean:
-	rm -f *.o *.lo *.slo *.so
+	rm -f *.o *.lo *.slo *.so *.la
 	rm -rf .libs
