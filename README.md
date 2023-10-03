@@ -55,6 +55,11 @@ enclose the corresponding part of code like this
 
 The style check will ignore everything between the two comments. (Please, don't abuse it.)
 
+Tests
+-----
+
+The project contains some tests too. You can find them with a separate README in the `test` subdirectory.
+
 License
 -------
 

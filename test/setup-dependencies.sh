@@ -2,7 +2,9 @@
 TEST_DIR=$(pwd)
 cd ../..
 # get websocket demo repository
-git clone https://github.com/jfclere/httpd_websocket
+if [ ! -d httpd_websocket ]; then
+    git clone https://github.com/jfclere/httpd_websocket
+fi
 cd httpd_websocket
 git pull --rebase
 mvn install || exit 1
@@ -10,7 +12,9 @@ cp target/websocket-hello-0.0.1.war $TEST_DIR/tomcat/
 cd ..
 
 # get mod_cluster (Java/Tomcat part)
-git clone https://github.com/modcluster/mod_cluster
+if [ ! -d mod_cluster ]; then
+    git clone https://github.com/modcluster/mod_cluster
+fi
 cd mod_cluster
 git pull --rebase
 mvn install || exit 2
