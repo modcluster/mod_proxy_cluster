@@ -28,6 +28,9 @@ echo "        TOMCAT_CYCLE_COUNT=$TOMCAT_CYCLE_COUNT"
 echo "        ITERATION_COUNT=$ITERATION_COUNT"
 echo "        IMG=$IMG"
 echo "        HTTPD_IMG=$HTTPD_IMG"
+if [ ! -z ${MPC_CONF+x} ]; then
+    echo "        MPC_CONF=$MPC_CONF"
+fi
 
 if [ ! -d logs ]; then
     mkdir logs
@@ -35,8 +38,18 @@ fi
 
 . includes/common.sh
 
-httpd_create  > /dev/null 2>&1 || exit 2
-tomcat_create > /dev/null 2>&1 || exit 3
+if [ ! -d tomcat/target ]; then
+    echo "Missing dependencies. Please run setup-dependencies.sh and then try again"
+    exit 4 
+fi
+
+if [ ! -z ${DEBUG+x} ]; then
+     httpd_create  || exit 2
+     tomcat_create || exit 3
+else
+     httpd_create  > /dev/null 2>&1 || exit 2
+     tomcat_create > /dev/null 2>&1 || exit 3
+fi
 
 # clean everything at first
 echo -n "Cleaning possibly running containers..."

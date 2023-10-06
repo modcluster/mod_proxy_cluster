@@ -41,6 +41,16 @@ run_test() {
 httpd_create() {
     rm -rf httpd/mod_proxy_cluster /tmp/mod_proxy_cluster
     mkdir /tmp/mod_proxy_cluster
+    # make sure the native are cleaned before copying
+    for m in advertise mod_proxy_cluster balancers mod_manager
+    do
+        cd ../native/$m
+        echo "Cleaning $m"
+        if [ -f Makefile ]; then
+          make clean
+        fi
+        cd $OLDPWD
+    done
     cp -r ../native ../test /tmp/mod_proxy_cluster/
     mv /tmp/mod_proxy_cluster httpd/
     docker build -t $HTTPD_IMG httpd/

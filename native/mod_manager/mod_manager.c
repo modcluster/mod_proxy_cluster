@@ -1389,8 +1389,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                 workernode->mess.remove = 0;
                 workernode->mess.num_remove_check = 0;
             } else {
-                loc_unlock_nodes();
-                ap_assert(0); /* we need to figure out what to do... */
+                id = workernode->mess.id;
             }
         } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s", nodeinfo.mess.JVMRoute,
@@ -1400,11 +1399,11 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     if (id == -1) {
         /* make sure we insert in a "free" node according to the worker logic */
         id = proxy_node_get_free_id(r, node_storage.get_max_size_node());
-        if (id == -1) {
+        if (id == -1 && balancerhandler != NULL) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                          "process_config: NEW (%s) %s %s will not be added (Maxnode reached)", nodeinfo.mess.JVMRoute,
                          nodeinfo.mess.Host, nodeinfo.mess.Port);
-        } else {
+        } else if (id != -1) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s %s in %d",
                          nodeinfo.mess.JVMRoute, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
         }
@@ -1444,7 +1443,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                      worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex,
                      worker->s->index);
     } else {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s inserted in worker %d",
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: (%s) %s inserted/updated in worker %d",
                      nodeinfo.mess.JVMRoute, nodeinfo.mess.Port, id);
     }
     inc_version_node();
