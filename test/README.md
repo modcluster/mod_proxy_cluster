@@ -77,7 +77,11 @@ as `miniserver.py`. Execute it simply as `./includes/miniserver.py <port-number>
 You must have `httpd` with `mod_proxy_cluster` running.
 
 # Testing the lbmethod and mod_proxy_balancer
-Just run the test with CONF=httpd/mod_lbmethod_cluster.conf
+
+There are a few tests run with lbmethod and mod_proxy_balancer in the testsuite. If you want
+to run a particular test with such configuration, execute the test with `MPC_CONF` variable
+set to the included configuration, e.g.,
+
 ```
-MPC_CONF=httpd/mod_lbmethod_cluster.conf sh testsuite.sh
+MPC_CONF=httpd/mod_lbmethod_cluster.conf <test you want to run>
 ```
