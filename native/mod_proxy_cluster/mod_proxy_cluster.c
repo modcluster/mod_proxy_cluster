@@ -2394,15 +2394,6 @@ static void proxy_cluster_child_init(apr_pool_t *p, server_rec *s)
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
     main_server = s;
-
-    /* moved to mod_manager
-       rv = apr_thread_mutex_create(&lock, APR_THREAD_MUTEX_DEFAULT, p);
-       if (rv != APR_SUCCESS) {
-       ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, s,
-       "proxy_cluster_child_init: apr_thread_mutex_create failed");
-       }
-     */
-
     rv = node_storage->lock_nodes();
 
     (void)p; /* unused argument */
