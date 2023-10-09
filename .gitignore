@@ -21,6 +21,7 @@ native/*/Makefile
 native/*/autom4te.cache/
 native/*/config.status
 native/*/configure
+native/*/configure~
 
 # Native testsuite
 bin/
