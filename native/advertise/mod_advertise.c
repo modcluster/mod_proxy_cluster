@@ -390,9 +390,9 @@ static apr_status_t ma_group_join(const char *addr, apr_port_t port, const char 
         return rv;
     }
     if ((rv = apr_mcast_join(ma_mgroup_socket, ma_mgroup_sa, ma_niface_sa, NULL)) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, rv, s, "mod_advertise: ma_group_join apr_mcast_join failed");
+        ap_log_error(APLOG_MARK, APLOG_ERR, rv, s, "mod_advertise: ma_group_join apr_mcast_join failed");
         if ((rv = apr_mcast_loopback(ma_mgroup_socket, 1)) != APR_SUCCESS) {
-            ap_log_error(APLOG_MARK, APLOG_WARNING, rv, s, "mod_advertise: ma_group_join apr_mcast_loopback failed");
+            ap_log_error(APLOG_MARK, APLOG_ERR, rv, s, "mod_advertise: ma_group_join apr_mcast_loopback failed");
             apr_socket_close(ma_mgroup_socket);
             return rv;
         }
@@ -608,7 +608,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
         rv = ma_group_join(mconf->ma_advertise_adrs, mconf->ma_advertise_port, mconf->ma_bind_adrs, mconf->ma_bind_port,
                            pconf, s);
         if (rv != APR_SUCCESS) {
-            ap_log_error(APLOG_MARK, APLOG_ERR, rv, s, "mod_advertise: multicast join failed for %s:%d.",
+            ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "mod_advertise: multicast join failed for %s:%d.",
                          mconf->ma_advertise_adrs, mconf->ma_advertise_port);
             ma_advertise_run = 0;
         } else {
