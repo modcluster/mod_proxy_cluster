@@ -45,3 +45,5 @@ test/mod_proxy_cluster_new.conf
 test/new.xml
 test/server.xml
 
+# patch files
+**/*.patch
