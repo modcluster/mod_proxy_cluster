@@ -185,10 +185,10 @@ static int lbmethod_cluster_trans(request_rec *r)
 
 
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server,
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                  "lbmethod_cluster_trans for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
                  r->handler, r->uri, r->args, r->unparsed_uri);
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server, "lbmethod_cluster_trans for %d",
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "lbmethod_cluster_trans for %d",
                  conf->balancers->nelts);
 #endif
 
@@ -219,14 +219,14 @@ static int lbmethod_cluster_trans(request_rec *r)
         r->handler = "proxy-server";
         r->proxyreq = PROXYREQ_REVERSE;
 #if HAVE_CLUSTER_EX_DEBUG
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server, "proxy_cluster_trans using %s uri: %s",
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_trans using %s uri: %s",
                      balancer, r->filename);
 #endif
         return OK; /* Mod_proxy will process it */
     }
 
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server,
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                  "proxy_cluster_trans DECLINED %s uri: %s unparsed_uri: %s", balancer, r->filename, r->unparsed_uri);
 #endif
     return DECLINED;
@@ -361,31 +361,31 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
 
     node_storage = ap_lookup_provider("manager", "shared", "0");
     if (node_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for nodes");
         return !OK;
     }
     host_storage = ap_lookup_provider("manager", "shared", "1");
     if (host_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for hosts");
         return !OK;
     }
     context_storage = ap_lookup_provider("manager", "shared", "2");
     if (context_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for contexts");
         return !OK;
     }
     balancer_storage = ap_lookup_provider("manager", "shared", "3");
     if (balancer_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for balancers");
         return !OK;
     }
     domain_storage = ap_lookup_provider("manager", "shared", "5");
     if (domain_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for domains");
         return !OK;
     }

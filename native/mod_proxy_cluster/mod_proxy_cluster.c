@@ -216,7 +216,7 @@ static void add_hcheck(server_rec *s, const proxy_server_conf *conf, proxy_worke
             key = ap_getword_conf(conf->pool, &arg);
             val = strchr(key, '=');
             if (!val) {
-                ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                              "Invalid ProxyHCTemplate parameter. Parameter must be "
                              "in the form 'key=value'");
                 return;
@@ -225,9 +225,9 @@ static void add_hcheck(server_rec *s, const proxy_server_conf *conf, proxy_worke
             *val++ = '\0';
             err = set_worker_hc_param_f(conf->pool, s, worker, key, val, NULL);
             if (err != NULL) {
-                ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s, "%s key: %s=%s", err, key, val);
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "%s key: %s=%s", err, key, val);
             }
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, s, "hcheck %s=%s add to worker %s", key, val,
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "hcheck %s=%s add to worker %s", key, val,
                          worker->s->name_ex);
         }
     }
@@ -377,12 +377,12 @@ static char *create_worker_build_name(const nodeinfo_t *node, apr_uri_t *uri, se
     url = apr_pstrcat(pool, node->mess.Type, "://", normalize_hostname(pool, node->mess.Host), ":", node->mess.Port,
                       NULL);
     if (apr_uri_parse(pool, url, uri) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_NOTICE | APLOG_NOERRNO, 0, server,
+        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server,
                      "create_worker: worker for %s failed: Unable to parse URL", url);
         return NULL;
     }
     if (!uri->scheme) {
-        ap_log_error(APLOG_MARK, APLOG_NOTICE | APLOG_NOERRNO, 0, server,
+        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server,
                      "create_worker: worker for %s failed: URL must be absolute!", url);
         return NULL;
     }
@@ -499,7 +499,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                  node->mess.id);
     err = ap_proxy_define_worker(conf->pool, &worker, balancer, conf, url, 0);
     if (err) {
-        ap_log_error(APLOG_MARK, APLOG_NOTICE | APLOG_NOERRNO, 0, server, "create_worker: worker for %s failed: %s",
+        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server, "create_worker: worker for %s failed: %s",
                      url, err);
         return APR_EGENERAL;
     }
@@ -595,7 +595,7 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
     if (!balancer) {
         int sizeb = conf->balancers->elt_size;
         proxy_balancer_shared *bshared;
-        ap_log_error(APLOG_MARK, APLOG_DEBUG | APLOG_NOERRNO, 0, server, "add_balancer_node: Create balancer %s", name);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "add_balancer_node: Create balancer %s", name);
 
         balancer = apr_array_push(conf->balancers);
         memset(balancer, 0, sizeb);
@@ -604,7 +604,7 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
         bshared = apr_palloc(conf->pool, sizeof(proxy_balancer_shared));
         memset(bshared, 0, sizeof(proxy_balancer_shared));
         if (PROXY_STRNCPY(bshared->sname, name) != APR_SUCCESS) {
-            ap_log_error(APLOG_MARK, APLOG_NOTICE | APLOG_NOERRNO, 0, server,
+            ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server,
                          "add_balancer_node: balancer safe-name (%s) too long", name);
             return NULL;
         }
@@ -615,7 +615,7 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
         balancer->sconf = conf;
         if (apr_thread_mutex_create(&(balancer->tmutex), APR_THREAD_MUTEX_DEFAULT, conf->pool) != APR_SUCCESS) {
             /* XXX: Do we need to log something here? */
-            ap_log_error(APLOG_MARK, APLOG_NOTICE | APLOG_NOERRNO, 0, server,
+            ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server,
                          "add_balancer_node: Can't create lock for balancer");
         }
         balancer->workers = apr_array_make(conf->pool, 5, sizeof(proxy_worker *));
@@ -623,7 +623,7 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
         /* XXX: TODO we should have our own lbmethod(s), this one is the mod_proxy_balancer default one! */
         balancer->lbmethod = ap_lookup_provider(PROXY_LBMETHOD, "byrequests", "0");
     } else {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG | APLOG_NOERRNO, 0, server, "add_balancer_node: Using balancer %s", name);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "add_balancer_node: Using balancer %s", name);
     }
 
     if (balancer && balancer->workers->nelts == 0) {
@@ -707,7 +707,7 @@ static void reuse_balancer(proxy_balancer *balancer, const char *name, apr_pool_
     balancer->s->max_attempts_set = 1;
     if (changed) {
         /* log a warning */
-        ap_log_error(APLOG_MARK, APLOG_NOTICE | APLOG_NOERRNO, 0, s, "Balancer %s changed", &balancer->s->name[11]);
+        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, "Balancer %s changed", &balancer->s->name[11]);
     }
 }
 
@@ -2268,7 +2268,7 @@ static void proxy_cluster_watchdog_func(server_rec *s, apr_pool_t *pool)
                     cached_context_table = read_context_table(cached_pool, context_storage, 1);
                     cached_balancer_table = read_balancer_table(cached_pool, balancer_storage, 1);
                     cached_node_table = read_node_table(cached_pool, node_storage, 1);
-                    ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+                    ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                                  "cached_pool: should have been created in proxy_cluster_child_init!");
                 }
                 node_storage->unlock_nodes();
@@ -2523,31 +2523,31 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
 
     node_storage = ap_lookup_provider("manager", "shared", "0");
     if (node_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for nodes");
         return !OK;
     }
     host_storage = ap_lookup_provider("manager", "shared", "1");
     if (host_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for hosts");
         return !OK;
     }
     context_storage = ap_lookup_provider("manager", "shared", "2");
     if (context_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for contexts");
         return !OK;
     }
     balancer_storage = ap_lookup_provider("manager", "shared", "3");
     if (balancer_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for balancers");
         return !OK;
     }
     sessionid_storage = ap_lookup_provider("manager", "shared", "4");
     if (sessionid_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for sessionids");
         return !OK;
     }
@@ -2558,7 +2558,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
 
     domain_storage = ap_lookup_provider("manager", "shared", "5");
     if (domain_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
                      "proxy_cluster_post_config: Can't find mod_manager for domains");
         return !OK;
     }
@@ -2750,7 +2750,7 @@ static int proxy_cluster_canon(request_rec *r, char *url)
     url += 9;
 
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server, "proxy_cluster_canon url: %s", url);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_canon url: %s", url);
 #endif
 
     /* do syntatic check.

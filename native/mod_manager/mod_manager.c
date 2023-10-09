@@ -541,7 +541,7 @@ static void normalize_balancer_name(char *balancer_name, const server_rec *s)
     }
     balancer_name = balancer_name_start;
     if (upper_case_char_found) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, s, SBALBAD, balancer_name);
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s, SBALBAD, balancer_name);
     }
 }
 
@@ -627,18 +627,18 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
     /* Get a provider to handle the shared memory */
     storage = ap_lookup_provider(AP_SLOTMEM_PROVIDER_GROUP, "shm", AP_SLOTMEM_PROVIDER_VERSION);
     if (storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "ap_lookup_provider %s failed",
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "ap_lookup_provider %s failed",
                      AP_SLOTMEM_PROVIDER_GROUP);
         return !OK;
     }
     nodestatsmem = create_mem_node(node, &mconf->maxnode, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (nodestatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_node %s failed", node);
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "create_mem_node %s failed", node);
         return !OK;
     }
     if (get_last_mem_error(nodestatsmem) != APR_SUCCESS) {
         char buf[120];
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_node %s failed: %s", node,
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "create_mem_node %s failed: %s", node,
                      apr_strerror(get_last_mem_error(nodestatsmem), buf, sizeof(buf)));
         return !OK;
     }
@@ -646,20 +646,20 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
     contextstatsmem =
         create_mem_context(context, &mconf->maxcontext, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (contextstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_context failed");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "create_mem_context failed");
         return !OK;
     }
 
     hoststatsmem = create_mem_host(host, &mconf->maxhost, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (hoststatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_host failed");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "create_mem_host failed");
         return !OK;
     }
 
     balancerstatsmem =
         create_mem_balancer(balancer, &mconf->maxhost, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (balancerstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_balancer failed");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "create_mem_balancer failed");
         return !OK;
     }
 
@@ -668,7 +668,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
         sessionidstatsmem = create_mem_sessionid(sessionid, &mconf->maxsessionid,
                                                  mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
         if (sessionidstatsmem == NULL) {
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_sessionid failed");
+            ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "create_mem_sessionid failed");
             return !OK;
         }
     }
@@ -676,7 +676,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
     domainstatsmem =
         create_mem_domain(domain, &mconf->maxnode, mconf->persistent + AP_SLOTMEM_TYPE_PREGRAB, p, storage);
     if (domainstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "create_mem_domain failed");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "create_mem_domain failed");
         return !OK;
     }
 
@@ -704,7 +704,7 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
 
     balancerhandler = ap_lookup_provider("proxy_cluster", "balancer", "0");
     if (balancerhandler == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, s, "can't find a ping/pong logic");
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s, "can't find a ping/pong logic");
     }
 
     advertise_info = ap_lookup_provider("advertise", "info", "0");
@@ -723,12 +723,12 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
 
     /* Create global mutex */
     if (ap_global_mutex_create(&node_mutex, NULL, node_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s, "manager_init: ap_global_mutex_create %s failed",
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "manager_init: ap_global_mutex_create %s failed",
                      node_mutex_type);
         return !OK;
     }
     if (ap_global_mutex_create(&context_mutex, NULL, context_mutex_type, NULL, s, p, 0) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s, "manager_init: ap_global_mutex_create %s failed",
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "manager_init: ap_global_mutex_create %s failed",
                      node_mutex_type);
         return !OK;
     }
@@ -2160,7 +2160,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                 }
                 if (strcmp(hisnode->mess.balancer, node->mess.balancer)) {
                     /* the same context would be on 2 different balancer */
-                    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
                                  "ENABLE: context %s is in balancer %s and %s", vhost->context, node->mess.balancer,
                                  hisnode->mess.balancer);
                 }
@@ -2897,7 +2897,7 @@ static void process_error(request_rec *r, char *errstring, int errtype)
         break;
     }
     apr_table_setn(r->err_headers_out, "Mess", errstring);
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_WARNING, 0, r->server, "manager_handler %s error: %s", r->method,
+    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server, "manager_handler %s error: %s", r->method,
                  errstring);
 }
 
@@ -2941,7 +2941,7 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
     ptr[pos] = apr_pstrdup(r->pool, "JVMRoute");
     ptr[pos + 2] = NULL;
     ptr[pos + 3] = NULL;
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, r->server, "process_domain");
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, r->server, "process_domain");
     for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS) {
@@ -3410,7 +3410,7 @@ static void manager_child_init(apr_pool_t *p, server_rec *s)
 
     if (storage == NULL) {
         /* that happens when doing a gracefull restart for example after additing/changing the storage provider */
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "Fatal storage provider not initialized");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "Fatal storage provider not initialized");
         return;
     }
 
@@ -3443,31 +3443,31 @@ static void manager_child_init(apr_pool_t *p, server_rec *s)
 
     nodestatsmem = get_mem_node(node, &mconf->maxnode, p, storage);
     if (nodestatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_node %s failed", node);
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "get_mem_node %s failed", node);
         return;
     }
     if (get_last_mem_error(nodestatsmem) != APR_SUCCESS) {
         char buf[120];
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_node %s failed: %s", node,
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "get_mem_node %s failed: %s", node,
                      apr_strerror(get_last_mem_error(nodestatsmem), buf, sizeof(buf)));
         return;
     }
 
     contextstatsmem = get_mem_context(context, &mconf->maxcontext, p, storage);
     if (contextstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_context failed");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "get_mem_context failed");
         return;
     }
 
     hoststatsmem = get_mem_host(host, &mconf->maxhost, p, storage);
     if (hoststatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_host failed");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "get_mem_host failed");
         return;
     }
 
     balancerstatsmem = get_mem_balancer(balancer, &mconf->maxhost, p, storage);
     if (balancerstatsmem == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_balancer failed");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "get_mem_balancer failed");
         return;
     }
 
@@ -3475,7 +3475,7 @@ static void manager_child_init(apr_pool_t *p, server_rec *s)
         /*  Try to get sessionid stuff only if required */
         sessionidstatsmem = get_mem_sessionid(sessionid, &mconf->maxsessionid, p, storage);
         if (sessionidstatsmem == NULL) {
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_EMERG, 0, s, "get_mem_sessionid failed");
+            ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "get_mem_sessionid failed");
             return;
         }
     }
