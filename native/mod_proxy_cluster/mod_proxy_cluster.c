@@ -1578,7 +1578,6 @@ static proxy_worker *internal_process_worker(proxy_worker *worker, int checking_
         return NULL;
     }
     if (helper->index == -1) {
-        ap_assert(0);
         return NULL; /* marked removed */
     }
     if (helper->index != worker->s->index) {
@@ -3265,7 +3264,6 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
         check_workers(conf, r->server);
         node_storage->unlock_nodes();
         if (!(*balancer = ap_proxy_get_balancer(r->pool, conf, *url, 0))) {
-            /* node_storage->unlock_nodes(); */
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy: CLUSTER no balancer for %s", *url);
             return DECLINED;
         }
