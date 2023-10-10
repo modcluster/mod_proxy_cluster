@@ -395,17 +395,20 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
     mc_watchdog_get_instance = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_get_instance);
     mc_watchdog_register_callback = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_register_callback);
     if (!mc_watchdog_get_instance || !mc_watchdog_register_callback) {
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, APLOGNO(03262) "mod_watchdog is required");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                     APLOGNO(03262) "proxy_cluster_post_config: mod_watchdog is required");
         return !OK;
     }
     if (mc_watchdog_get_instance(&watchdog, LB_CLUSTER_WATHCHDOG_NAME, 0, 1, p)) {
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, APLOGNO(03263) "Failed to create watchdog instance (%s)",
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                     APLOGNO(03263) "proxy_cluster_post_config: Failed to create watchdog instance (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
     }
     while (s) {
         if (mc_watchdog_register_callback(watchdog, AP_WD_TM_SLICE, s, mc_watchdog_callback)) {
-            ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, APLOGNO(03264) "Failed to register watchdog callback (%s)",
+            ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                         APLOGNO(03264) "proxy_cluster_post_config: Failed to register watchdog callback (%s)",
                          LB_CLUSTER_WATHCHDOG_NAME);
             return !OK;
         }
