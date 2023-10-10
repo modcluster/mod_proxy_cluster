@@ -26,7 +26,7 @@ run_test() {
     if [ $DEBUG ]; then
         local httpd_cont=$(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ')
         docker logs  $httpd_cont > "logs/${2:-$1}-httpd.log" 2>&1
-        docker cp ${httpd_cont}:/usr/local/apache2/logs/access_log "logs/${2:-$1}-httpd_access.log" > /dev/null
+        docker cp ${httpd_cont}:/usr/local/apache2/logs/access_log "logs/${2:-$1}-httpd_access.log" 2> /dev/null || true
     fi
     # Clean all after run
     httpd_all_clean > /dev/null 2>&1
