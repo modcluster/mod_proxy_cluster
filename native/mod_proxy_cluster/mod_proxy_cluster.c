@@ -302,8 +302,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     helper = *helper_ptr;
     if (helper->index == -1) {
         /* We are going to reuse a removed one */
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: reusing removed worker for %s", url);
-        ap_assert(0);
+        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server, "create_worker_reuse: reusing removed worker for %s", url);
         return APR_SUCCESS;
     }
 
@@ -1286,8 +1285,10 @@ static int internal_update_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
         strcmp(sport, ou->mess.Port)) {
         node_storage->unlock_nodes();
         /* the worker doesn't correspond to the node something is very broken */
-        ap_assert(0);
-        return 1; /* won't reach this one... */
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, server,
+                     "update_workers_lbstatus worker: (%s) does not correspond to the node (%s)", worker->s->hostname,
+                     ou->mess.Host);
+        return 1;
     }
 
     /* Here we should decide about using hcheck result or a request that pings the node */
