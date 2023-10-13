@@ -1008,6 +1008,189 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
     return -1;
 }
 
+static void process_config_balancer_defaults(request_rec *r, balancerinfo_t *balancerinfo, mod_manager_config *mconf)
+{
+    memset(balancerinfo, '\0', sizeof(*balancerinfo));
+    if (mconf->balancername != NULL) {
+        normalize_balancer_name(mconf->balancername, r->server);
+        strncpy(balancerinfo->balancer, mconf->balancername, sizeof(balancerinfo->balancer));
+        balancerinfo->balancer[sizeof(balancerinfo->balancer) - 1] = '\0';
+    } else {
+        strcpy(balancerinfo->balancer, "mycluster");
+    }
+    balancerinfo->StickySession = 1;
+    balancerinfo->StickySessionForce = 1;
+    strcpy(balancerinfo->StickySessionCookie, "JSESSIONID");
+    strcpy(balancerinfo->StickySessionPath, "jsessionid");
+    balancerinfo->Maxattempts = 1;
+    balancerinfo->Timeout = 0;
+}
+
+static void process_config_node_defaults(request_rec *r, nodeinfo_t *nodeinfo, mod_manager_config *mconf)
+{
+    memset(&nodeinfo->mess, '\0', sizeof(nodeinfo->mess));
+    if (mconf->balancername != NULL) {
+        normalize_balancer_name(mconf->balancername, r->server);
+        strncpy(nodeinfo->mess.balancer, mconf->balancername, sizeof(nodeinfo->mess.balancer));
+        nodeinfo->mess.balancer[sizeof(nodeinfo->mess.balancer) - 1] = '\0';
+    } else {
+        strcpy(nodeinfo->mess.balancer, "mycluster");
+    }
+    strcpy(nodeinfo->mess.Host, "localhost");
+    strcpy(nodeinfo->mess.Port, "8009");
+    strcpy(nodeinfo->mess.Type, "ajp");
+    nodeinfo->mess.Upgrade[0] = '\0';
+    nodeinfo->mess.AJPSecret[0] = '\0';
+    nodeinfo->mess.reversed = 0;
+    nodeinfo->mess.remove = 0;               /* not marked as removed */
+    nodeinfo->mess.flushpackets = flush_off; /* FLUSH_OFF; See enum flush_packets in proxy.h flush_off */
+    nodeinfo->mess.flushwait = PROXY_FLUSH_WAIT;
+    nodeinfo->mess.ping = apr_time_from_sec(10);
+    nodeinfo->mess.smax = -1; /* let mod_proxy logic get the right one */
+    nodeinfo->mess.ttl = apr_time_from_sec(60);
+    nodeinfo->mess.timeout = 0;
+    nodeinfo->mess.id = -1;
+    nodeinfo->mess.lastcleantry = 0;
+}
+
+static char *process_config_balancer(const request_rec *r, const char *key, char *val, balancerinfo_t *balancerinfo,
+                                     nodeinfo_t *nodeinfo, int *errtype)
+{
+    if (strcasecmp(key, "Balancer") == 0) {
+        if (strlen(val) >= sizeof(nodeinfo->mess.balancer)) {
+            *errtype = TYPESYNTAX;
+            return SBALBIG;
+        }
+        normalize_balancer_name(val, r->server);
+        strncpy(nodeinfo->mess.balancer, val, sizeof(nodeinfo->mess.balancer));
+        nodeinfo->mess.balancer[sizeof(nodeinfo->mess.balancer) - 1] = '\0';
+        strncpy(balancerinfo->balancer, val, sizeof(balancerinfo->balancer));
+        balancerinfo->balancer[sizeof(balancerinfo->balancer) - 1] = '\0';
+    }
+    if (strcasecmp(key, "StickySession") == 0) {
+        if (strcasecmp(val, "no") == 0) {
+            balancerinfo->StickySession = 0;
+        }
+    }
+    if (strcasecmp(key, "StickySessionCookie") == 0) {
+        if (strlen(val) >= sizeof(balancerinfo->StickySessionCookie)) {
+            *errtype = TYPESYNTAX;
+            return SBAFBIG;
+        }
+        strcpy(balancerinfo->StickySessionCookie, val);
+    }
+    if (strcasecmp(key, "StickySessionPath") == 0) {
+        if (strlen(val) >= sizeof(balancerinfo->StickySessionPath)) {
+            *errtype = TYPESYNTAX;
+            return SBAFBIG;
+        }
+        strcpy(balancerinfo->StickySessionPath, val);
+    }
+    if (strcasecmp(key, "StickySessionRemove") == 0) {
+        if (strcasecmp(val, "yes") == 0) {
+            balancerinfo->StickySessionRemove = 1;
+        }
+    }
+    /* The java part assumes default = yes and sents only StickySessionForce=No */
+    if (strcasecmp(key, "StickySessionForce") == 0) {
+        if (strcasecmp(val, "no") == 0) {
+            balancerinfo->StickySessionForce = 0;
+        }
+    }
+    /* Note that it is workerTimeout (set/getWorkerTimeout in java code) */
+    if (strcasecmp(key, "WaitWorker") == 0) {
+        balancerinfo->Timeout = apr_time_from_sec(atoi(val));
+    }
+    if (strcasecmp(key, "Maxattempts") == 0) {
+        balancerinfo->Maxattempts = atoi(val);
+    }
+
+    return NULL;
+}
+
+static char *process_config_node(const char *key, char *val, nodeinfo_t *nodeinfo, int *errtype)
+{
+    if (strcasecmp(key, "JVMRoute") == 0) {
+        if (strlen(val) >= sizeof(nodeinfo->mess.JVMRoute)) {
+            *errtype = TYPESYNTAX;
+            return SROUBIG;
+        }
+        strcpy(nodeinfo->mess.JVMRoute, val);
+    }
+    /* We renamed it LBGroup */
+    if (strcasecmp(key, "Domain") == 0) {
+        if (strlen(val) >= sizeof(nodeinfo->mess.Domain)) {
+            *errtype = TYPESYNTAX;
+            return SDOMBIG;
+        }
+        strcpy(nodeinfo->mess.Domain, val);
+    }
+    if (strcasecmp(key, "Host") == 0) {
+        char *p_read = val, *p_write = val;
+        int flag = 0;
+        if (strlen(val) >= sizeof(nodeinfo->mess.Host)) {
+            *errtype = TYPESYNTAX;
+            return SHOSBIG;
+        }
+        /* Removes %zone from an address */
+        if (*p_read == '[') {
+            while (*p_read) {
+                *p_write = *p_read++;
+                if ((*p_write == '%' || flag) && *p_write != ']') {
+                    flag = 1;
+                } else {
+                    p_write++;
+                }
+            }
+            *p_write = '\0';
+        }
+        strcpy(nodeinfo->mess.Host, val);
+    }
+    if (strcasecmp(key, "Port") == 0) {
+        if (strlen(val) >= sizeof(nodeinfo->mess.Port)) {
+            *errtype = TYPESYNTAX;
+            return SPORBIG;
+        }
+        strcpy(nodeinfo->mess.Port, val);
+    }
+    if (strcasecmp(key, "Type") == 0) {
+        if (strlen(val) >= sizeof(nodeinfo->mess.Type)) {
+            *errtype = TYPESYNTAX;
+            return STYPBIG;
+        }
+        strcpy(nodeinfo->mess.Type, val);
+    }
+    if (strcasecmp(key, "Reversed") == 0) {
+        if (strcasecmp(val, "yes") == 0) {
+            nodeinfo->mess.reversed = 1;
+        }
+    }
+    if (strcasecmp(key, "flushpackets") == 0) {
+        if (strcasecmp(val, "on") == 0) {
+            nodeinfo->mess.flushpackets = flush_on;
+        } else if (strcasecmp(val, "auto") == 0) {
+            nodeinfo->mess.flushpackets = flush_auto;
+        }
+    }
+    if (strcasecmp(key, "flushwait") == 0) {
+        nodeinfo->mess.flushwait = atoi(val) * 1000;
+    }
+    if (strcasecmp(key, "ping") == 0) {
+        nodeinfo->mess.ping = apr_time_from_sec(atoi(val));
+    }
+    if (strcasecmp(key, "smax") == 0) {
+        nodeinfo->mess.smax = atoi(val);
+    }
+    if (strcasecmp(key, "ttl") == 0) {
+        nodeinfo->mess.ttl = apr_time_from_sec(atoi(val));
+    }
+    if (strcasecmp(key, "Timeout") == 0) {
+        nodeinfo->mess.timeout = apr_time_from_sec(atoi(val));
+    }
+
+    return NULL;
+}
+
 /*
  * Process a CONFIG message
  * Balancer: <Balancer name>
@@ -1056,180 +1239,27 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     vhost->next = NULL;
     phost = vhost;
 
-    /* Fill default nodes values */
-    memset(&nodeinfo.mess, '\0', sizeof(nodeinfo.mess));
-    if (mconf->balancername != NULL) {
-        normalize_balancer_name(mconf->balancername, r->server);
-        strncpy(nodeinfo.mess.balancer, mconf->balancername, sizeof(nodeinfo.mess.balancer));
-        nodeinfo.mess.balancer[sizeof(nodeinfo.mess.balancer) - 1] = '\0';
-    } else {
-        strcpy(nodeinfo.mess.balancer, "mycluster");
-    }
-    strcpy(nodeinfo.mess.Host, "localhost");
-    strcpy(nodeinfo.mess.Port, "8009");
-    strcpy(nodeinfo.mess.Type, "ajp");
-    nodeinfo.mess.Upgrade[0] = '\0';
-    nodeinfo.mess.AJPSecret[0] = '\0';
-    nodeinfo.mess.reversed = 0;
-    nodeinfo.mess.remove = 0;               /* not marked as removed */
-    nodeinfo.mess.flushpackets = flush_off; /* FLUSH_OFF; See enum flush_packets in proxy.h flush_off */
-    nodeinfo.mess.flushwait = PROXY_FLUSH_WAIT;
-    nodeinfo.mess.ping = apr_time_from_sec(10);
-    nodeinfo.mess.smax = -1; /* let mod_proxy logic get the right one */
-    nodeinfo.mess.ttl = apr_time_from_sec(60);
-    nodeinfo.mess.timeout = 0;
-    nodeinfo.mess.id = -1;
-    nodeinfo.mess.lastcleantry = 0;
+    /* Fill default node values */
+    process_config_node_defaults(r, &nodeinfo, mconf);
 
     /* Fill default balancer values */
-    memset(&balancerinfo, '\0', sizeof(balancerinfo));
-    if (mconf->balancername != NULL) {
-        normalize_balancer_name(mconf->balancername, r->server);
-        strncpy(balancerinfo.balancer, mconf->balancername, sizeof(balancerinfo.balancer));
-        balancerinfo.balancer[sizeof(balancerinfo.balancer) - 1] = '\0';
-    } else {
-        strcpy(balancerinfo.balancer, "mycluster");
-    }
-    balancerinfo.StickySession = 1;
-    balancerinfo.StickySessionForce = 1;
-    strcpy(balancerinfo.StickySessionCookie, "JSESSIONID");
-    strcpy(balancerinfo.StickySessionPath, "jsessionid");
-    balancerinfo.Maxattempts = 1;
-    balancerinfo.Timeout = 0;
+    process_config_balancer_defaults(r, &balancerinfo, mconf);
 
     while (ptr[i]) {
+        char *msg = NULL;
         /* XXX: balancer part */
-        if (strcasecmp(ptr[i], "Balancer") == 0) {
-            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.balancer)) {
-                *errtype = TYPESYNTAX;
-                return SBALBIG;
-            }
-            normalize_balancer_name(ptr[i + 1], r->server);
-            strncpy(nodeinfo.mess.balancer, ptr[i + 1], sizeof(nodeinfo.mess.balancer));
-            nodeinfo.mess.balancer[sizeof(nodeinfo.mess.balancer) - 1] = '\0';
-            strncpy(balancerinfo.balancer, ptr[i + 1], sizeof(balancerinfo.balancer));
-            balancerinfo.balancer[sizeof(balancerinfo.balancer) - 1] = '\0';
-        }
-        if (strcasecmp(ptr[i], "StickySession") == 0) {
-            if (strcasecmp(ptr[i + 1], "no") == 0) {
-                balancerinfo.StickySession = 0;
-            }
-        }
-        if (strcasecmp(ptr[i], "StickySessionCookie") == 0) {
-            if (strlen(ptr[i + 1]) >= sizeof(balancerinfo.StickySessionCookie)) {
-                *errtype = TYPESYNTAX;
-                return SBAFBIG;
-            }
-            strcpy(balancerinfo.StickySessionCookie, ptr[i + 1]);
-        }
-        if (strcasecmp(ptr[i], "StickySessionPath") == 0) {
-            if (strlen(ptr[i + 1]) >= sizeof(balancerinfo.StickySessionPath)) {
-                *errtype = TYPESYNTAX;
-                return SBAFBIG;
-            }
-            strcpy(balancerinfo.StickySessionPath, ptr[i + 1]);
-        }
-        if (strcasecmp(ptr[i], "StickySessionRemove") == 0) {
-            if (strcasecmp(ptr[i + 1], "yes") == 0) {
-                balancerinfo.StickySessionRemove = 1;
-            }
-        }
-        /* The java part assumes default = yes and sents only StickySessionForce=No */
-        if (strcasecmp(ptr[i], "StickySessionForce") == 0) {
-            if (strcasecmp(ptr[i + 1], "no") == 0) {
-                balancerinfo.StickySessionForce = 0;
-            }
-        }
-        /* Note that it is workerTimeout (set/getWorkerTimeout in java code) */
-        if (strcasecmp(ptr[i], "WaitWorker") == 0) {
-            balancerinfo.Timeout = apr_time_from_sec(atoi(ptr[i + 1]));
-        }
-        if (strcasecmp(ptr[i], "Maxattempts") == 0) {
-            balancerinfo.Maxattempts = atoi(ptr[i + 1]);
+        msg = process_config_balancer(r, ptr[i], ptr[i + 1], &balancerinfo, &nodeinfo, errtype);
+        if (msg != NULL) {
+            return msg;
         }
 
         /* XXX: Node part */
-        if (strcasecmp(ptr[i], "JVMRoute") == 0) {
-            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.JVMRoute)) {
-                *errtype = TYPESYNTAX;
-                return SROUBIG;
-            }
-            strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
-        }
-        /* We renamed it LBGroup */
-        if (strcasecmp(ptr[i], "Domain") == 0) {
-            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Domain)) {
-                *errtype = TYPESYNTAX;
-                return SDOMBIG;
-            }
-            strcpy(nodeinfo.mess.Domain, ptr[i + 1]);
-        }
-        if (strcasecmp(ptr[i], "Host") == 0) {
-            char *p_read = ptr[i + 1], *p_write = ptr[i + 1];
-            int flag = 0;
-            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Host)) {
-                *errtype = TYPESYNTAX;
-                return SHOSBIG;
-            }
-
-            /* Removes %zone from an address */
-            if (*p_read == '[') {
-                while (*p_read) {
-                    *p_write = *p_read++;
-                    if ((*p_write == '%' || flag) && *p_write != ']') {
-                        flag = 1;
-                    } else {
-                        p_write++;
-                    }
-                }
-                *p_write = '\0';
-            }
-
-            strcpy(nodeinfo.mess.Host, ptr[i + 1]);
-        }
-        if (strcasecmp(ptr[i], "Port") == 0) {
-            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Port)) {
-                *errtype = TYPESYNTAX;
-                return SPORBIG;
-            }
-            strcpy(nodeinfo.mess.Port, ptr[i + 1]);
-        }
-        if (strcasecmp(ptr[i], "Type") == 0) {
-            if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.Type)) {
-                *errtype = TYPESYNTAX;
-                return STYPBIG;
-            }
-            strcpy(nodeinfo.mess.Type, ptr[i + 1]);
-        }
-        if (strcasecmp(ptr[i], "Reversed") == 0) {
-            if (strcasecmp(ptr[i + 1], "yes") == 0) {
-                nodeinfo.mess.reversed = 1;
-            }
-        }
-        if (strcasecmp(ptr[i], "flushpackets") == 0) {
-            if (strcasecmp(ptr[i + 1], "on") == 0) {
-                nodeinfo.mess.flushpackets = flush_on;
-            } else if (strcasecmp(ptr[i + 1], "auto") == 0) {
-                nodeinfo.mess.flushpackets = flush_auto;
-            }
-        }
-        if (strcasecmp(ptr[i], "flushwait") == 0) {
-            nodeinfo.mess.flushwait = atoi(ptr[i + 1]) * 1000;
-        }
-        if (strcasecmp(ptr[i], "ping") == 0) {
-            nodeinfo.mess.ping = apr_time_from_sec(atoi(ptr[i + 1]));
-        }
-        if (strcasecmp(ptr[i], "smax") == 0) {
-            nodeinfo.mess.smax = atoi(ptr[i + 1]);
-        }
-        if (strcasecmp(ptr[i], "ttl") == 0) {
-            nodeinfo.mess.ttl = apr_time_from_sec(atoi(ptr[i + 1]));
-        }
-        if (strcasecmp(ptr[i], "Timeout") == 0) {
-            nodeinfo.mess.timeout = apr_time_from_sec(atoi(ptr[i + 1]));
+        msg = process_config_node(ptr[i], ptr[i + 1], &nodeinfo, errtype);
+        if (msg != NULL) {
+            return msg;
         }
 
-        /* Hosts and contexts (optional paramters) */
+        /* Hosts and contexts (optional parameters) */
         if (strcasecmp(ptr[i], "Alias") == 0) {
             if (phost->host && !phost->context) {
                 *errtype = TYPESYNTAX;
@@ -1359,7 +1389,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                             ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                                          "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT %s!!!",
                                          id, workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
-                            ap_assert(0); /* we are in trouble */
+                            ap_assert(0);
                         }
                     }
                 }
