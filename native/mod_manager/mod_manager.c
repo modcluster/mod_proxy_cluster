@@ -1226,7 +1226,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     int removed = 0;
     void *sconf = r->server->module_config;
     mod_manager_config *mconf = ap_get_module_config(sconf, &manager_module);
-    int clean = -1;
+    int clean = 1;
     proxy_worker *worker;
     const proxy_server_conf *the_conf = NULL;
     apr_status_t rv;
@@ -1379,19 +1379,18 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                     if (strcmp(workernode->mess.JVMRoute, "REMOVED") == 0) {
                         /* We are in the remove process */
                         /* Something to clean ? */
-                        removed = -1;
                         strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
-                    } else {
                         /* if the workernode->mess is zeroed we are going to reinsert it */
-                        if (workernode->mess.JVMRoute[0] == '\0') {
-                            removed = -1;
-                        } else {
-                            ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-                                         "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT %s!!!",
-                                         id, workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
-                            ap_assert(0);
-                        }
+                    } else if ((workernode->mess.JVMRoute[0] != '\0') &&
+                               (strcmp(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute) != 0)) {
+                        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
+                                     "process_config: proxy_node_getid() worker %d (%s) exists and IS NOT %s!!!", id,
+                                     workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
+                        loc_unlock_nodes();
+                        *errtype = TYPEMEM;
+                        return MNODEET;
                     }
+                    removed = 1;
                 }
                 ap_assert(the_conf);
             }
