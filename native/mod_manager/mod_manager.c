@@ -1390,7 +1390,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                         *errtype = TYPEMEM;
                         return MNODEET;
                     }
-                    removed = 1;
+                    removed = id; /* we save the id of the worknode in case insert/update fails */
                 }
                 ap_assert(the_conf);
             }
@@ -1444,7 +1444,14 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                      "process_config: insert_update_node failed for %s clean: %d", nodeinfo.mess.JVMRoute, clean);
         loc_unlock_nodes();
         if (removed) {
-            ap_assert(0); /* troubles */
+            nodeinfo_t workernodeinfo;
+            nodeinfo_t *workernode;
+            workernodeinfo.mess.id = removed;
+            workernode = read_node(nodestatsmem, &workernodeinfo);
+            strcpy(workernode->mess.JVMRoute, "REMOVED");
+            workernode->mess.remove = 1;
+            workernode->updatetime = apr_time_now();
+            workernode->mess.num_remove_check = 0;
         }
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
