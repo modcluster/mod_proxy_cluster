@@ -354,14 +354,15 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     *shared = worker->s;
     worker->s = (proxy_worker_shared *)ptr;
     worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
-    helper->index = node->mess.id;
     helper->isinnodes = 1;
+    helper->index = node->mess.id;
 
     if ((rv = ap_proxy_initialize_worker(worker, server, conf->pool)) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR, rv, server, "ap_proxy_initialize_worker failed %d for %s", rv, url);
         return rv;
     }
 
+    worker->s->index = node->mess.id;
     /* add health check */
     worker->s->updated = apr_time_now();
     if (proxyhctemplate != NULL) {
@@ -521,8 +522,8 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
     ptr = ptr_node + node->offset;
     shared = worker->s;
     worker->s = (proxy_worker_shared *)ptr;
-    helper->index = node->mess.id;
     helper->isinnodes = 1;
+    helper->index = node->mess.id;
 
     /* Changing the shared memory requires locking it... */
     if (strncmp(worker->s->name_ex, shared->name_ex, sizeof(worker->s->name_ex))) {
@@ -538,6 +539,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         ap_log_error(APLOG_MARK, APLOG_ERR, rv, server, "ap_proxy_initialize_worker failed %d for %s:%s", rv, url, ptr);
         return rv;
     }
+    worker->s->index = node->mess.id;
 
     /* The Shared datastatus may already contain a valid information */
     if (!worker->s->status) {
@@ -795,18 +797,10 @@ static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int 
             proxy_worker **worker = (proxy_worker **)ptrw;
             proxy_cluster_helper *helper = (proxy_cluster_helper *)(*worker)->context;
             if ((*worker)->s == stat && helper->index == id) {
-
-                /* Check that the worker is really the one we need */
-                char sport[7];
-                apr_snprintf(sport, sizeof(sport), "%d", (*worker)->s->port);
-                if (strcmp((*worker)->s->scheme, node->mess.Type) ||
-                    compare_hostname((*worker)->s->hostname, node->mess.Host) || strcmp(sport, node->mess.Port)) {
-                    (*worker)->s->index = -1;
-                    /* XXX: broken  ap_my_generation--; mark old generation that will recreate the process */
-                    continue; /* skip it */
-                }
-
                 return *worker;
+            }
+            if (helper->index == id) {
+                (*worker)->s->index = -1;
             }
         }
     }
@@ -2075,6 +2069,7 @@ static void init_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_worker
     worker->s->redirect[0] = '\0';
     worker->s->lbstatus = 0;
     worker->s->lbfactor = -1; /* prevent using the node using status message */
+    worker->s->index = node->mess.id;
 
     /* add health check */
     worker->s->updated = apr_time_now();
@@ -2130,7 +2125,8 @@ static int node_has_workers(const server_rec *server, const proxy_server_conf *c
             ap_assert(helper); /* we are in trouble ... */
             if (helper->index == id) {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                             "remove_removed_node %d for REMOVED node_has_workers %d", id, getpid());
+                             "remove_removed_node %d for REMOVED node_has_workers %d (%s)", id, getpid(),
+                             worker->s->hostname_ex);
                 return 1;
             }
         }
