@@ -200,13 +200,14 @@ nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node)
 
     if (node->mess.id == -1) {
         rv = s->storage->doall(s->slotmem, loc_read_node, node, s->p);
-        if (rv != APR_EEXIST) {
-            return NULL;
+        if (rv == APR_EEXIST) {
+            return node;
         }
-    }
-    rv = s->storage->dptr(s->slotmem, node->mess.id, (void **)&ou);
-    if (rv == APR_SUCCESS) {
-        return ou;
+    } else {
+        rv = s->storage->dptr(s->slotmem, node->mess.id, (void **)&ou);
+        if (rv == APR_SUCCESS) {
+            return ou;
+        }
     }
     return NULL;
 }
