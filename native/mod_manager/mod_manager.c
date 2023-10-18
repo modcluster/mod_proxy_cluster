@@ -1191,6 +1191,23 @@ static char *process_config_node(const char *key, char *val, nodeinfo_t *nodeinf
     return NULL;
 }
 
+static nodeinfo_t *read_node_by_id(mem_t *mem, int id)
+{
+    nodeinfo_t workernodeinfo;
+    workernodeinfo.mess.id = id;
+    return read_node(nodestatsmem, &workernodeinfo);
+}
+
+static void mark_node_removed(nodeinfo_t *node)
+{
+    if (node) {
+        strcpy(node->mess.JVMRoute, "REMOVED");
+        node->mess.remove = 1;
+        node->updatetime = apr_time_now();
+        node->mess.num_remove_check = 0;
+    }
+}
+
 /*
  * Process a CONFIG message
  * Balancer: <Balancer name>
@@ -1336,10 +1353,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                          "process_config: node %s %d %s : %s  %s already exist removing...", node->mess.JVMRoute,
                          node->mess.id, node->mess.Port, nodeinfo.mess.JVMRoute, nodeinfo.mess.Port);
-            strcpy(node->mess.JVMRoute, "REMOVED");
-            node->mess.remove = 1;
-            node->updatetime = apr_time_now();
-            node->mess.num_remove_check = 0;
+            mark_node_removed(node);
             loc_remove_host_context(node->mess.id, r->pool);
             inc_version_node();
             loc_unlock_nodes();
@@ -1371,10 +1385,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                          nodeinfo.mess.JVMRoute);
             if (node == NULL) {
                 /* try to read the node */
-                nodeinfo_t workernodeinfo;
-                nodeinfo_t *workernode;
-                workernodeinfo.mess.id = id;
-                workernode = read_node(nodestatsmem, &workernodeinfo);
+                nodeinfo_t *workernode = read_node_by_id(nodestatsmem, id);
                 if (workernode != NULL) {
                     if (strcmp(workernode->mess.JVMRoute, "REMOVED") == 0) {
                         /* We are in the remove process */
@@ -1442,27 +1453,18 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "process_config: insert_update_node failed for %s clean: %d", nodeinfo.mess.JVMRoute, clean);
-        loc_unlock_nodes();
         if (removed) {
-            nodeinfo_t workernodeinfo;
-            nodeinfo_t *workernode;
-            workernodeinfo.mess.id = removed;
-            workernode = read_node(nodestatsmem, &workernodeinfo);
-            strcpy(workernode->mess.JVMRoute, "REMOVED");
-            workernode->mess.remove = 1;
-            workernode->updatetime = apr_time_now();
-            workernode->mess.num_remove_check = 0;
+            nodeinfo_t *workernode = read_node_by_id(nodestatsmem, removed);
+            mark_node_removed(workernode);
         }
+        loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODEUI, nodeinfo.mess.JVMRoute);
     }
 
     if (clean == 0) {
         /* need to read the node */
-        nodeinfo_t workernodeinfo;
-        nodeinfo_t *workernode;
-        workernodeinfo.mess.id = id;
-        workernode = read_node(nodestatsmem, &workernodeinfo);
+        nodeinfo_t *workernode = read_node_by_id(nodestatsmem, id);
         ap_assert(workernode != NULL);
         ap_assert(the_conf);
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
