@@ -1,6 +1,6 @@
-ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.57.tar.gz"
+ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.58.tar.gz"
 
-FROM fedora:37
+FROM fedora:38
 
 RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf -y
 
@@ -15,9 +15,10 @@ ADD mod_proxy_cluster /
 ADD run.sh /tmp
 
 RUN wget $HTTPD
-RUN tar xvf $(filename $HTTPD)
+RUN mkdir httpd
+RUN tar xvf $(filename $HTTPD) --strip 1 -C httpd
 RUN ls
-WORKDIR /httpd-2.4.57
+WORKDIR /httpd
 RUN ./configure --enable-proxy \
                 --enable-proxy-http \
                 --enable-proxy-ajp \
