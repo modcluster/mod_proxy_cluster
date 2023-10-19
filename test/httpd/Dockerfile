@@ -15,9 +15,10 @@ ADD mod_proxy_cluster /
 ADD run.sh /tmp
 
 RUN wget $HTTPD
-RUN tar xvf $(filename $HTTPD)
+RUN mkdir httpd
+RUN tar xvf $(filename $HTTPD) --strip 1 -C httpd
 RUN ls
-WORKDIR /httpd-2.4.58
+WORKDIR /httpd
 RUN ./configure --enable-proxy \
                 --enable-proxy-http \
                 --enable-proxy-ajp \
