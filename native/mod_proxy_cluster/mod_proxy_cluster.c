@@ -1431,7 +1431,6 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 /* worker->s->retries is also set to zero is a connection is     */
                 /* establish so we use read to check for changes                 */
                 if (!internal_update_lbstatus(conf, pool, server, now, ou, id[i], stat)) {
-                    node_storage->unlock_nodes();
                     return;
                 }
             } else {
