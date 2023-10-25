@@ -21,6 +21,7 @@ native/*/Makefile
 native/*/autom4te.cache/
 native/*/config.status
 native/*/configure
+native/*/configure~
 
 # Native testsuite
 bin/
@@ -36,5 +37,13 @@ test/httpd/mod_proxy_cluster
 # Log files
 **/*.log
 
-# test nohup files
+# test files
 **/nohup.out
+test/MODCLUSTER-640/mod_proxy_cluster_new.conf
+test/dependency-reduced-pom.xml
+test/mod_proxy_cluster_new.conf
+test/new.xml
+test/server.xml
+
+# patch files
+**/*.patch

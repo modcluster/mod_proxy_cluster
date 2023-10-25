@@ -185,11 +185,10 @@ static int lbmethod_cluster_trans(request_rec *r)
 
 
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server,
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                  "lbmethod_cluster_trans for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
                  r->handler, r->uri, r->args, r->unparsed_uri);
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server, "lbmethod_cluster_trans for %d",
-                 conf->balancers->nelts);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "lbmethod_cluster_trans for %d", conf->balancers->nelts);
 #endif
 
     proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage, 0);
@@ -219,15 +218,15 @@ static int lbmethod_cluster_trans(request_rec *r)
         r->handler = "proxy-server";
         r->proxyreq = PROXYREQ_REVERSE;
 #if HAVE_CLUSTER_EX_DEBUG
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server, "proxy_cluster_trans using %s uri: %s",
-                     balancer, r->filename);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_trans using %s uri: %s", balancer,
+                     r->filename);
 #endif
         return OK; /* Mod_proxy will process it */
     }
 
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO | APLOG_DEBUG, 0, r->server,
-                 "proxy_cluster_trans DECLINED %s uri: %s unparsed_uri: %s", balancer, r->filename, r->unparsed_uri);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_cluster_trans DECLINED %s uri: %s unparsed_uri: %s",
+                 balancer, r->filename, r->unparsed_uri);
 #endif
     return DECLINED;
 }
@@ -361,32 +360,27 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
 
     node_storage = ap_lookup_provider("manager", "shared", "0");
     if (node_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
-                     "proxy_cluster_post_config: Can't find mod_manager for nodes");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for nodes");
         return !OK;
     }
     host_storage = ap_lookup_provider("manager", "shared", "1");
     if (host_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
-                     "proxy_cluster_post_config: Can't find mod_manager for hosts");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for hosts");
         return !OK;
     }
     context_storage = ap_lookup_provider("manager", "shared", "2");
     if (context_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
-                     "proxy_cluster_post_config: Can't find mod_manager for contexts");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for contexts");
         return !OK;
     }
     balancer_storage = ap_lookup_provider("manager", "shared", "3");
     if (balancer_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
-                     "proxy_cluster_post_config: Can't find mod_manager for balancers");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for balancers");
         return !OK;
     }
     domain_storage = ap_lookup_provider("manager", "shared", "5");
     if (domain_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_ERR | APLOG_NOERRNO, 0, s,
-                     "proxy_cluster_post_config: Can't find mod_manager for domains");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for domains");
         return !OK;
     }
 
@@ -401,17 +395,20 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
     mc_watchdog_get_instance = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_get_instance);
     mc_watchdog_register_callback = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_register_callback);
     if (!mc_watchdog_get_instance || !mc_watchdog_register_callback) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03262) "mod_watchdog is required");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                     APLOGNO(03262) "proxy_cluster_post_config: mod_watchdog is required");
         return !OK;
     }
     if (mc_watchdog_get_instance(&watchdog, LB_CLUSTER_WATHCHDOG_NAME, 0, 1, p)) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03263) "Failed to create watchdog instance (%s)",
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                     APLOGNO(03263) "proxy_cluster_post_config: Failed to create watchdog instance (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
     }
     while (s) {
         if (mc_watchdog_register_callback(watchdog, AP_WD_TM_SLICE, s, mc_watchdog_callback)) {
-            ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, APLOGNO(03264) "Failed to register watchdog callback (%s)",
+            ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                         APLOGNO(03264) "proxy_cluster_post_config: Failed to register watchdog callback (%s)",
                          LB_CLUSTER_WATHCHDOG_NAME);
             return !OK;
         }

@@ -390,9 +390,9 @@ static apr_status_t ma_group_join(const char *addr, apr_port_t port, const char 
         return rv;
     }
     if ((rv = apr_mcast_join(ma_mgroup_socket, ma_mgroup_sa, ma_niface_sa, NULL)) != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, rv, s, "mod_advertise: ma_group_join apr_mcast_join failed");
+        ap_log_error(APLOG_MARK, APLOG_ERR, rv, s, "mod_advertise: ma_group_join apr_mcast_join failed");
         if ((rv = apr_mcast_loopback(ma_mgroup_socket, 1)) != APR_SUCCESS) {
-            ap_log_error(APLOG_MARK, APLOG_WARNING, rv, s, "mod_advertise: ma_group_join apr_mcast_loopback failed");
+            ap_log_error(APLOG_MARK, APLOG_ERR, rv, s, "mod_advertise: ma_group_join apr_mcast_loopback failed");
             apr_socket_close(ma_mgroup_socket);
             return rv;
         }
@@ -581,8 +581,8 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
         if (ppid) {
             ma_parent_pid = atol(ppid);
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s,
-                         "[%" APR_PID_T_FMT " - %" APR_PID_T_FMT "] in child post config hook", getpid(),
-                         ma_parent_pid);
+                         "post_config_hook: [%" APR_PID_T_FMT " - %" APR_PID_T_FMT "] in child post config hook",
+                         getpid(), ma_parent_pid);
             return OK;
         }
     }
@@ -608,7 +608,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
         rv = ma_group_join(mconf->ma_advertise_adrs, mconf->ma_advertise_port, mconf->ma_bind_adrs, mconf->ma_bind_port,
                            pconf, s);
         if (rv != APR_SUCCESS) {
-            ap_log_error(APLOG_MARK, APLOG_ERR, rv, s, "mod_advertise: multicast join failed for %s:%d.",
+            ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "post_config_hook: multicast join failed for %s:%d.",
                          mconf->ma_advertise_adrs, mconf->ma_advertise_port);
             ma_advertise_run = 0;
         } else {
@@ -651,7 +651,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
         rv = apr_parse_addr_port(&mconf->ma_advertise_srvs, &mconf->ma_advertise_srvi, &mconf->ma_advertise_srvp, ptr,
                                  pproc);
         if (rv != APR_SUCCESS || !mconf->ma_advertise_srvs || !mconf->ma_advertise_srvp) {
-            ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "mod_advertise: Invalid ServerAdvertise Address %s", ptr);
+            ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "post_config_hook: Invalid ServerAdvertise Address %s", ptr);
             return rv;
         }
     }
@@ -659,7 +659,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
     /* prevent X-Manager-Address: (null):0  */
     if (!mconf->ma_advertise_srvs || !mconf->ma_advertise_srvp) {
         ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "mod_advertise: ServerAdvertise Address or Port not defined, Advertise disabled!!!");
+                     "post_config_hook: ServerAdvertise Address or Port not defined, Advertise disabled!!!");
         return OK;
     }
 
@@ -667,7 +667,7 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
     is_mp_running = 1;
     rv = apr_thread_create(&tp, NULL, parent_thread, server, pconf);
     if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "mod_advertise: parent apr_thread_create");
+        ap_log_error(APLOG_MARK, APLOG_CRIT, rv, s, "post_config_hook: parent apr_thread_create");
         return rv;
     }
     apr_thread_detach(tp);
@@ -678,7 +678,8 @@ static int post_config_hook(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pte
     apr_pool_create(&magd->cpool, pconf);
     apr_pool_cleanup_register(magd->cpool, magd, pconfig_cleanup, apr_pool_cleanup_null);
 
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, "Advertise initialized for process %" APR_PID_T_FMT, getpid());
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, "post_config_hook: Advertise initialized for process %" APR_PID_T_FMT,
+                 getpid());
 
     apr_pool_cleanup_register(magd->ppool, magd, process_cleanup, apr_pool_cleanup_null);
 
