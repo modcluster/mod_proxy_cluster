@@ -72,13 +72,6 @@ static mem_t *create_attach_mem_host(char *string, unsigned *num, int type, int 
     return ptr;
 }
 
-/**
- * Insert(alloc) and update a host record in the shared table
- * @param pointer to the shared table.
- * @param host host to store in the shared table.
- * @return APR_EEXIST if the record was updated, APR_SUCCESS otherwise
- *
- */
 static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
 {
     hostinfo_t *in = (hostinfo_t *)data;
@@ -121,12 +114,6 @@ apr_status_t insert_update_host(mem_t *s, hostinfo_t *host)
     return APR_SUCCESS;
 }
 
-/**
- * read a host record from the shared table
- * @param pointer to the shared table.
- * @param host host to read from the shared table.
- * @return address of the read host or NULL if error.
- */
 static apr_status_t loc_read_host(void *mem, void *data, apr_pool_t *pool)
 {
     hostinfo_t *in = (hostinfo_t *)data;
@@ -159,35 +146,16 @@ hostinfo_t *read_host(mem_t *s, hostinfo_t *host)
     return NULL;
 }
 
-/**
- * get a host record from the shared table
- * @param pointer to the shared table.
- * @param host address where the host is locate in the shared table.
- * @param id  in the host table.
- * @return APR_SUCCESS if all went well
- */
 apr_status_t get_host(mem_t *s, hostinfo_t **host, int id)
 {
     return s->storage->dptr(s->slotmem, id, (void **)host);
 }
 
-/**
- * remove(free) a host record from the shared table
- * @param pointer to the shared table.
- * @param id id of the host to remove from the shared table.
- * @return APR_SUCCESS if all went well
- */
 apr_status_t remove_host(mem_t *s, int id)
 {
     return s->storage->release(s->slotmem, id);
 }
 
-/*
- * get the ids for the used (not free) hosts in the table
- * @param pointer to the shared table.
- * @param ids array of int to store the used id (must be big enough).
- * @return number of host existing or 0.
- */
 int get_ids_used_host(mem_t *s, int *ids)
 {
     struct counter count;
@@ -199,36 +167,16 @@ int get_ids_used_host(mem_t *s, int *ids)
     return count.count;
 }
 
-/*
- * read the size of the table.
- * @param pointer to the shared table.
- * @return the max number of host that the slotmem can contain.
- */
 int get_max_size_host(mem_t *s)
 {
     return s->storage->num_slots(s->slotmem);
 }
 
-/**
- * attach to the shared host table
- * @param name of an existing shared table.
- * @param address to store the size of the shared table.
- * @param p pool to use for allocations.
- * @return address of struct used to access the table.
- */
 mem_t *get_mem_host(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_host(string, num, 0, 0, p, storage);
 }
 
-/**
- * create a shared host table
- * @param name to use to create the table.
- * @param size of the shared table.
- * @param persist tell if the slotmem element are persistent.
- * @param p pool to use for allocations.
- * @return address of struct used to access the table.
- */
 mem_t *create_mem_host(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_host(string, num, persist, 1, p, storage);

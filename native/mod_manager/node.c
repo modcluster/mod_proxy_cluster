@@ -79,12 +79,6 @@ static mem_t *create_attach_mem_node(char *string, unsigned *num, int type, int 
     return ptr;
 }
 
-/**
- * return the last stored in the mem structure
- * @param pointer to the shared table
- * @return APR_SUCCESS if all went well
- *
- */
 apr_status_t get_last_mem_error(mem_t *mem)
 {
     return mem->laststatus;
@@ -93,10 +87,10 @@ apr_status_t get_last_mem_error(mem_t *mem)
 
 /**
  * Update a node record in the shared table
- * @param pointer to the shared table.
- * @param node node to store in the shared table.
+ * @param mem pointer to the shared table
+ * @param data node to store in the shared table
+ * @param p unused argument
  * @return APR_EEXIST if the record was updated, APR_SUCCESS otherwise
- *
  */
 static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
 {
@@ -175,10 +169,10 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
 }
 
 /**
- * read a node record from the shared table
- * @param pointer to the shared table.
- * @param node node to read from the shared table.
- * @return address of the read node or NULL if error.
+ * Read a node record from the shared table
+ * @param mem pointer to the shared table
+ * @param data node node to read from the shared table
+ * @return address of the read node or NULL if error
  */
 static apr_status_t loc_read_node(void *mem, void *data, apr_pool_t *pool)
 {
@@ -212,36 +206,16 @@ nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node)
     return NULL;
 }
 
-/**
- * get a node record from the shared table (using ids).
- * @param pointer to the shared table.
- * @param node address where the node is located in the shared table.
- * @param ids  in the node table.
- * @return APR_SUCCESS if all went well
- */
 apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids)
 {
     return s->storage->dptr(s->slotmem, ids, (void **)node);
 }
 
-/**
- * remove(free) a node record from the shared table
- * @param pointer to the shared table.
- * @param id id of the node to remove from the shared table.
- * @return APR_SUCCESS if all went well
- */
 apr_status_t remove_node(mem_t *s, int id)
 {
     return s->storage->release(s->slotmem, id);
 }
 
-/**
- * find a node record from the shared table using JVMRoute
- * @param pointer to the shared table.
- * @param node address where the node is located in the shared table.
- * @param route JVMRoute to search
- * @return APR_SUCCESS if all went well
- */
 apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
 {
     nodeinfo_t ou;
@@ -259,12 +233,6 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
     return rv;
 }
 
-/*
- * get the ids for the used (not free) nodes in the table
- * @param pointer to the shared table.
- * @param ids array of int to store the used id (must be big enough).
- * @return number of node existing or 0.
- */
 int get_ids_used_node(mem_t *s, int *ids)
 {
     struct counter count;
@@ -276,52 +244,29 @@ int get_ids_used_node(mem_t *s, int *ids)
     return count.count;
 }
 
-/*
- * read the size of the table.
- * @param pointer to the shared table.
- * @return the max number nodes that the slotmem can contain or 0 if no storage available.
- */
 int get_max_size_node(mem_t *s)
 {
     return s->storage == NULL ? 0 : s->storage->num_slots(s->slotmem);
 }
 
 /**
- * attach to the shared node table
- * @param name of an existing shared table.
- * @param address to store the size of the shared table.
- * @param p pool to use for allocations.
- * @param storage slotmem logic provider.
- * @return address of struct used to access the table.
+ * Attach to the shared node table
+ * @param string name of an existing shared table
+ * @param num address to store the size of the shared table
+ * @param p pool to use for allocations
+ * @param storage slotmem logic provider
+ * @return address of struct used to access the table
  */
 mem_t *get_mem_node(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_node(string, num, 0, 0, p, storage);
 }
 
-/**
- * create a shared node table
- * @param name to use to create the table.
- * @param size of the shared table.
- * @param persist tell if the slotmem element are persistent.
- * @param p pool to use for allocations.
- * @param storage slotmem logic provider.
- * @return address of struct used to access the table.
- */
 mem_t *create_mem_node(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_node(string, num, (unsigned)persist, 1, p, storage);
 }
 
-
-/**
- * find the first node that corresponds to host/port.
- * @param pointer to the shared table.
- * @param node node to read from the shared table.
- * @param host string containing the host.
- * @param port string containing the port .
- * @return APR_SUCCESS if all went well
- */
 static apr_status_t loc_read_node_byhostport(void *mem, void *data, apr_pool_t *pool)
 {
     nodeinfo_t *in = (nodeinfo_t *)data;
@@ -335,6 +280,14 @@ static apr_status_t loc_read_node_byhostport(void *mem, void *data, apr_pool_t *
     return APR_SUCCESS;
 }
 
+/**
+ * Find the first node that corresponds to host/port
+ * @param s pointer to the shared table
+ * @param node node to read from the shared table
+ * @param host string containing the host
+ * @param port string containing the port
+ * @return APR_SUCCESS if all went well
+ */
 apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host, const char *port)
 {
     nodeinfo_t ou;

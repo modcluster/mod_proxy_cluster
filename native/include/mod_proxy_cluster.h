@@ -41,39 +41,39 @@ struct balancer_method
 {
     /**
      * Check that the node is responding
-     * @param r request_rec structure.
-     * @param id ident of the worker.
-     * @param load load factor to set if test is ok.
+     * @param r request_rec structure
+     * @param id ident of the worker
+     * @param load load factor to set if test is ok
      * @return 0: All OK 500 : Error
      */
     int (*proxy_node_isup)(request_rec *r, int id, int load);
     /**
      * Check that the node is responding
-     * @param r request_rec structure.
-     * @param scheme something like ajp, http or https.
-     * @param host the hostname.
+     * @param r request_rec structure
+     * @param scheme something like ajp, http or https
+     * @param host the hostname
      * @param port the port on which the node connector is running
      * @return 0: All OK 500 : Error
      */
     int (*proxy_host_isup)(request_rec *r, const char *scheme, const char *host, const char *port);
     /**
      * Check if a worker already exists and return the corresponding id
-     * @param r request_rec structure.
-     * @param balancername, the balancer name.
-     * @param scheme something like ajp, http or https.
-     * @param host the hostname.
+     * @param r request_rec structure
+     * @param balancername, the balancer name
+     * @param scheme something like ajp, http or https
+     * @param host the hostname
      * @param port the port on which the node connector is running
-     * @param id the address to store the index that was previously used.
-     * @param the_conf adress to store the proxy_server_conf the worker is using.
-     * @return the worker or NULL if not existing.
+     * @param id the address to store the index that was previously used
+     * @param the_conf adress to store the proxy_server_conf the worker is using
+     * @return the worker or NULL if not existing
      */
     proxy_worker *(*proxy_node_getid)(request_rec *r, const char *balancername, const char *scheme, const char *host,
                                       const char *port, int *id, const proxy_server_conf **the_conf);
 
     /**
-     * Re enable the proxy_worker
-     * @param r request_rec structure.
-     * @param node pointer to node structure we have created.
+     * Re-enable the proxy_worker
+     * @param r request_rec structure
+     * @param node pointer to node structure we have created
      * @param worker the proxy_worker to re enable
      * @param nodeinfo pointer to node structure we are creating
      * @param the_conf the proxy_server_conf from proxy_node_getid()
@@ -82,14 +82,19 @@ struct balancer_method
                                   const proxy_server_conf *the_conf);
 
     /**
-     * return the first free id to insert in node table
+     * Get a free id in the node table
+     * @param r request_rec whose pool is used for memory allocations
+     * @param node_table_size the size of the table
+     * @return the first free id in the table or -1 if none exists
      */
     int (*proxy_node_get_free_id)(request_rec *r, int node_table_size);
 };
 
 typedef struct balancer_method balancer_method;
 
-/* Context table copy for local use */
+/**
+ * Context table copy for local use
+ */
 struct proxy_context_table
 {
     int sizecontext;
@@ -99,7 +104,9 @@ struct proxy_context_table
 typedef struct proxy_context_table proxy_context_table;
 
 
-/* VHost table copy for local use */
+/**
+ * VHost table copy for local use
+ */
 struct proxy_vhost_table
 {
     int sizevhost;
@@ -108,7 +115,9 @@ struct proxy_vhost_table
 };
 typedef struct proxy_vhost_table proxy_vhost_table;
 
-/* Balancer table copy for local use */
+/**
+ * Balancer table copy for local use
+ */
 struct proxy_balancer_table
 {
     int sizebalancer;
@@ -117,7 +126,9 @@ struct proxy_balancer_table
 };
 typedef struct proxy_balancer_table proxy_balancer_table;
 
-/* Node table copy for local use, the ptr_node is the shared memory address (slotmem address) */
+/**
+ * Node table copy for local use, the ptr_node is the shared memory address (slotmem address)
+ */
 struct proxy_node_table
 {
     int sizenode;
@@ -127,7 +138,9 @@ struct proxy_node_table
 };
 typedef struct proxy_node_table proxy_node_table;
 
-/* table of node and context selected by find_node_context_host() */
+/**
+ * Table of node and context selected by find_node_context_host()
+ */
 struct node_context
 {
     int node;

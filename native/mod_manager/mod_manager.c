@@ -222,7 +222,7 @@ static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
     return find_node(nodestatsmem, node, route);
 }
 
-/*
+/**
  * Increase the version of the nodes table
  */
 static void inc_version_node(void)
@@ -232,11 +232,13 @@ static void inc_version_node(void)
     base->counter++;
 }
 
-/* Check is the nodes (in shared memory) were modified since last
+/**
+ * Check is the nodes (in shared memory) were modified since last
  * call to worker_nodes_are_updated().
- * return codes:
- *   0 : No update of the nodes since last time.
- *   x: The version has changed the local table need to be updated.
+ *
+ * @param data server_rec
+ * @param pool unused argument
+ * @return 0 (no update) or X (the version has changed, the local table needs to be updated)
  */
 static unsigned loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
 {
@@ -261,7 +263,9 @@ static unsigned loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
     return 0;
 }
 
-/* Store the last version update in the proccess config */
+/**
+ * Store the last version update in the proccess config
+ */
 static int loc_worker_nodes_are_updated(void *data, unsigned last)
 {
     server_rec *s = (server_rec *)data;
@@ -290,7 +294,9 @@ static int loc_get_max_size_host(void)
     return hoststatsmem ? get_max_size_host(hoststatsmem) : 0;
 }
 
-/* Remove the virtual hosts and contexts corresponding the node */
+/**
+ * Remove the virtual hosts and contexts corresponding the node
+ */
 static void loc_remove_host_context(int node, apr_pool_t *pool)
 {
     /* for read the hosts */
@@ -563,7 +569,6 @@ static APR_INLINE int is_child_process(void)
  * mutex type before the config is processed so that users can
  * adjust the mutex settings using the Mutex directive.
  */
-
 static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp)
 {
     (void)plog;
@@ -574,8 +579,8 @@ static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *p
 }
 
 /*
- * call after parser the configuration.
- * create the shared memory.
+ * Call after parser the configuration.
+ * Creates the shared memory.
  */
 static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
 {
@@ -767,7 +772,7 @@ static char **process_buff(request_rec *r, char *buff)
     return ptr;
 }
 
-/*
+/**
  * Insert the hosts from Alias information
  */
 static apr_status_t insert_update_hosts(mem_t *mem, char *str, int node, int vhost)
@@ -800,8 +805,8 @@ static apr_status_t insert_update_hosts(mem_t *mem, char *str, int node, int vho
     return insert_update_host(mem, &info);
 }
 
-/*
- * remove the context using the contextinfo_t information
+/**
+ * Remove the context using the contextinfo_t information
  * we read it first then remove it
  */
 static void read_remove_context(mem_t *mem, contextinfo_t *context)
@@ -813,11 +818,11 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
     }
 }
 
-/*
+/**
  * Insert the context from Context information
  * Note:
- * 1 - if status is REMOVE remove_context will be called.
- * 2 - return codes of REMOVE are ignored (always success).
+ *     1 - if status is REMOVE remove_context will be called
+ *     2 - return codes of REMOVE are ignored (always success)
  */
 static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int vhost, int status)
 {
@@ -862,8 +867,8 @@ static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int 
     return ret;
 }
 
-/*
- * Check that the node could be handle as is there were the same.
+/**
+ * Check that the node could be handle as is there were the same
  */
 static int is_same_node(const nodeinfo_t *nodeinfo, const nodeinfo_t *node)
 {
@@ -895,8 +900,8 @@ static int is_same_node(const nodeinfo_t *nodeinfo, const nodeinfo_t *node)
     return -1;
 }
 
-/*
- * Check if another node has the same worker.
+/**
+ * Check if another node has the same worker
  */
 static int is_same_worker_existing(const request_rec *r, const nodeinfo_t *node)
 {
@@ -933,7 +938,7 @@ static int is_same_worker_existing(const request_rec *r, const nodeinfo_t *node)
     return 0;
 }
 
-/*
+/**
  * Builds the parameter for mod_balancer
  */
 static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *node, const balancerinfo_t *bal)
@@ -973,9 +978,8 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
     return balancer_manage(r, params);
 }
 
-/*
- * Check if the proxy balancer module already has a worker
- * and return the id
+/**
+ * Check if the proxy balancer module already has a worker and return the id
  */
 static proxy_worker *proxy_node_getid(request_rec *r, const nodeinfo_t *nodeinfo, int *id,
                                       const proxy_server_conf **the_conf)
@@ -1540,7 +1544,7 @@ static char *context_status_to_string(int status)
     }
 }
 
-/*
+/**
  * Process a DUMP command.
  */
 static char *process_dump(request_rec *r, int *errtype)
@@ -1915,7 +1919,9 @@ static char *process_info(request_rec *r, int *errtype)
     return NULL;
 }
 
-/* Process a *-APP command that applies to the node NOTE: the node is locked */
+/**
+ * Process a *-APP command that applies to the node NOTE: the node is locked
+ */
 static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo_t *node)
 {
     /* for read the hosts */
@@ -1975,7 +1981,9 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
     return NULL;
 }
 
-/* Process an enable/disable/stop/remove application message */
+/**
+ * Process an enable/disable/stop/remove application message
+ */
 static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errtype, int global, int fromnode)
 {
     nodeinfo_t nodeinfo;
@@ -2481,7 +2489,9 @@ static int mod_manager_hex2c(const char *x)
 #endif /*APR_CHARSET_EBCDIC */
 }
 
-/* Processing of decoded characters */
+/*
+ * Processing of decoded characters
+ */
 static apr_status_t decodeenc(char **ptr)
 {
     int val, i, j;
@@ -2517,7 +2527,9 @@ static apr_status_t decodeenc(char **ptr)
     return APR_SUCCESS;
 }
 
-/* Check that the method is one of ours */
+/*
+ * Check that the method is one of ours
+ */
 static int check_method(const request_rec *r)
 {
     int ours = 0;
@@ -2594,7 +2606,9 @@ static int manager_trans(request_rec *r)
     return DECLINED;
 }
 
-/* fixup logic to prevent subrequest to our methods */
+/*
+ * fixup logic to prevent subrequest to our methods
+ */
 static int manager_map_to_storage(request_rec *r)
 {
     int ours = 0;
@@ -2616,7 +2630,9 @@ static int manager_map_to_storage(request_rec *r)
     return DECLINED;
 }
 
-/* Create the commands that are possible on the context */
+/*
+ * Create the commands that are possible on the context
+ */
 static char *context_string(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
 {
     char context[CONTEXTSZ + 1];
@@ -2657,7 +2673,9 @@ static void context_command_string(request_rec *r, contextinfo_t *ou, const char
     }
 }
 
-/* Create the commands that are possible on the node */
+/*
+ * Create the commands that are possible on the node
+ */
 static char *node_string(request_rec *r, const char *JVMRoute)
 {
     return apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, NULL);
@@ -2684,7 +2702,7 @@ static void domain_command_string(request_rec *r, const char *Domain)
 }
 
 /*
- * Process the parameters and display corresponding informations.
+ * Process the parameters and display corresponding informations
  */
 static void manager_info_contexts(request_rec *r, int reduce_display, int allow_cmd, int node, int host,
                                   const char *Alias, const char *JVMRoute)
@@ -2976,7 +2994,9 @@ static void printproxy_stat(request_rec *r, int reduce_display, const proxy_work
     }
 }
 
-/* Display module information */
+/*
+ * Display module information
+ */
 static void modules_info(request_rec *r)
 {
     if (ap_find_linked_module("mod_proxy_cluster.c") != NULL) {
@@ -3010,7 +3030,9 @@ static void modules_info(request_rec *r)
     }
 }
 
-/* Process INFO message and mod_cluster_manager pages generation */
+/*
+ * Process INFO message and mod_cluster_manager pages generation
+ */
 static int manager_info(request_rec *r)
 {
     int size, i, sizesessionid;
@@ -3393,7 +3415,7 @@ static int manager_handler(request_rec *r)
 }
 
 /*
- *  Attach to the shared memory when the child is created.
+ * Attach to the shared memory when the child is created
  */
 static void manager_child_init(apr_pool_t *p, server_rec *s)
 {
@@ -3478,7 +3500,7 @@ static void manager_child_init(apr_pool_t *p, server_rec *s)
 }
 
 /*
- * Supported directives.
+ * Supported directives
  */
 static const char *cmd_manager_maxcontext(cmd_parms *cmd, void *mconfig, const char *word)
 {

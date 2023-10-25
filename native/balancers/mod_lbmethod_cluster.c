@@ -174,7 +174,7 @@ static const proxy_balancer_method cluster = {"cluster", &find_best, NULL, &rese
 
 /*
  * See if we could map the request.
- * first check is we have a balancer corresponding to the route.
+ * First check is we have a balancer corresponding to the route,
  * then search the balancer correspond to the context and host.
  */
 static int lbmethod_cluster_trans(request_rec *r)

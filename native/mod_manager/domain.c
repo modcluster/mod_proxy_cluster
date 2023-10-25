@@ -75,10 +75,10 @@ static mem_t *create_attach_mem_domain(char *string, unsigned *num, int type, in
 
 /**
  * Update a domain record in the shared table
- * @param pointer to the shared table.
- * @param domain domain to store in the shared table.
+ * @param mem pointer to the shared table
+ * @param domain domain to store in the shared table
+ * @param pool unused argument
  * @return APR_EEXIST if the record was updated, APR_SUCCESS otherwise
- *
  */
 static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
 {
@@ -123,10 +123,11 @@ apr_status_t insert_update_domain(mem_t *s, domaininfo_t *domain)
 }
 
 /**
- * read a domain record from the shared table
- * @param pointer to the shared table.
- * @param domain domain to read from the shared table.
- * @return address of the read domain or NULL if error.
+ * Read a domain record from the shared table
+ * @param mem pointer to the shared table
+ * @param domain domain to read from the shared table
+ * @param pool unused argument
+ * @return address of the read domain or NULL if error
  */
 static apr_status_t loc_read_domain(void *mem, void *data, apr_pool_t *pool)
 {
@@ -159,24 +160,11 @@ domaininfo_t *read_domain(mem_t *s, domaininfo_t *domain)
     return NULL;
 }
 
-/**
- * get a domain record from the shared table
- * @param pointer to the shared table.
- * @param domain address where the domain is locate in the shared table.
- * @param ids  in the domain table.
- * @return APR_SUCCESS if all went well
- */
 apr_status_t get_domain(mem_t *s, domaininfo_t **domain, int ids)
 {
     return s->storage->dptr(s->slotmem, ids, (void **)domain);
 }
 
-/**
- * remove(free) a domain record from the shared table
- * @param pointer to the shared table.
- * @param domain domain to remove from the shared table.
- * @return APR_SUCCESS if all went well
- */
 apr_status_t remove_domain(mem_t *s, domaininfo_t *domain)
 {
     apr_status_t rv;
@@ -193,13 +181,6 @@ apr_status_t remove_domain(mem_t *s, domaininfo_t *domain)
     return rv;
 }
 
-/**
- * find a domain record from the shared table using JVMRoute and balancer
- * @param pointer to the shared table.
- * @param domain address where the node is located in the shared table.
- * @param route JVMRoute to search
- * @return APR_SUCCESS if all went well
- */
 apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, const char *balancer)
 {
     domaininfo_t ou;
@@ -221,12 +202,6 @@ apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, con
     return rv;
 }
 
-/*
- * get the ids for the used (not free) domains in the table
- * @param pointer to the shared table.
- * @param ids array of int to store the used id (must be big enough).
- * @return number of domain existing or 0.
- */
 int get_ids_used_domain(mem_t *s, int *ids)
 {
     struct counter count;
@@ -238,36 +213,16 @@ int get_ids_used_domain(mem_t *s, int *ids)
     return count.count;
 }
 
-/*
- * read the size of the table.
- * @param pointer to the shared table.
- * @return the max number of domains that the slotmem can contain.
- */
 int get_max_size_domain(mem_t *s)
 {
     return s->storage->num_slots(s->slotmem);
 }
 
-/**
- * attach to the shared domain table
- * @param name of an existing shared table.
- * @param address to store the size of the shared table.
- * @param p pool to use for allocations.
- * @return address of struct used to access the table.
- */
 mem_t *get_mem_domain(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_domain(string, num, 0, 0, p, storage);
 }
 
-/**
- * create a shared domain table
- * @param name to use to create the table.
- * @param size of the shared table.
- * @param persist tell if the slotmem element are persistent.
- * @param p pool to use for allocations.
- * @return address of struct used to access the table.
- */
 mem_t *create_mem_domain(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage)
 {
     return create_attach_mem_domain(string, num, persist, 1, p, storage);
