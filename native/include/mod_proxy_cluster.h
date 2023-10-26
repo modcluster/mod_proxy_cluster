@@ -28,6 +28,15 @@
 #ifndef MOD_PROXY_CLUSTER_H
 #define MOD_PROXY_CLUSTER_H
 
+/**
+ * @file  mod_proxy_cluster.h
+ * @brief mod_proxy_cluster module for Apache
+ *
+ * @defgroup MOD_PROXY_CLUSTER mod_proxy_cluster
+ * @ingroup  APACHE_MODS
+ * @{
+ */
+
 #include "balancer.h"
 
 #define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"

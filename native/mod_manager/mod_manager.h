@@ -25,6 +25,15 @@
  * @version $Revision$
  */
 
+/**
+ * @file  mod_manager.h
+ * @brief Manager module for Apache
+ *
+ * @defgroup MOD_MANAGER mod_manager
+ * @ingroup  APACHE_MODS
+ * @{
+ */
+
 struct mem
 {
     ap_slotmem_instance_t *slotmem;
