@@ -132,6 +132,7 @@ char *cluster_get_sessionid(request_rec *r, const char *stickyval, char *uri, ch
  * @param r the request_rec.
  * @param nodeid the node id.
  * @param route (if received)
+ * @param node_table node table
  * @return 1 is it finds a sessionid 0 otherwise.
  */
 int hassession_byname(request_rec *r, int nodeid, const char *route, const proxy_node_table *node_table);
