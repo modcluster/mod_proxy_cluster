@@ -60,6 +60,12 @@ Tests
 
 The project contains some tests too. You can find them with a separate README in the `test` subdirectory.
 
+Doxygen documentation
+---------------------
+
+The project source files contain doxygen-style comments. To build doxygen doumentation, execute `doxygen` command.
+The output can be found in newly created `doxygen-out/` directory.
+
 License
 -------
 
