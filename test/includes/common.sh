@@ -92,6 +92,11 @@ httpd_wait_until_ready() {
 httpd_all_clean() {
     for i in $(docker ps -a | grep "$HTTPD_IMG\|MODCLUSTER\|JBCS\|${MPC_NAME:-httpd-mod_proxy_cluster}" | cut -f1 -d' ');
     do
+        # Copy the error_log and access_log if we ask for DEBUG 
+        if [ $DEBUG ]; then
+          docker cp $i:/usr/local/apache2/logs/error_log $i.error_log
+          docker cp $i:/usr/local/apache2/logs/access_log $i.access_log
+        fi
         docker stop $i
         docker rm $i
     done
