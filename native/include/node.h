@@ -48,7 +48,9 @@ typedef struct mem mem_t;
 
 #include "ap_mmn.h"
 
-/* configuration of the node received from jboss cluster. */
+/**
+ * Configuration of the node received from jboss cluster
+ */
 struct nodemess
 {
     /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
@@ -87,7 +89,9 @@ typedef struct nodemess nodemess_t;
 
 #define SIZEOFSCORE 1700 /* at least size of the proxy_worker_stat structure */
 
-/* status of the node as read/store in httpd. */
+/**
+ * Status of the node as read/store in httpd
+ */
 struct nodeinfo
 {
     /* config from jboss/tomcat */
@@ -100,12 +104,12 @@ struct nodeinfo
 typedef struct nodeinfo nodeinfo_t;
 
 /**
- * use apache httpd structure
+ * Use apache httpd structure
  */
 typedef struct ap_slotmem_provider_t slotmem_storage_method;
 
 /**
- * return the last stored in the mem structure
+ * Return the last stored in the mem structure
  * @param pointer to the shared table
  * @return APR_SUCCESS if all went well
  *
@@ -114,159 +118,164 @@ apr_status_t get_last_mem_error(mem_t *mem);
 
 /**
  * Insert(alloc) and update a node record in the shared table
- * @param pointer to the shared table.
- * @param node node to store in the shared table.
- * @param int pointer to store the id where the node is inserted
- * @param int tells to clean or not the worker_shared part.
+ * @param s pointer to the shared table
+ * @param node node to store in the shared table
+ * @param id pointer to store the id where the node is inserted
+ * @param clean tells to clean or not the worker_shared part
  * @return APR_SUCCESS if all went well
  *
  */
 apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean);
 
 /**
- * read a node record from the shared table
- * @param pointer to the shared table.
- * @param node node to read from the shared table.
- * @return address of the read node or NULL if error.
+ * Read a node record from the shared table
+ * @param s pointer to the shared table
+ * @param node node to read from the shared table
+ * @return address of the read node or NULL if error
  */
 nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node);
 
 /**
- * get a node record from the shared table
- * @param pointer to the shared table.
- * @param node address of the node read from the shared table.
+ * Get a node record from the shared table
+ * @param s pointer to the shared table
+ * @param node address of the node read from the shared table
+ * @param ids id of the node to return
  * @return APR_SUCCESS if all went well
  */
 apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids);
 
 /**
- * remove(free) a node record from the shared table
- * @param pointer to the shared table.
- * @param ids id of node to remove from the shared table.
+ * Remove(free) a node record from the shared table
+ * @param pointer to the shared table
+ * @param ids id of node to remove from the shared table
  * @return APR_SUCCESS if all went well
  */
 apr_status_t remove_node(mem_t *s, int ids);
 
 /**
- * find a node record from the shared table using JVMRoute
- * @param pointer to the shared table.
- * @param node address where the node is located in the shared table.
+ * Find a node record from the shared table using JVMRoute
+ * @param s pointer to the shared table
+ * @param node address where the node is located in the shared table
  * @param route JVMRoute to search
  * @return APR_SUCCESS if all went well
  */
 apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route);
 
 /**
- * find a node record from the shared table using Host/Port
- * @param pointer to the shared table.
- * @param node address where the node is located in the shared table.
- * @param host Host to search
- * @param port Port to search
+ * Find a node record from the shared table using Host/Port
+ * @param s pointer to the shared table
+ * @param node address where the node is located in the shared table
+ * @param host host to search
+ * @param port port to search
  * @return APR_SUCCESS if all went well
  */
 apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host, const char *port);
 
-/*
- *  * lock the nodes table
+/**
+ * Lock the nodes table
  */
 apr_status_t lock_nodes(void);
 
-/*
- *  * unlock the nodes table
+/**
+ * Unlock the nodes table
  */
 apr_status_t unlock_nodes(void);
 
-/*
- * get the ids for the used (not free) nodes in the table
- * @param pointer to the shared table.
- * @param ids array of int to store the used id (must be big enough).
- * @return number of node existing or -1 if error.
+/**
+ * Get the ids for the used (not free) nodes in the table
+ * @param s pointer to the shared table
+ * @param ids array of int to store the used id (must be big enough)
+ * @return number of node existing or -1 if error
  */
 int get_ids_used_node(mem_t *s, int *ids);
 
-/*
- * get the size of the table (max size).
- * @param pointer to the shared table.
- * @return size of the existing table or -1 if error.
+/**
+ * Get the size of the table (max size)
+ * @param s pointer to the shared table
+ * @return size of the existing table or -1 if error
  */
 int get_max_size_node(mem_t *s);
 
-/*
- * get the version of the table (each update of the table changes version)
- * @param pointer to the shared table.
- * @return version the actual version in the table.
+/**
+ * Get the version of the table (each update of the table changes version)
+ * @param s pointer to the shared table
+ * @return version the actual version in the table
  */
 unsigned get_version_node(mem_t *s);
 
 /**
- * attach to the shared node table
- * @param name of an existing shared table.
- * @param address to store the size of the shared table.
- * @param p pool to use for allocations.
- * @return address of struct used to access the table.
+ * Attach to the shared node table
+ * @param string name of an existing shared table
+ * @param num address to store the size of the shared table
+ * @param p pool to use for allocations
+ * @param storage storage provider
+ * @return address of struct used to access the table
  */
 mem_t *get_mem_node(char *string, unsigned *num, apr_pool_t *p, slotmem_storage_method *storage);
+
 /**
- * create a shared node table
- * @param name to use to create the table.
- * @param size of the shared table.
- * @param persist tell if the slotmem element are persistent.
- * @param p pool to use for allocations.
- * @return address of struct used to access the table.
+ * Create a shared node table
+ * @param name to use to create the table
+ * @param size of the shared table
+ * @param persist tell if the slotmem element are persistent
+ * @param p pool to use for allocations
+ * @param storage storage provider
+ * @return address of struct used to access the table
  */
 mem_t *create_mem_node(char *string, unsigned *num, int persist, apr_pool_t *p, slotmem_storage_method *storage);
 
 /**
- * provider for the mod_proxy_cluster or mod_jk modules.
+ * Provider for the mod_proxy_cluster or mod_jk modules
  */
 struct node_storage_method
 {
     /**
-     * the node corresponding to the ident
-     * @param ids ident of the node to read.
-     * @param node address of pointer to return the node.
+     * The node corresponding to the ident
+     * @param ids ident of the node to read
+     * @param node address of pointer to return the node
      * @return APR_SUCCESS if all went well
      */
     apr_status_t (*read_node)(int ids, nodeinfo_t **node);
     /**
-     * read the list of ident of used nodes.
-     * @param ids address to store the idents.
+     * Read the list of ident of used nodes
+     * @param ids address to store the idents
      * @return APR_SUCCESS if all went well
      */
     int (*get_ids_used_node)(int *ids);
     /**
-     * read the max number of nodes in the shared table
+     * Read the max number of nodes in the shared table
+     * @return max number of nodes in the shared table
      */
     int (*get_max_size_node)(void);
     /**
-     * check the nodes for modifications.
-     * XXX: void *data is server_rec *s in fact.
+     * Check the nodes for modifications.
+     * XXX: void *data is server_rec *s in fact
      */
     unsigned (*worker_nodes_need_update)(void *data, apr_pool_t *pool);
-    /*
-     * mark that the worker node are now up to date.
+    /**
+     * Mark that the worker node are now up to date
      */
     int (*worker_nodes_are_updated)(void *data, unsigned version);
-    /*
+    /**
      * Remove the node from shared memory (free the slotmem)
      */
     int (*remove_node)(int node);
-    /*
+    /**
      * Find the node using the JVMRoute information
      */
     apr_status_t (*find_node)(nodeinfo_t **node, const char *route);
-    /*
-     * Remove the virtual hosts and contexts corresponding the node.
+    /**
+     * Remove the virtual hosts and contexts corresponding the node
      */
     void (*remove_host_context)(int node, apr_pool_t *pool);
 
-    /*
-     * lock the nodes table
+    /**
+     * Lock the nodes table
      */
     apr_status_t (*lock_nodes)(void);
 
-    /*
-     * unlock the nodes table
+    /**
+     * Unlock the nodes table
      */
     apr_status_t (*unlock_nodes)(void);
 };

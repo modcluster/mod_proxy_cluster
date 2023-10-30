@@ -1,0 +1,20 @@
+PROJECT_NAME           = mod_proxy_cluster
+PROJECT_NUMBER         = 2.0
+PROJECT_BRIEF          = An inteligent load-balancer for Apache httpd
+PROJECT_LOGO           =
+OUTPUT_DIRECTORY       = doxygen-out
+JAVADOC_AUTOBRIEF      = YES
+OPTIMIZE_OUTPUT_FOR_C  = YES
+EXTRACT_ALL            = YES
+INPUT                  = native README.md
+FILE_PATTERNS          = *.c \
+                         *.cc \
+                         *.cpp \
+                         *.h \
+                         *.hpp
+RECURSIVE              = YES
+EXCLUDE                = test native/build
+EXCLUDE_PATTERNS       = *CMake*
+USE_MDFILE_AS_MAINPAGE = README.md
+GENERATE_LATEX         = NO
+HTML_COLORSTYLE        = LIGHT
