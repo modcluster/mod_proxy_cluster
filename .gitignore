@@ -48,6 +48,5 @@ test/server.xml
 # patch files
 **/*.patch
 
-# doxygen
-doxygen-out
-
+# Doxygen
+doxygen-out/
