@@ -7,6 +7,7 @@ on:
     branches:
       - '*'
 jobs:
+
   cmake-fedora-latest:
     runs-on: ubuntu-latest
     strategy:
@@ -37,6 +38,7 @@ jobs:
           } > podmanfile
           podman build -f ./podmanfile
     name: cmake-fedora-latest
+
   make-fedora-latest:
     runs-on: ubuntu-latest
     steps:
@@ -71,6 +73,7 @@ jobs:
               echo 'done;'
           } > podmanfile
           podman build -f ./podmanfile
+
   clang-format-style-check:
     # The ubuntu-latest has an old version of clang-format, let's just use the latest installed via brew.
     runs-on: macos-latest
@@ -101,6 +104,7 @@ jobs:
             rm diff.txt || true # we don't fail if the file does not exist
           done;
           exit $code
+
   make-httpd-maintainer-mode:
     runs-on: ubuntu-latest
     container:
@@ -122,6 +126,7 @@ jobs:
             make || exit 1; \
             cd ..; \
           done;
+
   cmake-windows-latest:
     runs-on: windows-latest
     env:
@@ -139,6 +144,7 @@ jobs:
       - name: Build
         run: |
           ./native/scripts/windows-build.bat
+
   tests:
     runs-on: ubuntu-latest
     env:
@@ -174,3 +180,21 @@ jobs:
           path: |
             test/logs/*
           retention-days: 7
+
+  doxygen:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Get doxygen
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y doxygen
+      - name: Build doxygen docs
+        run: doxygen
+      - name: Preserve doxygen docs
+        uses: actions/upload-artifact@v3
+        with:
+          name: Doxygen docs
+          path: doxygen-out/html/*
+          retention-days: 30
