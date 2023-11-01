@@ -1194,6 +1194,7 @@ static nodeinfo_t *read_node_by_id(mem_t *mem, int id)
 {
     nodeinfo_t workernodeinfo;
     workernodeinfo.mess.id = id;
+    (void)mem;
     return read_node(nodestatsmem, &workernodeinfo);
 }
 

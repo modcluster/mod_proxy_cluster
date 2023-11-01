@@ -378,7 +378,7 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
     for (i = 0; i < sizecontext; i++) {
         contexts[i] = i;
     }
-    length = apr_pcalloc(r->pool, sizeof(int) * sizecontext);
+    length = apr_pcalloc(r->pool, sizeof(int) * (unsigned)sizecontext);
     status = apr_palloc(r->pool, sizeof(int) * sizecontext);
     /* Check the virtual host */
     if (use_alias) {

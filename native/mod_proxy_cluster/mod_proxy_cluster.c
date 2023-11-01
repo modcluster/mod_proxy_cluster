@@ -762,6 +762,7 @@ static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int 
     char *ptr = conf->balancers->elts;
     int sizeb = conf->balancers->elt_size;
     int sizew = sizeof(proxy_worker *);
+    (void)node;
 
     for (i = 0; i < conf->balancers->nelts; i++, ptr = ptr + sizeb) {
         int j;
