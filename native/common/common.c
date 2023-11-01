@@ -20,31 +20,20 @@
 
 proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage, int for_cache)
 {
-    int i;
-    int size;
     proxy_vhost_table *vhost_table = apr_palloc(pool, sizeof(proxy_vhost_table));
-    size = host_storage->get_max_size_host();
-    if (size == 0) {
-        vhost_table->sizevhost = 0;
-        vhost_table->vhosts = NULL;
-        vhost_table->vhost_info = NULL;
-        return vhost_table;
+    int size = host_storage->get_max_size_host();
+
+    if (size > 0) {
+        vhost_table->vhosts = apr_palloc(pool, sizeof(int) * host_storage->get_max_size_host());
+        vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
+        if (for_cache) {
+            vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * size);
+        } else {
+            vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
+        }
     }
 
-    vhost_table->vhosts = apr_palloc(pool, sizeof(int) * host_storage->get_max_size_host());
-    vhost_table->sizevhost = host_storage->get_ids_used_host(vhost_table->vhosts);
-    if (for_cache) {
-        vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * size);
-    } else {
-        vhost_table->vhost_info = apr_palloc(pool, sizeof(hostinfo_t) * vhost_table->sizevhost);
-    }
-    for (i = 0; i < vhost_table->sizevhost; i++) {
-        hostinfo_t *h;
-        int host_index = vhost_table->vhosts[i];
-        host_storage->read_host(host_index, &h);
-        vhost_table->vhost_info[i] = *h;
-    }
-    return vhost_table;
+    return update_vhost_table_cached(vhost_table, host_storage);
 }
 
 proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *vhost_table,
@@ -73,30 +62,20 @@ proxy_vhost_table *update_vhost_table_cached(proxy_vhost_table *vhost_table,
 proxy_context_table *read_context_table(apr_pool_t *pool, const struct context_storage_method *context_storage,
                                         int for_cache)
 {
-    int i;
-    int size;
+    int size = context_storage->get_max_size_context();
     proxy_context_table *context_table = apr_palloc(pool, sizeof(proxy_context_table));
-    size = context_storage->get_max_size_context();
-    if (size == 0) {
-        context_table->sizecontext = 0;
-        context_table->contexts = NULL;
-        context_table->context_info = NULL;
-        return context_table;
+
+    if (size > 0) {
+        context_table->contexts = apr_palloc(pool, sizeof(int) * size);
+        context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
+        if (for_cache) {
+            context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * size);
+        } else {
+            context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * context_table->sizecontext);
+        }
     }
-    context_table->contexts = apr_palloc(pool, sizeof(int) * size);
-    context_table->sizecontext = context_storage->get_ids_used_context(context_table->contexts);
-    if (for_cache) {
-        context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * size);
-    } else {
-        context_table->context_info = apr_palloc(pool, sizeof(contextinfo_t) * context_table->sizecontext);
-    }
-    for (i = 0; i < context_table->sizecontext; i++) {
-        contextinfo_t *h;
-        int context_index = context_table->contexts[i];
-        context_storage->read_context(context_index, &h);
-        context_table->context_info[i] = *h;
-    }
-    return context_table;
+
+    return update_context_table_cached(context_table, context_storage);
 }
 
 proxy_context_table *update_context_table_cached(proxy_context_table *context_table,
@@ -124,30 +103,20 @@ proxy_context_table *update_context_table_cached(proxy_context_table *context_ta
 proxy_balancer_table *read_balancer_table(apr_pool_t *pool, const struct balancer_storage_method *balancer_storage,
                                           int for_cache)
 {
-    int i;
-    int size;
+    int size = balancer_storage->get_max_size_balancer();
     proxy_balancer_table *balancer_table = apr_palloc(pool, sizeof(proxy_balancer_table));
-    size = balancer_storage->get_max_size_balancer();
-    if (size == 0) {
-        balancer_table->sizebalancer = 0;
-        balancer_table->balancers = NULL;
-        balancer_table->balancer_info = NULL;
-        return balancer_table;
+
+    if (size > 0) {
+        balancer_table->balancers = apr_palloc(pool, sizeof(int) * size);
+        balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
+        if (for_cache) {
+            balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * size);
+        } else {
+            balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
+        }
     }
-    balancer_table->balancers = apr_palloc(pool, sizeof(int) * size);
-    balancer_table->sizebalancer = balancer_storage->get_ids_used_balancer(balancer_table->balancers);
-    if (for_cache) {
-        balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * size);
-    } else {
-        balancer_table->balancer_info = apr_palloc(pool, sizeof(balancerinfo_t) * balancer_table->sizebalancer);
-    }
-    for (i = 0; i < balancer_table->sizebalancer; i++) {
-        balancerinfo_t *h;
-        int balancer_index = balancer_table->balancers[i];
-        balancer_storage->read_balancer(balancer_index, &h);
-        balancer_table->balancer_info[i] = *h;
-    }
-    return balancer_table;
+
+    return update_balancer_table_cached(balancer_table, balancer_storage);
 }
 
 proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balancer_table,
@@ -174,39 +143,22 @@ proxy_balancer_table *update_balancer_table_cached(proxy_balancer_table *balance
 
 proxy_node_table *read_node_table(apr_pool_t *pool, const struct node_storage_method *node_storage, int for_cache)
 {
-    int i;
-    int size;
+    int size = node_storage->get_max_size_node();
     proxy_node_table *node_table = apr_palloc(pool, sizeof(proxy_node_table));
-    size = node_storage->get_max_size_node();
-    if (size == 0) {
-        node_table->sizenode = 0;
-        node_table->nodes = NULL;
-        node_table->node_info = NULL;
-        return node_table;
-    }
-    node_table->nodes = apr_palloc(pool, sizeof(int) * size);
-    node_table->sizenode = node_storage->get_ids_used_node(node_table->nodes);
-    if (for_cache) {
-        node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * size);
-        node_table->ptr_node = apr_palloc(pool, sizeof(char *) * size);
-    } else {
-        node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * node_table->sizenode);
-        node_table->ptr_node = apr_palloc(pool, sizeof(char *) * node_table->sizenode);
-    }
-    for (i = 0; i < node_table->sizenode; i++) {
-        nodeinfo_t *h;
-        int node_index = node_table->nodes[i];
-        apr_status_t rv = node_storage->read_node(node_index, &h);
-        if (rv == APR_SUCCESS) {
-            node_table->node_info[i] = *h;
-            node_table->ptr_node[i] = (char *)h;
+
+    if (size > 0) {
+        node_table->nodes = apr_palloc(pool, sizeof(int) * size);
+        node_table->sizenode = node_storage->get_ids_used_node(node_table->nodes);
+        if (for_cache) {
+            node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * size);
+            node_table->ptr_node = apr_palloc(pool, sizeof(char *) * size);
         } else {
-            /* we can't read the node! */
-            node_table->ptr_node[i] = NULL;
-            memset(&node_table->node_info[i], 0, sizeof(nodeinfo_t));
+            node_table->node_info = apr_palloc(pool, sizeof(nodeinfo_t) * node_table->sizenode);
+            node_table->ptr_node = apr_palloc(pool, sizeof(char *) * node_table->sizenode);
         }
     }
-    return node_table;
+
+    return update_node_table_cached(node_table, node_storage);
 }
 
 proxy_node_table *update_node_table_cached(proxy_node_table *node_table, const struct node_storage_method *node_storage)
@@ -239,17 +191,11 @@ proxy_node_table *update_node_table_cached(proxy_node_table *node_table, const s
 
 char *get_cookie_param(request_rec *r, const char *name, int in)
 {
-    const char *cookies;
-    const char *start_cookie;
+    const char *cookies = in ? apr_table_get(r->headers_in, "Cookie") : apr_table_get(r->headers_out, "Set-Cookie");
 
-    if (in) {
-        cookies = apr_table_get(r->headers_in, "Cookie");
-    } else {
-        cookies = apr_table_get(r->headers_out, "Set-Cookie");
-    }
     if (cookies) {
-        for (start_cookie = ap_strstr_c(cookies, name); start_cookie;
-             start_cookie = ap_strstr_c(start_cookie + 1, name)) {
+        const char *start_cookie = ap_strstr_c(cookies, name);
+        while (start_cookie != NULL) {
             if (start_cookie == cookies || start_cookie[-1] == ';' || start_cookie[-1] == ',' ||
                 isspace(start_cookie[-1])) {
 
@@ -258,9 +204,7 @@ char *get_cookie_param(request_rec *r, const char *name, int in)
                     ++start_cookie;
                 }
                 if (*start_cookie == '=' && start_cookie[1]) {
-                    /*
-                     * Session cookie was found, get it's value
-                     */
+                    /* Session cookie was found, get it's value */
                     char *end_cookie, *cookie;
                     ++start_cookie;
                     cookie = apr_pstrdup(r->pool, start_cookie);
@@ -279,6 +223,8 @@ char *get_cookie_param(request_rec *r, const char *name, int in)
                     return cookie;
                 }
             }
+
+            start_cookie = ap_strstr_c(start_cookie + 1, name);
         }
     }
     return NULL;
@@ -289,15 +235,12 @@ char *get_path_param(apr_pool_t *pool, char *url, const char *name)
     char *path = NULL;
     char *pathdelims = ";?&";
 
-    for (path = strstr(url, name); path; path = strstr(path + 1, name)) {
-
+    for (path = strstr(url, name); path != NULL; path = strstr(path + 1, name)) {
         /* Must be following a ';' and followed by '=' to be the correct session id name */
         if (*(path - 1) == ';') {
             path += strlen(name);
             if (*path == '=') {
-                /*
-                 * Session path was found, get its value
-                 */
+                /* Session path was found, get its value */
                 ++path;
                 if (*path) {
                     char *q;
@@ -424,11 +367,7 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
         uri = apr_pstrndup(r->pool, luri, uri - luri);
     } else {
         uri = ap_strchr_c(luri, ';');
-        if (uri) {
-            uri = apr_pstrndup(r->pool, luri, uri - luri);
-        } else {
-            uri = luri;
-        }
+        uri = uri ? apr_pstrndup(r->pool, luri, uri - luri) : luri;
     }
 
     /* read the contexts */
@@ -703,27 +642,26 @@ const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_t
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
     node_context *nodes = find_node_context_host(r, NULL, NULL, use_alias, vhost_table, context_table, node_table);
-    if (nodes == NULL) {
-        return NULL;
-    }
-    while (nodes->node != -1) {
+
+    while (nodes != NULL && nodes->node != -1) {
         /* look for the node information */
         const nodeinfo_t *node = table_get_node(node_table, nodes->node);
-        if (node != NULL) {
-            if (node->mess.balancer[0] != '\0') {
-                /* Check that it is in our proxy_server_conf */
-                char *name = apr_pstrcat(r->pool, "balancer://", node->mess.balancer, NULL);
-                proxy_balancer *balancer = ap_proxy_get_balancer(r->pool, conf, name, 0);
-                if (balancer) {
-                    return node->mess.balancer;
-                } else {
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                 "get_context_host_balancer: balancer %s not found", name);
-                }
+
+        if (node != NULL && node->mess.balancer[0] != '\0') {
+            /* Check that it is in our proxy_server_conf */
+            char *name = apr_pstrcat(r->pool, "balancer://", node->mess.balancer, NULL);
+            proxy_balancer *balancer = ap_proxy_get_balancer(r->pool, conf, name, 0);
+            if (balancer) {
+                return node->mess.balancer;
             }
+
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "get_context_host_balancer: balancer %s not found",
+                         name);
         }
+
         nodes++;
     }
+
     return NULL;
 }
 
@@ -742,21 +680,15 @@ const node_context *context_host_ok(request_rec *r, const proxy_balancer *balanc
                                     const proxy_vhost_table *vhost_table, const proxy_context_table *context_table,
                                     const proxy_node_table *node_table)
 {
-    const char *route;
-    node_context *best;
-    route = apr_table_get(r->notes, "session-route");
-    best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
+    const char *route = apr_table_get(r->notes, "session-route");
+    node_context *best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
     if (best == NULL) {
         return NULL;
     }
-    while (best->node != -1) {
-        if (best->node == node) {
-            break;
-        }
+
+    while (best->node != -1 && best->node != node) {
         best++;
     }
-    if (best->node == -1) {
-        return NULL; /* not found */
-    }
-    return best;
+
+    return best->node != -1 ? best : NULL;
 }
