@@ -1206,6 +1206,36 @@ static void mark_node_removed(nodeinfo_t *node)
         node->mess.num_remove_check = 0;
     }
 }
+static const proxy_worker_shared *read_shared_by_node(request_rec *r, nodeinfo_t *node)
+{
+    void *sconf = r->server->module_config;
+    int i, port;
+    char *name = apr_pstrcat(r->pool, "balancer://", node->mess.balancer, NULL);
+    proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
+    proxy_balancer *balancer = (proxy_balancer *)conf->balancers->elts;
+    if (sscanf(node->mess.Port, "%u", &port) != 1) {
+        return NULL; /* something is wrong */
+    }
+    for (i = 0; i < conf->balancers->nelts; i++, balancer++) {
+        int j;
+        proxy_worker **workers;
+        if (strcmp(balancer->s->name, name)) {
+            continue;
+        }
+        workers = (proxy_worker **)balancer->workers->elts;
+        for (j = 0; j < balancer->workers->nelts; j++, workers++) {
+            proxy_worker *worker = *workers;
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "read_shared_by_node: Balancer %s worker %s, %s, %d",
+                         balancer->s->name, worker->s->route, worker->s->hostname, worker->s->port);
+            if (worker->s->port == port && strcmp(worker->s->hostname, node->mess.Host) == 0 &&
+                strcmp(worker->s->route, node->mess.JVMRoute) == 0) {
+                return worker->s;
+            }
+        }
+    }
+
+    return NULL;
+}
 
 /*
  * Process a CONFIG message
@@ -1406,6 +1436,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             }
             clean = 0;
             ap_assert(worker->s->port != 0);
+            /* XXX: really needed? offset logic OK here, we save the worker information (see mod_proxy_cluster) */
             pptr = (char *)&nodeinfo;
             offset = sizeof(nodemess_t) + sizeof(apr_time_t) +
                      sizeof(int); /* nodeinfo.offset doesn't contain the information */
@@ -1763,9 +1794,8 @@ static char *process_info(request_rec *r, int *errtype)
 
     for (i = 0; i < size; i++) {
         nodeinfo_t *ou;
-        proxy_worker_shared *proxystat;
+        const proxy_worker_shared *proxystat;
         char *flushpackets;
-        char *pptr;
         if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS) {
             continue;
         }
@@ -1820,9 +1850,11 @@ static char *process_info(request_rec *r, int *errtype)
             break;
         }
 
-        pptr = (char *)ou;
-        pptr = pptr + ou->offset;
-        proxystat = (proxy_worker_shared *)pptr;
+        proxystat = read_shared_by_node(r, ou);
+        if (!proxystat) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: No proxystat, assum zeros");
+            proxystat = apr_pcalloc(r->pool, sizeof(proxy_worker_shared));
+        }
 
         switch (type) {
         case TEXT_XML:
@@ -2980,10 +3012,18 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
 }
 
 /* XXX: move to mod_proxy_cluster as a provider ? */
-static void printproxy_stat(request_rec *r, int reduce_display, const proxy_worker_shared *proxystat)
+static void printproxy_stat(request_rec *r, int reduce_display, nodeinfo_t *node)
 {
-    char *status = NULL;
-    status = proxystat->status & PROXY_WORKER_NOT_USABLE_BITMAP ? "NOTOK" : "OK";
+    char *status;
+    const proxy_worker_shared *proxystat = read_shared_by_node(r, node);
+    if (!proxystat) {
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "printproxy_stat: can't find worker");
+        status = "NOTOK";
+        proxystat = apr_pcalloc(r->pool, sizeof(proxy_worker_shared));
+    } else {
+        status = proxystat->status & PROXY_WORKER_NOT_USABLE_BITMAP ? "NOTOK" : "OK";
+    }
+
 
     if (reduce_display) {
         ap_rprintf(r, " %s ", status);
@@ -3214,7 +3254,6 @@ static int manager_info(request_rec *r)
     for (i = 0; i < size; i++) {
         char *flushpackets;
         nodeinfo_t *ou = &nodes[i];
-        char *pptr = (char *)ou;
 
         if (strcmp(domain, ou->mess.Domain) != 0) {
             if (mconf->reduce_display) {
@@ -3237,10 +3276,8 @@ static int manager_info(request_rec *r)
                        ou->mess.JVMRoute, (int)sizeof(ou->mess.Type), ou->mess.Type, (int)sizeof(ou->mess.Host),
                        ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port);
         }
-        pptr = pptr + ou->offset;
         if (mconf->reduce_display) {
-            /* XXX: The logic depend on the proxy and should use shared memory directly */
-            printproxy_stat(r, mconf->reduce_display, (proxy_worker_shared *)pptr);
+            printproxy_stat(r, mconf->reduce_display, ou);
         }
 
         if (mconf->allow_cmd) {
@@ -3267,7 +3304,7 @@ static int manager_info(request_rec *r)
         if (mconf->reduce_display) {
             ap_rprintf(r, "<br/>\n");
         } else {
-            printproxy_stat(r, mconf->reduce_display, (proxy_worker_shared *)pptr);
+            printproxy_stat(r, mconf->reduce_display, ou);
         }
 
         if (sizesessionid) {
