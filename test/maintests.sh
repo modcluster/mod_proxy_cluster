@@ -115,6 +115,7 @@ fi
 
 # Restart the tomcat
 nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=true --name tomcat${PORT} ${IMG} &
+sleep 10
 
 # Now try to test the websocket
 echotestlabel "testing websocket"
