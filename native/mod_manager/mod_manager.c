@@ -3742,12 +3742,12 @@ static const char *cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
     if (err != NULL) {
         return err;
     }
-    if (ap_find_linked_module("mod_proxy_wstunnel.c") != NULL) {
+    if (ap_find_linked_module("mod_proxy_http.c") != NULL) {
         mconf->enable_ws_tunnel = 1;
         return NULL;
     }
 
-    return "EnableWsTunnel requires mod_proxy_wstunnel.c";
+    return "EnableWsTunnel requires mod_proxy_http.c";
 }
 
 static const char *cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, const char *word)
@@ -3763,13 +3763,13 @@ static const char *cmd_manager_ws_upgrade_header(cmd_parms *cmd, void *mconfig, 
         return apr_psprintf(cmd->temp_pool, "upgrade protocol length must be < %d characters",
                             PROXY_WORKER_MAX_SCHEME_SIZE);
     }
-    if (ap_find_linked_module("mod_proxy_wstunnel.c") != NULL) {
+    if (ap_find_linked_module("mod_proxy_http.c") != NULL) {
         mconf->enable_ws_tunnel = 1;
         mconf->ws_upgrade_header = apr_pstrdup(cmd->pool, word);
         return NULL;
     }
 
-    return "WSUpgradeHeader requires mod_proxy_wstunnel.c";
+    return "WSUpgradeHeader requires mod_proxy_http.c";
 }
 
 static const char *cmd_manager_ajp_secret(cmd_parms *cmd, void *mconfig, const char *word)
