@@ -52,18 +52,12 @@ class WebSocketsTest {
 
         @Override
         public void onError(Throwable t) {
-          fail("[$httpdServerId]:(JWS-63) Url:[${wsUrl}] WebSocket error: " + t.getMessage())
-          t.printStackTrace()
+          fail("[server: $httpdServerId]:(JWS-63) url:[${wsUrl}] WebSocket error: " + t.getMessage())
         }
       } as WebSocketListener).build()
 
       (0..50).each { iter ->
         final AsyncHttpClient.BoundRequestBuilder builder = httpClient.prepareGet(wsUrl)
-	builder.setHeader("sec-websocket-key", "c9khTUa/GnMLiHiJhMgqNA==");
-        builder.setHeader("sec-websocket-version", "13");
-        builder.setHeader("sec-websocket-extensions", "x-webkit-deflate-frame; toto=titi");
-        // builder.setHeader("sec-websocket-extensions", "toto");
-        // builder.setHeader("toto", "titi")
         final ListenableFuture future = builder.execute(webSocketUpgradeHandler)
         final WebSocket websocket = future.get()
         websockets.add(websocket)
