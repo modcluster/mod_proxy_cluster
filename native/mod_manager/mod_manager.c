@@ -1351,8 +1351,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         } else {
             strcpy(nodeinfo.mess.Upgrade, "websocket");
         }
-    } else {
-        nodeinfo.mess.Upgrade[0] = '\0';
     }
 
     if (strcmp(nodeinfo.mess.Type, "ajp") == 0) {
@@ -3847,10 +3845,10 @@ static const command_rec manager_cmds[] = {
                     "EnableMCPMReceive - Allow the VirtualHost to receive MCPM."),
     AP_INIT_NO_ARGS(
         "EnableWsTunnel", cmd_manager_enable_ws_tunnel, NULL, OR_ALL,
-        "EnableWsTunnel - Use ws or wss instead http or https when creating nodes (Allow Websockets proxing)."),
-    AP_INIT_TAKE1("WSUpgradeHeader", cmd_manager_ws_upgrade_header, NULL, OR_ALL,
-                  "WSUpgradeHeader - Accepted upgrade headers, ONE bypass checks, ANY read it from request, other "
-                  "values: header value to check before using the WS tunnel."),
+        "EnableWsTunnel - Use ws or wss instead of http or https when creating nodes (allows WebSocket proxying)."),
+    AP_INIT_TAKE1(
+        "WSUpgradeHeader", cmd_manager_ws_upgrade_header, NULL, OR_ALL,
+        "WSUpgradeHeader - Accept http upgrade headers. Values: WebSocket or * to use any supplied by a client."),
     AP_INIT_TAKE1("AJPSecret", cmd_manager_ajp_secret, NULL, OR_ALL,
                   "AJPSecret - secret for all mod_cluster node, not configued no secret."),
     AP_INIT_TAKE1("ResponseFieldSize", cmd_manager_responsefieldsize, NULL, OR_ALL,
