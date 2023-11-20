@@ -121,7 +121,7 @@ echotestlabel "Testing keepalived with 2 webapps on each tomcat"
 docker cp testapp tomcat1:/usr/local/tomcat/webapps/testapp1
 docker cp testapp tomcat2:/usr/local/tomcat/webapps/testapp2
 sleep 10
-java -jar target/test-1.0.jar HTTPTest
+java -jar includes/target/test-1.0.jar HTTPTest
 if [ $? -ne 0 ]; then
   echo "Something was wrong... with HTTP tests"
   exit 1
