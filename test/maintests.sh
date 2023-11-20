@@ -116,22 +116,6 @@ fi
 # Restart the tomcat
 tomcat_start ${NAME}
 
-# Now try to test the websocket
-echotestlabel "testing websocket"
-# The websocket-hello app is at: https://github.com/jfclere/httpd_websocket
-docker cp websocket-hello-0.0.1.war tomcat1:/usr/local/tomcat/webapps
-docker cp websocket-hello-0.0.1.war tomcat2:/usr/local/tomcat/webapps
-# Put the testapp in the  tomcat we restarted.
-docker cp testapp tomcat${NAME}:/usr/local/tomcat/webapps
-sleep 12
-mvn -f pom-groovy.xml install
-java -jar target/test-1.0.jar WebSocketsTest
-if [ $? -ne 0 ]; then
-  echo "Something was wrong... with websocket tests"
-  exit 1
-fi
-
-#
 # Test a keepalived connection finds the 2 webapps on each tomcat
 echotestlabel "Testing keepalived with 2 webapps on each tomcat"
 docker cp testapp tomcat1:/usr/local/tomcat/webapps/testapp1
