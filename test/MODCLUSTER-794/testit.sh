@@ -1,14 +1,5 @@
 #!/usr/bin/sh
 
-# Shell to test MODCLUSTER-794
-
-pwd | grep MODCLUSTER-794
-if [ $? ]; then
-    PREFIX=MODCLUSTER-794
-else
-    PREFIX="."
-fi
-
 . includes/common.sh
 
 # first stop any previously running tests.

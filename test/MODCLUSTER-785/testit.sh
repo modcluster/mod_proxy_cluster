@@ -1,13 +1,5 @@
 #!/bin/bash
 
-# if ran from main testsuite, change directory
-pwd | grep MODCLUSTER-785
-if [ $? ]; then
-    PREFIX=MODCLUSTER-785
-else
-    PREFIX="."
-fi
-
 . includes/common.sh
 
 # first stop any previously running tests.
@@ -26,8 +18,8 @@ tomcat_start 1
 # wait until tomcat1 is in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 1
 
-# copy the test page in app to tomcat1
-docker cp $PREFIX/app tomcat1:/usr/local/tomcat/webapps/app
+# copy the test page in app to tomcat8080
+docker cp MODCLUSTER-785/app tomcat1:/usr/local/tomcat/webapps/app
 
 # check that the app is answering
 sleep 15
@@ -58,8 +50,8 @@ tomcat_start 1
 # wait until tomcat1 is in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 1
 
-# copy the test page in app to tomcat1
-docker cp $PREFIX/app tomcat1:/usr/local/tomcat/webapps/app
+# copy the test page in app to tomcat8080
+docker cp MODCLUSTER-785/app tomcat1:/usr/local/tomcat/webapps/app
 sleep 15
 
 # check that the app is answering
