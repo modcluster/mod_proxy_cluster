@@ -43,5 +43,6 @@ RUN for m in advertise mod_proxy_cluster balancers mod_manager; \
         cd $OLDPWD; \
     done;
 
-CMD /tmp/run.sh
+WORKDIR /usr/local/apache2
 
+CMD /tmp/run.sh
