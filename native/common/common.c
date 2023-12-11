@@ -343,7 +343,7 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, const proxy
 
 node_context *find_node_context_host(request_rec *r, const proxy_balancer *balancer, const char *route, int use_alias,
                                      const proxy_vhost_table *vhost_table, const proxy_context_table *context_table,
-                                     const proxy_node_table *node_table)
+                                     const proxy_node_table *node_table, int *has_contexts)
 {
     int sizecontext = context_table->sizecontext;
     int *contexts;
@@ -443,6 +443,7 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
                 continue;
             }
         }
+        *has_contexts = -1;
         len = strlen(context->context);
         if (strncmp(uri, context->context, len) == 0) {
             if (uri[len] == '\0' || uri[len] == '/' || len == 1) {
@@ -573,8 +574,9 @@ const char *get_route_balancer(request_rec *r, const proxy_server_conf *conf, co
             }
             if (route && *route) {
                 /* Nice we have a route, but make sure we have to serve it */
-                node_context *nodes =
-                    find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
+                int has_contexts = 0;
+                node_context *nodes = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table,
+                                                             node_table, &has_contexts);
                 if (nodes == NULL) {
                     continue; /* we can't serve context/host for the request with this balancer */
                 }
@@ -631,9 +633,11 @@ const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_t
                                       proxy_context_table *context_table, proxy_node_table *node_table, int use_alias)
 {
     void *sconf = r->server->module_config;
+    int has_contexts = 0;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
-    node_context *nodes = find_node_context_host(r, NULL, NULL, use_alias, vhost_table, context_table, node_table);
+    node_context *nodes =
+        find_node_context_host(r, NULL, NULL, use_alias, vhost_table, context_table, node_table, &has_contexts);
 
     while (nodes != NULL && nodes->node != -1) {
         /* look for the node information */
@@ -673,7 +677,9 @@ const node_context *context_host_ok(request_rec *r, const proxy_balancer *balanc
                                     const proxy_node_table *node_table)
 {
     const char *route = apr_table_get(r->notes, "session-route");
-    node_context *best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
+    int has_contexts = 0;
+    node_context *best =
+        find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table, &has_contexts);
     if (best == NULL) {
         return NULL;
     }

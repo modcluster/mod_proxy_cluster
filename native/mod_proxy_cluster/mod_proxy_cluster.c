@@ -107,6 +107,7 @@ static int creat_bal = CREAT_ROOT;
 static int use_alias = 0; /* 1 : Compare Alias with server_name */
 static int deterministic_failover = 0;
 static int use_nocanon = 0;
+static int responsecode_when_no_context = HTTP_NOT_FOUND;
 
 static apr_time_t lbstatus_recalc_time =
     apr_time_from_sec(5); /* recalcul the lbstatus based on number of request in the time interval */
@@ -1626,6 +1627,7 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
     const char *route;
     char *tokenizer;
     const char *session_id;
+    int has_contexts = 0;
 
     workers = apr_pcalloc(r->pool, sizeof(proxy_worker *) * balancer->workers->nelts);
     ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
@@ -1642,10 +1644,12 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
 
     /* do this once now to avoid repeating find_node_context_host through loop iterations */
     route = apr_table_get(r->notes, "session-route");
-    best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table);
+    best = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table, node_table, &has_contexts);
     if (best == NULL) {
         /* No context to serve the request we can't do much */
-        apr_table_setn(r->notes, "no-context-error", "1");
+        if (has_contexts) {
+            apr_table_setn(r->notes, "no-context-error", "1");
+        }
         return NULL;
     }
 
@@ -3218,11 +3222,12 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
                              (*balancer)->s->name);
 
                 return HTTP_SERVICE_UNAVAILABLE;
+            } else {
+                ap_log_error(APLOG_MARK, responsecode_when_no_context == HTTP_NOT_FOUND ? APLOG_DEBUG : APLOG_ERR, 0,
+                             r->server, "proxy: CLUSTER: (%s). No context for the URL returns %d", (*balancer)->s->name,
+                             responsecode_when_no_context);
+                return responsecode_when_no_context;
             }
-
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "proxy_cluster_pre_request: CLUSTER: (%s). No context for the URL", (*balancer)->s->name);
-            return HTTP_NOT_FOUND;
         }
         if ((*balancer)->s->sticky[0] != '\0' && runtime) {
             /*
@@ -3569,6 +3574,16 @@ static const char *cmd_proxy_cluster_use_nocanon(cmd_parms *parms, void *mconfig
     return NULL;
 }
 
+static const char *cmd_proxy_cluster_responsecode_when_no_context(cmd_parms *parms, void *mconfig, const char *arg)
+{
+    int val = atoi(arg);
+    if (val < 0) {
+        return "ResponseStatusCodeOnNoContext must be greater than 0";
+    } else {
+        responsecode_when_no_context = val;
+    }
+    return NULL;
+}
 
 #if MC_USE_THREADS
 static const char *cmd_mc_thread_count(cmd_parms *cmd, void *dummy, const char *arg)
@@ -3613,6 +3628,13 @@ static const command_rec proxy_cluster_cmds[] = {
     AP_INIT_FLAG("UseNocanon", cmd_proxy_cluster_use_nocanon, NULL, OR_ALL,
                  "UseNocanon - When no ProxyPass or ProxyMatch for the URL, passes the URL path \"raw\" to the backend "
                  "(Default: Off)"),
+    AP_INIT_TAKE1(
+        "ResponseStatusCodeOnNoContext",
+        cmd_proxy_cluster_responsecode_when_no_context,
+        NULL,
+        OR_ALL,
+        "ResponseStatusCodeOnNoContext - Response code returned when ProxyPass or ProxyMatch doesn't have matching context (Default: 404)"
+    ),
 #if MC_USE_THREADS
     AP_INIT_TAKE1("ModProxyClusterThreadCount", cmd_mc_thread_count, NULL, OR_ALL,
                   "ModProxyClusterThreadCount - Set custom size for the watchdog thread pool (Default: 16)"),

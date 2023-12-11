@@ -151,11 +151,12 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, const proxy
  * @param vhost_table virtual host table
  * @param context_table context table
  * @param node_table node table
+ * @param has_contexts address of an int to tell we have contexts correspondsing to balancer and host.
  * @return a pointer to a list of nodes
  */
 node_context *find_node_context_host(request_rec *r, const proxy_balancer *balancer, const char *route, int use_alias,
                                      const proxy_vhost_table *vhost_table, const proxy_context_table *context_table,
-                                     const proxy_node_table *node_table);
+                                     const proxy_node_table *node_table, int *has_contexts);
 
 /**
  * Find the balancer corresponding to the node information
