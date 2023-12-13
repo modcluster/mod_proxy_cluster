@@ -1,3 +1,8 @@
+#
+# Copyright The mod_cluster Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 dnl configure for mod_manager
 dnl
 

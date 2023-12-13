@@ -1,5 +1,10 @@
 #!/bin/sh
 
+#
+# Copyright The mod_cluster Project Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # Remove aclocal.m4 as it'll break some builds...
 rm -rf aclocal.m4 autom4te*.cache
 

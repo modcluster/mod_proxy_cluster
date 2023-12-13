@@ -1,3 +1,8 @@
+#
+# Copyright The mod_cluster Project Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 TARGET=LIB
 RPM_ROOT_DIR=C:\cygwin\home\jbossqa\jfclere
 BUILDINC=$(RPM_ROOT_DIR)\include\httpd

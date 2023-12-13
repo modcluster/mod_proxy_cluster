@@ -1,7 +1,10 @@
-#==================================
+#
+# Copyright The mod_cluster Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # balancers CMake file
-# @author: Jean-Frederic Clere
-#==================================
+# @author Jean-Frederic Clere
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(mod_lbmethod_cluster)
