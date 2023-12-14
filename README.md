@@ -68,6 +68,4 @@ The output can be found in newly created `doxygen-out/` directory.
 
 License
 -------
-
-This software is distributed under the terms of the GNU Lesser General Public License (see [lgpl.txt](lgpl.txt)).
-
+* [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)

@@ -1,8 +1,11 @@
+REM Copyright The mod_cluster Project Authors
+REM SPDX-License-Identifier: Apache-2.0
+
 REM kudos to Michal Karm Babacek <karm@fedoraproject.org>
 REM this script is from (https://github.com/modcluster/ci.modcluster.io)
 
 REM You need to define HTTPD_DEV_HOME environment variable to point to
-REM your httpd's folder if you run this scirpt on you own.
+REM your httpd's folder if you run this script on you own.
 REM Also, don't forget to call vcvars64.bat if you run it locally.
 REM Otherwise you may not have your tools/environment set up properly.
 

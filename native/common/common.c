@@ -1,3 +1,8 @@
+/*
+ * Copyright The mod_cluster Project Authors
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 #include "common.h"
 
 #include "httpd.h"

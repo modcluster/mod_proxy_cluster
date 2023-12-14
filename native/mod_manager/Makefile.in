@@ -1,5 +1,11 @@
+#
+# Copyright The mod_cluster Project Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # Makefile.in for mod_proxy_cluster
 # copy the source in the httpd Apache source tree
+
 APACHE_BASE = @APACHE_BASE@
 top_builddir = @APACHE_BUILDDIR@
 # For .deps.

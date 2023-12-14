@@ -1,7 +1,10 @@
-#==================================
+#
+# Copyright The mod_cluster Project Authors
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # mod_advertise CMake file
-# @author: Michal Karm Babacek
-#==================================
+# @author Michal Karm Babacek
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 PROJECT(advertise)
