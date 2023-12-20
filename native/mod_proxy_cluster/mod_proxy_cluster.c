@@ -42,18 +42,15 @@
 #include "apr_thread_pool.h"
 #endif
 
-/* define HAVE_CLUSTER_EX_DEBUG to have extented debug in mod_cluster */
-#define HAVE_CLUSTER_EX_DEBUG 0
-
 /* define OUR load balancer method names (lbpname), must start by MC */
 /* default behaviour be sticky StickySession="yes" */
-#define MC_STICKY             "MC"
+#define MC_STICKY         "MC"
 /* don't be STICKY use the best factor worker StickySession="no" */
-#define MC_NOT_STICKY         "MC_NS"
+#define MC_NOT_STICKY     "MC_NS"
 /* remove session information on fail-over StickySessionRemove="yes", implies StickySession="yes" */
-#define MC_REMOVE_SESSION     "MC_R"
+#define MC_REMOVE_SESSION "MC_R"
 /* Don't failover if the corresponding worker is failing StickySessionForce="yes", implies StickySession="yes" */
-#define MC_NO_FAILOVER        "MC_NF"
+#define MC_NO_FAILOVER    "MC_NF"
 
 #if APR_HAS_THREADS
 #ifndef MC_USE_THREADS

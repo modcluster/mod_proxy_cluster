@@ -186,8 +186,8 @@ static int lbmethod_cluster_trans(request_rec *r)
     }
 
 #if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_cluster_trans DECLINED %s uri: %s unparsed_uri: %s",
-                 balancer, r->filename, r->unparsed_uri);
+    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
+                 "proxy_cluster_trans DECLINED (no balancer) uri: %s unparsed_uri: %s", r->filename, r->unparsed_uri);
 #endif
     return DECLINED;
 }
