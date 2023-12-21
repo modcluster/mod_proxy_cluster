@@ -31,8 +31,8 @@ tomcat_start_two
 tomcat_wait_for_n_nodes 2
 
 # copy the webapp in the tomcats
-docker cp $PREFIX/webapp1 tomcat8080:/usr/local/tomcat/webapps/webapp1
-docker cp $PREFIX/webapp1 tomcat8081:/usr/local/tomcat/webapps/webapp1
+docker cp $PREFIX/webapp1 tomcat1:/usr/local/tomcat/webapps/webapp1
+docker cp $PREFIX/webapp1 tomcat2:/usr/local/tomcat/webapps/webapp1
 
 sleep 12
 

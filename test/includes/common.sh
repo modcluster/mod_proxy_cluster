@@ -116,33 +116,31 @@ tomcat_create() {
                                  --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
 }
 
-# Start tomcat$1 container on 127.0.0.$2
-# or 127.0.0.$1 if $2 is not given
-# arguments:
-#       $1 tomcat number (required)
-#       $2 tomcat's last byte of IPv4 address (if 0 or omitted, equals to $1)
-#       $3 tomcat port          (if omitted it's 8080 + $1 - 1)
-#       $4 tomcat ajp port      (if omitted it's 8900 + $1 - 1)
-#       $5 tomcat shutdown port (if omitted it's 8005 + $1 - 1)
+# Start tomcat$1 container on 127.0.0.$2 or 127.0.0.$1 if $2 is not given.
+# Ports are set by default as follows
+#     * tomcat port           8080 + $1 - 1
+#     * tomcat ajp port       8900 + $1 - 1
+#     * tomcat shutdown port  8005 + $1 - 1
+# $1 has to be in range [1, 75].
 tomcat_start() {
     if [ -z "$1" ]; then
         echo "tomcat_start called without arguments"
         exit 1
+    fi
+
+    if [ $1 -le 0 ] || [ $1 -gt 75 ]; then
+        echo "tomcat_start called with invalid \$1 value (got $1, allowed [1, 75])"
+        exit 2
     fi
     ADDR="127.0.0.$1"
     if [ ${2:-0} -ne 0 ]; then
         ADDR="127.0.0.$2"
     fi
 
-    local portdef=$(expr 8080 + $1 - 1)
-    local ajpdef=$(expr 8900 + $1 - 1)
-    local shutdef=$(expr 8005 + $1 - 1)
-
-    echo "Starting tomcat$1 on $ADDR"
-    nohup docker run --network=host -e tomcat_ajp_port=${4:-$ajpdef} \
-                                    -e tomcat_address=$ADDR \
-                                    -e tomcat_port=${3:-$portdef} \
-                                    -e tomcat_shutdown_port=${5:-$shutdef} \
+    local OFFSET=$(expr $1 - 1)
+    echo "Starting tomcat$1 on $ADDR:$(expr 8080 + $OFFSET)"
+    nohup docker run --network=host -e tomcat_address=$ADDR \
+                                    -e tomcat_port_offset=$OFFSET \
                                     -e jvm_route=tomcat$1 \
                                 --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
@@ -234,17 +232,17 @@ tomcat_all_remove() {
 }
 
 tomcat_start_two() {
-    echo "Starting tomcat8080..."
-    nohup docker run --network=host -e tomcat_port=8080 -e tomcat_shutdown_port=true --name tomcat8080 ${IMG} &
+    echo "Starting tomcat1..."
+    tomcat_start 1
     if [ $? -ne 0 ]; then
-        echo "Can't start tomcat8080"
+        echo "Can't start tomcat1"
         exit 1
     fi
     sleep 10
-    echo "Starting tomcat8081..."
-    nohup docker run --network=host -e tomcat_port=8081 -e tomcat_shutdown_port=true --name tomcat8081 ${IMG} &
+    echo "Starting tomcat2..."
+    tomcat_start 2 1
     if [ $? -ne 0 ]; then
-        echo "Can't start tomcat8081"
+        echo "Can't start tomcat2"
         exit 1
     fi
     echo "2 Tomcats started..."
@@ -268,7 +266,6 @@ tomcat_start_webapp() {
 # arguments:
 #     $1 tomcat number
 #     $2 the last segment of IPv4 addr ($1 by default)
-#     $3 the shutdown port (8005 + $1 - 1 by default)
 tomcat_shutdown() {
     ADDR="127.0.0.$1"
     if [ $2 -ne 0 ]; then
@@ -276,7 +273,7 @@ tomcat_shutdown() {
     fi
 
     echo "shutting down tomcat$1 with address: $ADDR"
-    echo "SHUTDOWN" | nc $ADDR ${3:-$(expr 8005 + $1 - 1)}
+    echo "SHUTDOWN" | nc $ADDR $(expr 8005 + $1 - 1)
 }
 
 # Remove the docker image tomcat$1

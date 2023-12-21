@@ -23,7 +23,7 @@ tomcat_start_two || exit 1
 tomcat_wait_for_n_nodes 2 || exit 1
 
 # Copy testapp and wait for its start
-docker cp testapp tomcat8081:/usr/local/tomcat/webapps
+docker cp testapp tomcat2:/usr/local/tomcat/webapps
 sleep 12
 
 
@@ -42,7 +42,7 @@ if [ "${NEWCO}" != "" ]; then
 fi
 
 # Copy testapp and wait for starting
-docker cp testapp tomcat8080:/usr/local/tomcat/webapps
+docker cp testapp tomcat1:/usr/local/tomcat/webapps
 sleep 12
 
 # Sticky (yes there are 2 apps now)
@@ -89,7 +89,8 @@ echotestlabel "sticky: stopping one node and doing requests..."
 NODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo $NODE
 PORT=$(curl http://localhost:6666/mod_cluster_manager | grep Node | grep $NODE | sed 's:)::' | awk -F : '{ print $3 } ')
-echo "Will stop ${PORT} corresponding to ${NODE} and cookie: ${NEWCO}"
+NAME=$(expr ${PORT} - 8080 + 1)
+echo "Will stop tomcat$NAME corresponding to ${NODE} and cookie: ${NEWCO}"
 CODE="200"
 i=0
 while [ "$CODE" == "200" ]
@@ -101,9 +102,8 @@ do
   CODE=$(curl -s -o /dev/null -w "%{http_code}" --cookie "${NEWCO}" http://localhost:8000/testapp/test.jsp)
   if [ $i -eq 0 ]; then
     # stop the tomcat
-    echo "tomcat${PORT} being stopped"
-    docker stop tomcat${PORT}
-    docker container rm tomcat${PORT}
+    echo "tomcat${NAME} being stopped"
+    tomcat_remove $NAME
   fi
   i=$(expr $i + 1)
 done
@@ -114,16 +114,15 @@ if [ ${CODE} != "200" ]; then
 fi
 
 # Restart the tomcat
-nohup docker run --network=host -e tomcat_port=${PORT} -e tomcat_shutdown_port=true --name tomcat${PORT} ${IMG} &
-sleep 10
+tomcat_start ${NAME}
 
 # Now try to test the websocket
 echotestlabel "testing websocket"
 # The websocket-hello app is at: https://github.com/jfclere/httpd_websocket
-docker cp websocket-hello-0.0.1.war tomcat8080:/usr/local/tomcat/webapps
-docker cp websocket-hello-0.0.1.war tomcat8081:/usr/local/tomcat/webapps
+docker cp websocket-hello-0.0.1.war tomcat1:/usr/local/tomcat/webapps
+docker cp websocket-hello-0.0.1.war tomcat2:/usr/local/tomcat/webapps
 # Put the testapp in the  tomcat we restarted.
-docker cp testapp tomcat${PORT}:/usr/local/tomcat/webapps
+docker cp testapp tomcat${NAME}:/usr/local/tomcat/webapps
 sleep 12
 mvn -f pom-groovy.xml install
 java -jar target/test-1.0.jar WebSocketsTest
@@ -135,8 +134,8 @@ fi
 #
 # Test a keepalived connection finds the 2 webapps on each tomcat
 echotestlabel "Testing keepalived with 2 webapps on each tomcat"
-docker cp testapp tomcat8080:/usr/local/tomcat/webapps/testapp1
-docker cp testapp tomcat8081:/usr/local/tomcat/webapps/testapp2
+docker cp testapp tomcat1:/usr/local/tomcat/webapps/testapp1
+docker cp testapp tomcat2:/usr/local/tomcat/webapps/testapp2
 sleep 10
 java -jar target/test-1.0.jar HTTPTest
 if [ $? -ne 0 ]; then
@@ -147,16 +146,15 @@ fi
 #
 # Test virtual host
 echotestlabel "Testing virtual hosts"
-docker cp tomcat8081:/usr/local/tomcat/conf/server.xml .
+docker cp tomcat2:/usr/local/tomcat/conf/server.xml .
 sed '/Host name=.*/i <Host name=\"example.com\"  appBase="examples" />' server.xml > new.xml
-docker cp new.xml tomcat8081:/usr/local/tomcat/conf/server.xml
-docker cp examples tomcat8081:/usr/local/tomcat
-docker commit tomcat8081 ${IMG}-temporary
-docker stop tomcat8081
-docker container rm tomcat8081
+docker cp new.xml tomcat2:/usr/local/tomcat/conf/server.xml
+docker cp examples tomcat2:/usr/local/tomcat
+docker commit tomcat2 ${IMG}-temporary
+tomcat_remove 2
 tomcat_wait_for_n_nodes 1
 # Start the node.
-nohup docker run --network=host -e tomcat_port=8081 -e tomcat_shutdown_port=true --name tomcat8081 ${IMG}-temporary &
+IMG=${IMG}-temporary tomcat_start 2 &
 tomcat_wait_for_n_nodes 2  || exit 1
 # Basically curl --header "Host: example.com" http://127.0.0.1:8000/test/test.jsp gives 200
 # in fact the headers are:
@@ -190,8 +188,8 @@ if [ ${CODE} != "404" ]; then
 fi
 
 # Shutdown the 2 tomcats
-docker exec tomcat8080 /usr/local/tomcat/bin/shutdown.sh
-docker exec tomcat8081 /usr/local/tomcat/bin/shutdown.sh
+tomcat_remove 1
+tomcat_remove 2
 tomcat_wait_for_n_nodes 0
 docker container rm tomcat8080
 docker container rm tomcat8081

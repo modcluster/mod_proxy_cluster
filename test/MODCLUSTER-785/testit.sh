@@ -26,7 +26,7 @@ tomcat_start 1
 # wait until tomcat1 is in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 1
 
-# copy the test page in app to tomcat8080
+# copy the test page in app to tomcat1
 docker cp $PREFIX/app tomcat1:/usr/local/tomcat/webapps/app
 
 # check that the app is answering
@@ -58,7 +58,7 @@ tomcat_start 1
 # wait until tomcat1 is in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 1
 
-# copy the test page in app to tomcat8080
+# copy the test page in app to tomcat1
 docker cp $PREFIX/app tomcat1:/usr/local/tomcat/webapps/app
 sleep 15
 
