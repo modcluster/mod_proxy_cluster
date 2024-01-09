@@ -195,6 +195,7 @@ nodeinfo_t *table_get_node_route(proxy_node_table *node_table, char *route, int 
  * @param r the request_rec
  * @param vhost_table table of host virtual hosts
  * @param context_table table of contexts
+ * @param use_alias compare alias with server_name
  * @return the balancer name or NULL if not found
  */
 const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_table,
