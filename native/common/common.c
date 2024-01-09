@@ -353,18 +353,12 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
     node_context *best;
     int nbest;
     const char *uri = NULL;
-    const char *luri = NULL;
+    const char *luri = r->uri;
 
-    /* use r->uri (trans) or r->filename (after canon or rewrite) */
-    if (r->filename) {
-        const char *scheme = strstr(r->filename, "://");
-        if (scheme) {
-            luri = ap_strchr_c(scheme + 3, '/');
-        }
+    if (apr_table_get(r->notes, "proxy-context")) {
+        return (node_context *)apr_table_get(r->notes, "proxy-context");
     }
-    if (!luri) {
-        luri = r->uri;
-    }
+
     uri = ap_strchr_c(luri, '?');
     if (uri) {
         uri = apr_pstrndup(r->pool, luri, uri - luri);
@@ -459,7 +453,6 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
         return NULL;
     }
 
-
     /* find the best matching contexts */
     nbest = 1;
     for (j = 0; j < sizecontext; j++) {
@@ -467,6 +460,7 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
             nbest++;
         }
     }
+
     best = apr_palloc(r->pool, sizeof(node_context) * nbest);
     nbest = 0;
     for (j = 0; j < sizecontext; j++) {
@@ -477,12 +471,12 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
             /* Check status */
             switch (status[j]) {
             case ENABLED:
-                ok = -1;
+                ok = 1;
                 break;
             case DISABLED:
                 /* Only the request with sessionid ok for it */
                 if (hassession_byname(r, context->node, route, node_table)) {
-                    ok = -1;
+                    ok = 1;
                 }
                 break;
             }
@@ -497,6 +491,8 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
         return NULL;
     }
     best[nbest].node = -1;
+    /* Save the result */
+    apr_table_setn(r->notes, "proxy-context", (char *)best);
     return best;
 }
 
