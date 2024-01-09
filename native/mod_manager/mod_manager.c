@@ -2850,9 +2850,9 @@ static void manager_sessionid(request_rec *r)
     ap_rprintf(r, "</pre>");
 }
 
-#if HAVE_CLUSTER_EX_DEBUG
 static void manager_domain(request_rec *r, int reduce_display)
 {
+#if HAVE_CLUSTER_EX_DEBUG
     int size, i;
     int *id;
 
@@ -2878,8 +2878,8 @@ static void manager_domain(request_rec *r, int reduce_display)
                    BALANCERSZ, ou->balancer);
     }
     ap_rprintf(r, "</pre>");
-}
 #endif
+}
 
 static int count_sessionid(request_rec *r, const char *route)
 {
@@ -3297,9 +3297,8 @@ static int manager_info(request_rec *r)
     if (sizesessionid) {
         manager_sessionid(r);
     }
-#if HAVE_CLUSTER_EX_DEBUG
+
     manager_domain(r, mconf->reduce_display);
-#endif
 
     ap_rputs("</body></html>\n", r);
     return OK;
