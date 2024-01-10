@@ -143,19 +143,15 @@ static int lbmethod_cluster_trans(request_rec *r)
     const char *balancer;
     void *sconf = r->server->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
-
-
-#if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                 "lbmethod_cluster_trans for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
-                 r->handler, r->uri, r->args, r->unparsed_uri);
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "lbmethod_cluster_trans for %d", conf->balancers->nelts);
-#endif
-
     proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage, 0);
     proxy_context_table *context_table = read_context_table(r->pool, context_storage, 0);
     proxy_balancer_table *balancer_table = read_balancer_table(r->pool, balancer_storage, 0);
     proxy_node_table *node_table = read_node_table(r->pool, node_storage, 0);
+
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
+                 "lbmethod_cluster_trans for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
+                 r->handler, r->uri, r->args, r->unparsed_uri);
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "lbmethod_cluster_trans for %d", conf->balancers->nelts);
 
     apr_table_setn(r->notes, "vhost-table", (char *)vhost_table);
     apr_table_setn(r->notes, "context-table", (char *)context_table);
@@ -178,17 +174,13 @@ static int lbmethod_cluster_trans(request_rec *r)
         }
         r->handler = "proxy-server";
         r->proxyreq = PROXYREQ_REVERSE;
-#if HAVE_CLUSTER_EX_DEBUG
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_trans using %s uri: %s", balancer,
+        ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "proxy_cluster_trans using %s uri: %s", balancer,
                      r->filename);
-#endif
         return OK; /* Mod_proxy will process it */
     }
 
-#if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_cluster_trans DECLINED %s uri: %s unparsed_uri: %s",
-                 balancer, r->filename, r->unparsed_uri);
-#endif
+    ap_log_error(APLOG_MARK, APLOG_TRACE3, 0, r->server,
+                 "proxy_cluster_trans DECLINED (no balancer) uri: %s unparsed_uri: %s", r->filename, r->unparsed_uri);
     return DECLINED;
 }
 

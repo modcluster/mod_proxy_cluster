@@ -42,18 +42,15 @@
 #include "apr_thread_pool.h"
 #endif
 
-/* define HAVE_CLUSTER_EX_DEBUG to have extented debug in mod_cluster */
-#define HAVE_CLUSTER_EX_DEBUG 0
-
 /* define OUR load balancer method names (lbpname), must start by MC */
 /* default behaviour be sticky StickySession="yes" */
-#define MC_STICKY             "MC"
+#define MC_STICKY         "MC"
 /* don't be STICKY use the best factor worker StickySession="no" */
-#define MC_NOT_STICKY         "MC_NS"
+#define MC_NOT_STICKY     "MC_NS"
 /* remove session information on fail-over StickySessionRemove="yes", implies StickySession="yes" */
-#define MC_REMOVE_SESSION     "MC_R"
+#define MC_REMOVE_SESSION "MC_R"
 /* Don't failover if the corresponding worker is failing StickySessionForce="yes", implies StickySession="yes" */
-#define MC_NO_FAILOVER        "MC_NF"
+#define MC_NO_FAILOVER    "MC_NF"
 
 #if APR_HAS_THREADS
 #ifndef MC_USE_THREADS
@@ -1488,9 +1485,7 @@ static void remove_timeout_domain(apr_pool_t *pool)
 static int isnode_domain_ok(const request_rec *r, const nodeinfo_t *node, const char *domain)
 {
     (void)r;
-#if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "isnode_domain_ok: domain %s:%s", domain, node->mess.Domain);
-#endif
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "isnode_domain_ok: domain %s:%s", domain, node->mess.Domain);
     if (domain == NULL) {
         return 1; /* OK no domain in the corresponding to the SESSIONID */
     }
@@ -1633,11 +1628,9 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
     const char *session_id;
 
     workers = apr_pcalloc(r->pool, sizeof(proxy_worker *) * balancer->workers->nelts);
-#if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
                  "internal_find_best_byrequests: Entering byrequests for CLUSTER (%s) failoverdomain:%d",
                  balancer->s->name, failoverdomain);
-#endif
 
     /* create workers for new nodes */
     if (!cache_share_for) {
@@ -2578,7 +2571,7 @@ static int proxy_cluster_trans(request_rec *r)
     apr_table_setn(r->notes, "balancer-table", (char *)balancer_table);
     apr_table_setn(r->notes, "node-table", (char *)node_table);
 
-    ap_log_rerror(APLOG_MARK, APLOG_TRACE8, 0, r, "proxy_cluster_trans: for %d %s %s uri: %s args: %s unparsed_uri: %s",
+    ap_log_rerror(APLOG_MARK, APLOG_TRACE6, 0, r, "proxy_cluster_trans: for %d %s %s uri: %s args: %s unparsed_uri: %s",
                   r->proxyreq, r->filename, r->handler, r->uri, r->args, r->unparsed_uri);
 
     balancer = get_route_balancer(r, conf, vhost_table, context_table, balancer_table, node_table, use_alias);
@@ -2640,7 +2633,7 @@ static int proxy_cluster_trans(request_rec *r)
         return OK; /* Mod_proxy will process it */
     }
 
-    ap_log_rerror(APLOG_MARK, APLOG_TRACE8, 0, r, "proxy_cluster_trans: DECLINED %s uri: %s unparsed_uri: %s",
+    ap_log_rerror(APLOG_MARK, APLOG_TRACE6, 0, r, "proxy_cluster_trans: DECLINED %s uri: %s unparsed_uri: %s",
                   balancer ? balancer : "", r->filename, r->unparsed_uri);
     return DECLINED;
 }
@@ -2662,9 +2655,7 @@ static int proxy_cluster_canon(request_rec *r, char *url)
     }
     url += 9;
 
-#if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_canon url: %s", url);
-#endif
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "proxy_cluster_canon url: %s", url);
 
     /* do syntatic check.
      * We break the URL into host, port, path, search
@@ -2860,11 +2851,9 @@ static proxy_worker *find_session_route(const proxy_balancer *balancer, request_
     proxy_worker *worker = NULL;
     (void)url;
 
-#if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
                  "find_session_route: sticky %s sticky_path: %s sticky_force: %d", balancer->s->sticky,
                  balancer->s->sticky_path, balancer->s->sticky_force);
-#endif
     if (balancer->s->sticky[0] == '\0' || balancer->s->sticky_path[0] == '\0') {
         return NULL;
     }
@@ -3318,10 +3307,8 @@ static int proxy_cluster_post_request(proxy_worker *worker, proxy_balancer *bala
 
     node_storage->unlock_nodes();
 
-#if HAVE_CLUSTER_EX_DEBUG
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_post_request: for (%s) %s", balancer->s->name,
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "proxy_cluster_post_request: for (%s) %s", balancer->s->name,
                  balancer->s->sticky);
-#endif
 
     if (sessionid_storage) {
 
@@ -3338,10 +3325,8 @@ static int proxy_cluster_post_request(proxy_worker *worker, proxy_balancer *bala
                 if (sessionid && strcmp(cookie, sessionid)) {
                     /* The cookie has changed, remove the old one and store the next one */
                     sessionidinfo_t ou;
-#if HAVE_CLUSTER_EX_DEBUG
-                    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
                                  "proxy_cluster_post_request: sessionid changed (%s to %s)", sessionid, cookie);
-#endif
                     strncpy(ou.sessionid, sessionid, SESSIONIDSZ);
                     ou.id = -1;
                     sessionid_storage->remove_sessionid(&ou);

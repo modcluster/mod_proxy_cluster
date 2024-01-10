@@ -60,6 +60,18 @@ Tests
 
 The project contains some tests too. You can find them with a separate README in the `test` subdirectory.
 
+Debugging
+---------
+
+For the debugging, you can specify the `LogLevel` within you `httpd.conf` file. In case you want detailed logs,
+set the level to `DEBUG`. In case that would not be enough, `mod_proxy_cluster` uses messages with level
+up to `TRACE6`. Such a level of logging might result in huge and chaotic logs, so we advise you to set these
+level for the module only (see [this document](https://httpd.apache.org/docs/2.4/logs.html#permodule)).
+
+You can also get additional information in case you compile mod_proxy_cluster with `HAVE_CLUSTER_EX_DEBUG` macro
+set. That will make more information visible within mod_manager. It will also add more information to the context
+search, but bear in mind that this may affect the performance.
+
 Doxygen documentation
 ---------------------
 
