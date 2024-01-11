@@ -1,6 +1,11 @@
 # Run this from the same directory
 TEST_DIR=$(pwd)
 cd ../..
+
+if [ -d $TEST_DIR/tomcat/target ]; then
+    rm $TEST_DIR/tomcat/target/*
+fi
+
 # get websocket demo repository
 if [ ! -d httpd_websocket-testsuite ]; then
     git clone https://github.com/jfclere/httpd_websocket httpd_websocket-testsuite
