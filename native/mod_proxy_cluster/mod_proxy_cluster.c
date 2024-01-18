@@ -3639,6 +3639,9 @@ static const char *cmd_proxy_cluster_use_nocanon(cmd_parms *parms, void *mconfig
 static const char *cmd_proxy_cluster_responsecode_when_no_context(cmd_parms *parms, void *mconfig, const char *arg)
 {
     int val = atoi(arg);
+    (void)parms;
+    (void)mconfig;
+
     if (val < 0) {
         return "ResponseStatusCodeOnNoContext must be greater than 0";
     } else {

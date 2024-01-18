@@ -2896,6 +2896,9 @@ static void manager_domain(request_rec *r, int reduce_display)
                    BALANCERSZ, ou->balancer);
     }
     ap_rprintf(r, "</pre>");
+#else
+    (void)r;
+    (void)reduce_display;
 #endif
 }
 
