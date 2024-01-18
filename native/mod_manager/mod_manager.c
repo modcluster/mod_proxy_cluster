@@ -1029,6 +1029,7 @@ static void process_config_node_defaults(request_rec *r, nodeinfo_t *nodeinfo, m
     nodeinfo->mess.timeout = 0;
     nodeinfo->mess.id = -1;
     nodeinfo->mess.lastcleantry = 0;
+    nodeinfo->mess.has_workers = 0;
 }
 
 static char *process_config_balancer(const request_rec *r, const char *key, char *val, balancerinfo_t *balancerinfo,

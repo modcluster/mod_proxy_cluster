@@ -47,6 +47,7 @@ struct nodemess
     int reversed; /* 1 : reversed... 0 : normal */
     int remove;   /* 1 : removed     0 : normal */
     long ResponseFieldSize;
+    unsigned has_workers;
 
     /* node conf part */
     int flushpackets;
