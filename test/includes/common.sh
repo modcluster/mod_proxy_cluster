@@ -241,7 +241,7 @@ tomcat_start_two() {
     fi
     sleep 10
     echo "Starting tomcat2..."
-    tomcat_start 2 1
+    tomcat_start 2
     if [ $? -ne 0 ]; then
         echo "Can't start tomcat2"
         exit 1

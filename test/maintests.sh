@@ -175,7 +175,5 @@ fi
 tomcat_remove 1
 tomcat_remove 2
 tomcat_wait_for_n_nodes 0
-docker container rm tomcat8080
-docker container rm tomcat8081
 
 echotestlabel "Done with the tests!!!"
