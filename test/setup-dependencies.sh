@@ -8,7 +8,7 @@ fi
 cd httpd_websocket-testsuite
 git pull --rebase
 mvn install || exit 1
-cp target/websocket-hello-0.0.1.war $TEST_DIR/tomcat/
+cp target/websocket-hello-0.0.1.war $TEST_DIR/websocket/
 cd ..
 
 # get mod_cluster (Java/Tomcat part)
@@ -22,3 +22,6 @@ cd $TEST_DIR
 
 # prepare jars
 mvn install
+
+# prepare tomcat test apps
+mvn -f includes/pom-groovy.xml install

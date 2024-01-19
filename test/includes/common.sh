@@ -2,6 +2,7 @@
 
 IMG=${IMG:-mod_proxy_cluster-testsuite-tomcat}
 HTTPD_IMG=${HTTPD_IMG:-mod_proxy_cluster-testsuite-httpd}
+MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster}
 
 # Runs a test file ($1) under given name ($2, if given)
 run_test() {

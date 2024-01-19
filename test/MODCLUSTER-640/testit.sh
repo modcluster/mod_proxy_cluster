@@ -1,14 +1,5 @@
 #!/bin/bash
 
-# Shell to test MODCLUSTER-640
-
-pwd | grep MODCLUSTER-640
-if [ $? ]; then
-    PREFIX=MODCLUSTER-640
-else
-    PREFIX="."
-fi
-
 . includes/common.sh
 
 # first stop any previously running tests.
@@ -31,8 +22,8 @@ tomcat_start_two
 tomcat_wait_for_n_nodes 2
 
 # copy the webapp in the tomcats
-docker cp $PREFIX/webapp1 tomcat1:/usr/local/tomcat/webapps/webapp1
-docker cp $PREFIX/webapp1 tomcat2:/usr/local/tomcat/webapps/webapp1
+docker cp MODCLUSTER-640/webapp1 tomcat1:/usr/local/tomcat/webapps/webapp1
+docker cp MODCLUSTER-640/webapp1 tomcat2:/usr/local/tomcat/webapps/webapp1
 
 sleep 12
 
@@ -49,9 +40,9 @@ if [ $? -eq 0 ]; then
 fi
 
 # Test without UseNocanon On
-sed 's:UseNocanon On::'  $PREFIX/mod_proxy_cluster.conf > $PREFIX/mod_proxy_cluster_new.conf
+sed 's:UseNocanon On::'  MODCLUSTER-640/mod_proxy_cluster.conf > MODCLUSTER-640/mod_proxy_cluster_new.conf
 
-docker cp $PREFIX/mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
+docker cp MODCLUSTER-640/mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
 docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables
@@ -70,10 +61,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # Test for just a proxypass / nocanon
-sed 's:UseNocanon On::'  $PREFIX/mod_proxy_cluster.conf > mod_proxy_cluster_new.conf
-echo "ProxyPass / balancer://mycluster/ nocanon" >> $PREFIX/mod_proxy_cluster_new.conf
+sed 's:UseNocanon On::'  MODCLUSTER-640/mod_proxy_cluster.conf > mod_proxy_cluster_new.conf
+echo "ProxyPass / balancer://mycluster/ nocanon" >> MODCLUSTER-640/mod_proxy_cluster_new.conf
 
-docker cp $PREFIX/mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
+docker cp MODCLUSTER-640/mod_proxy_cluster_new.conf MODCLUSTER-640:/usr/local/apache2/conf/mod_proxy_cluster.conf
 docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables

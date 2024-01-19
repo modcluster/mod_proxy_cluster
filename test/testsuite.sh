@@ -74,6 +74,8 @@ run_test hangingtests.sh            "Hanging tests"
 res=$(expr $res + $?)
 run_test maintests.sh               "Main tests"
 res=$(expr $res + $?)
+run_test websocket/basic.sh         "Websocket tests"
+res=$(expr $res + $?)
 run_test JBCS-1236/testit.sh        "JBCS-1236"
 res=$(expr $res + $?)
 run_test MODCLUSTER-640/testit.sh   "MODCLUSTER-640"
