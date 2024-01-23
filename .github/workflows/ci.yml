@@ -23,11 +23,11 @@ jobs:
         run: |
           sudo apt update
           sudo apt-get -y install podman
-          podman pull fedora:38
+          podman pull fedora:39
       - name: Create container and build
         run: |
           {
-              echo 'FROM fedora:38'
+              echo 'FROM fedora:39'
               echo 'RUN dnf install cmake httpd-devel ${{ matrix.compiler }} -y'
               echo 'RUN dnf groupinstall "C Development Tools and Libraries" -y'
               echo 'RUN dnf clean all'
@@ -50,11 +50,11 @@ jobs:
         run: |
           sudo apt update
           sudo apt-get -y install podman
-          podman pull fedora:38
+          podman pull fedora:39
       - name: Create container and build
         run: |
           {
-              echo 'FROM fedora:38'
+              echo 'FROM fedora:39'
               echo 'RUN dnf install httpd-devel redhat-rpm-config -y'
               echo 'RUN dnf groupinstall "C Development Tools and Libraries" -y'
               echo 'RUN dnf clean all'
