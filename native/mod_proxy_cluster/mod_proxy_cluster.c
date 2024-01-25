@@ -2359,15 +2359,19 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
     server_rec *s = main_s;
     void *sconf = s->module_config;
-    proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
-    int sizew = conf->workers->elt_size;
-    int sizeb = conf->balancers->elt_size;
     int idx;
     int has_static_workers = 0;
+    proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
+
     (void)plog;
     (void)ptemp;
 
-    if (sizew != sizeof(proxy_worker) || sizeb != sizeof(proxy_balancer)) {
+    if (!conf) {
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "mod_proxy must be loaded for mod_proxy_cluster");
+        return !OK;
+    }
+
+    if (conf->workers->elt_size != sizeof(proxy_worker) || conf->balancers->elt_size != sizeof(proxy_balancer)) {
         ap_version_t version;
         ap_get_server_revision(&version);
 
