@@ -205,7 +205,11 @@ static void add_hcheck(server_rec *s, const proxy_server_conf *conf, proxy_worke
                 ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "error %s for key: %s=%s", err, key, val);
             } else {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "hcheck %s=%s add to worker %s", key, val,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
                              worker->s->name_ex);
+#else
+                             worker->s->name);
+#endif
             }
         }
     }
@@ -316,7 +320,11 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                          "create_worker: REUSING %s (scheme: %s hostname %s port %d route %s name %s) cleaning...", url,
                          worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
                          worker->s->name_ex);
+#else
+                         worker->s->name);
+#endif
         }
         return APR_SUCCESS; /* Done Already existing */
     }
@@ -324,7 +332,12 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                  "create_worker: can't reuse worker as it is for %s (scheme: %s hostname %s port %d route %s "
                  "name %s) cleaning...",
-                 url, worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex);
+                 url, worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
+                 worker->s->name_ex);
+#else
+                 worker->s->name);
+#endif
     ptr = ptr_node + node->offset;
     *shared = worker->s;
     worker->s = (proxy_worker_shared *)ptr;
@@ -371,10 +384,18 @@ static void create_worker_arrange_shared_mem(proxy_server_conf *conf, proxy_work
                                              proxy_worker_shared *shared, const nodeinfo_t *node, const char *url)
 {
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: worker for %s arranging shared memory %s:%s", url,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
                  worker->s->name_ex, shared->name_ex);
+#else
+                 worker->s->name, shared->name);
+#endif
     worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
     worker->s->index = node->mess.id;
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
     strncpy(worker->s->name_ex, shared->name_ex, sizeof(worker->s->name_ex));
+#else
+    strncpy(worker->s->name, shared->name, sizeof(worker->s->name));
+#endif
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                  "create_worker: worker for %s arranging shared memory hostname %s:%s", url, worker->s->hostname,
                  shared->hostname);
@@ -500,12 +521,20 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
     helper->index = node->mess.id;
 
     /* Changing the shared memory requires locking it... */
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
     if (strncmp(worker->s->name_ex, shared->name_ex, sizeof(worker->s->name_ex))) {
+#else
+    if (strncmp(worker->s->name, shared->name, sizeof(worker->s->name))) {
+#endif
         /* We will modify it only if the name has changed to minimize access */
         create_worker_arrange_shared_mem(conf, worker, server, shared, node, url);
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: worker for %s shared memory  OK %s:%s", url,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
                      worker->s->name_ex, shared->name_ex);
+#else
+                     worker->s->name, shared->name);
+#endif
         worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
     }
 
@@ -1507,7 +1536,11 @@ static proxy_worker *internal_process_worker(proxy_worker *worker, int checking_
     if (!worker->s || !worker->context) {
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
                      "find_session_route: byrequests balancer %s skipping BAD worker %s", balancer_name,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
                      worker->s ? worker->s->name_ex : "NULL");
+#else
+                     worker->s ? worker->s->name : "NULL");
+#endif
         return NULL;
     }
     if (helper->index == -1) {
@@ -1707,7 +1740,11 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
         mycandidate->s->elected++;
         apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", apr_psprintf(r->pool, "%d", mynodecontext->context));
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "find_best_worker: byrequests balancer DONE (%s)",
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
                      mycandidate->s->name_ex);
+#else
+                     mycandidate->s->name);
+#endif
     } else {
         apr_table_setn(r->subprocess_env, "BALANCER_CONTEXT_ID", "");
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "find_best_worker: byrequests balancer FAILED");
@@ -2968,7 +3005,11 @@ static int rewrite_url(request_rec *r, const proxy_worker *worker, char **url)
                              apr_pstrcat(r->pool, "rewrite_url: missing worker. URI cannot be parsed: ", *url, NULL));
     }
 
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
     *url = apr_pstrcat(r->pool, worker->s->name_ex, path, NULL);
+#else
+    *url = apr_pstrcat(r->pool, worker->s->name, path, NULL);
+#endif
 
     return OK;
 }
@@ -3269,7 +3310,11 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
      */
     /* Add balancer/worker info to env. */
     apr_table_setn(r->subprocess_env, "BALANCER_NAME", (*balancer)->s->name);
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
     apr_table_setn(r->subprocess_env, "BALANCER_WORKER_NAME", (*worker)->s->name_ex);
+#else
+    apr_table_setn(r->subprocess_env, "BALANCER_WORKER_NAME", (*worker)->s->name);
+#endif
     apr_table_setn(r->subprocess_env, "BALANCER_WORKER_ROUTE", (*worker)->s->route);
 
     /* Rewrite the url from 'balancer://url'
@@ -3281,7 +3326,12 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                  "proxy_cluster_pre_request: balancer (%s) worker (%s) rewritten to %s", (*balancer)->s->name,
-                 (*worker)->s->name_ex, *url);
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
+                 (*worker)->s->name_ex,
+#else
+                 (*worker)->s->name,
+#endif
+                 *url);
     return access_status;
 }
 
@@ -3367,7 +3417,13 @@ static int proxy_cluster_post_request(proxy_worker *worker, proxy_balancer *bala
                               "proxy_cluster_post_request: %s Forcing worker (%s) into error state "
                               "due to status code %d matching 'failonstatus' "
                               "balancer parameter",
-                              balancer->s->name, worker->s->name_ex, val);
+                              balancer->s->name,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
+                              worker->s->name_ex,
+#else
+                              worker->s->name,
+#endif
+                              val);
                 worker->s->status |= PROXY_WORKER_IN_ERROR;
                 worker->s->error_time = apr_time_now();
                 break;
