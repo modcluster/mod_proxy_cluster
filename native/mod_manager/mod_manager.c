@@ -1487,7 +1487,12 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         reenable_proxy_worker(r, workernode, worker, &nodeinfo, the_conf);
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "process_config: reenable_proxy_worker... scheme %s hostname %s port %d route %s name %s id: %d",
-                     worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name_ex,
+                     worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
+                     worker->s->name_ex,
+#else
+                     worker->s->name,
+#endif
                      worker->s->index);
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: (%s) %s inserted/updated in worker %d",
