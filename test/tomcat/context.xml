@@ -7,7 +7,7 @@
     <WatchedResource>${catalina.base}/conf/web.xml</WatchedResource>
 
     <Valve className="org.apache.catalina.valves.RemoteAddrValve"
-           allow="127\.\d+\.\d+\.\d+|172.17.0.0/16|::1|0:0:0:0:0:0:0:1" />
+        allow="127\.\d+\.\d+\.\d+|172.17.0.0/16|::1|0:0:0:0:0:0:0:1|proxy_address" />
 
     <!-- Uncomment this to disable session persistence across Tomcat restarts -->
     <!--

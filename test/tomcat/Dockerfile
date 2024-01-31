@@ -18,6 +18,7 @@ COPY start.sh ./
 RUN chmod +x start.sh
 
 ENV cluster_port=6666
+ENV cluster_address=127.0.0.1
 ENV jvm_route=
 ENV tomcat_address=
 ENV tomcat_port_offset=0

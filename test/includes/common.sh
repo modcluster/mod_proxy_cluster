@@ -117,12 +117,14 @@ tomcat_create() {
                                  --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
 }
 
-# Start tomcat$1 container on 127.0.0.$2 or 127.0.0.$1 if $2 is not given.
+# Start tomcat$1 container on $2 or 127.0.0.$1 if $2 is not given.
 # Ports are set by default as follows
 #     * tomcat port           8080 + $1 - 1
 #     * tomcat ajp port       8900 + $1 - 1
 #     * tomcat shutdown port  8005 + $1 - 1
 # $1 has to be in range [1, 75].
+# Proxy's IP can be specified by $3 (default: 127.0.0.1) and its
+# port with $4 (default: 6666).
 tomcat_start() {
     if [ -z "$1" ]; then
         echo "tomcat_start called without arguments"
@@ -134,8 +136,8 @@ tomcat_start() {
         exit 2
     fi
     ADDR="127.0.0.$1"
-    if [ ${2:-0} -ne 0 ]; then
-        ADDR="127.0.0.$2"
+    if [ ! -z "$2" ]; then
+        ADDR="$2"
     fi
 
     local OFFSET=$(expr $1 - 1)
@@ -143,6 +145,8 @@ tomcat_start() {
     nohup docker run --network=host -e tomcat_address=$ADDR \
                                     -e tomcat_port_offset=$OFFSET \
                                     -e jvm_route=tomcat$1 \
+                                    -e cluster_address=${3:-127.0.0.1} \
+                                    -e cluster_port=${4:-6666} \
                                 --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
     if [ $? -ne 0 ]; then
@@ -269,8 +273,8 @@ tomcat_start_webapp() {
 #     $2 the last segment of IPv4 addr ($1 by default)
 tomcat_shutdown() {
     ADDR="127.0.0.$1"
-    if [ $2 -ne 0 ]; then
-        ADDR="127.0.0.$2"
+    if [ ! -z "$2" ]; then
+        ADDR=$2
     fi
 
     echo "shutting down tomcat$1 with address: $ADDR"
