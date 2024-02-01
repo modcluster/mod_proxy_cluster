@@ -176,13 +176,6 @@ int get_ids_used_node(mem_t *s, int *ids);
 int get_max_size_node(mem_t *s);
 
 /**
- * Get the version of the table (each update of the table changes version)
- * @param s pointer to the shared table
- * @return version the actual version in the table
- */
-unsigned get_version_node(mem_t *s);
-
-/**
  * Attach to the shared node table
  * @param string name of an existing shared table
  * @param num address to store the size of the shared table
