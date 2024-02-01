@@ -78,10 +78,10 @@ singlecycle() {
         R=$(expr 1 + $RANDOM % 10 + 10)
         R=$(expr $R + 2)
         # TODO
-        tomcat_start $1 $R || exit 1
+        tomcat_start $1 127.0.0.$R || exit 1
     else
         R=0
-        tomcat_start $1 $R || exit 1
+        tomcat_start $1 127.0.0.$R || exit 1
     fi
     # Wait for it to start
     echo "Testing(0) tomcat$1 waiting..."
@@ -122,7 +122,7 @@ singlecycle() {
     tomcat_test_app $1 || exit 1
     tomcat_run_ab $1 || exit 1
     echo "Testing(3) tomcat$1"
-    tomcat_shutdown $1 $R || exit 1
+    tomcat_shutdown $1 127.0.0.$R || exit 1
     while true
     do
         curl -s http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
@@ -199,9 +199,9 @@ cyclestomcats() {
 # basically start and stop random tomcats...
 runjbcs1236() {
     # start 3 tomcats
-    tomcat_start 2 0
-    tomcat_start 3 0
-    tomcat_start 4 0
+    tomcat_start 2
+    tomcat_start 3
+    tomcat_start 4
     tomcat_wait_for_n_nodes 3 || exit 1
     # check them
     tomcat_start_webapp 2 || exit 1
@@ -228,7 +228,7 @@ runjbcs1236() {
             echo "runtomcatbatch: runjbcs1236 Failed!"
             exit 1
         fi
-        tomcat_shutdown 2 0
+        tomcat_shutdown 2
 
         tomcat_wait_for_n_nodes 2
         if [ $? -ne 0 ]; then
@@ -236,7 +236,7 @@ runjbcs1236() {
             exit 1
         fi
         tomcat_remove 2
-        tomcat_start 5 0
+        tomcat_start 5
 
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
@@ -256,7 +256,7 @@ runjbcs1236() {
         fi
         # we have 5 3 4 in shared memory
         # read 2
-        tomcat_start 2 0
+        tomcat_start 2
         tomcat_wait_for_n_nodes 4
         if [ $? -ne 0 ]; then
             echo "tomcat_wait_for_n_nodes 4: runjbcs1236 Failed!"
@@ -278,7 +278,7 @@ runjbcs1236() {
 
         # we have 5 3 4 2 in shared memory
         # if something was wrong 2 points to 5
-        tomcat_shutdown 5 0
+        tomcat_shutdown 5
 
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
@@ -308,9 +308,9 @@ runjbcs1236() {
     done
 
     # cleanup
-    tomcat_shutdown 4 0
-    tomcat_shutdown 3 0
-    tomcat_shutdown 2 0
+    tomcat_shutdown 4
+    tomcat_shutdown 3
+    tomcat_shutdown 2
     tomcat_wait_for_n_nodes 0 || exit 1
     tomcat_remove 2
     tomcat_remove 3
