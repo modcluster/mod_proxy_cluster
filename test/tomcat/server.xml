@@ -123,11 +123,11 @@
     </Connector>
     -->
 
-    <!-- Define an AJP 1.3 Connector on port 8009 -->
+    <!-- Define an AJP 1.3 Connector on port 8900 -->
     
     <Connector protocol="AJP/1.3"
                address="tomcat_address"
-               port="8009"
+               port="8900"
                secretRequired="false"
                redirectPort="8443"
                portOffset="port_offset" />
