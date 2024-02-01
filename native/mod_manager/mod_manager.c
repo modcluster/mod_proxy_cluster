@@ -109,7 +109,7 @@ static const char *node_mutex_type = "node-shm";
 static const char *context_mutex_type = "context-shm";
 
 /* counter for the version (nodes) */
-static apr_shm_t *versionipc_shm = NULL;
+static ap_slotmem_instance_t *version_node_mem = NULL;
 
 /* shared memory */
 static mem_t *contextstatsmem = NULL;
@@ -207,8 +207,24 @@ static apr_status_t loc_find_node(nodeinfo_t **node, const char *route)
 static void inc_version_node(void)
 {
     version_data *base;
-    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
-    base->counter++;
+    if (storage->dptr(version_node_mem, 0, (void **)&base) == APR_SUCCESS) {
+        base->counter++;
+    }
+}
+static apr_uint64_t get_version_node(void)
+{
+    version_data *base;
+    if (storage->dptr(version_node_mem, 0, (void **)&base) == APR_SUCCESS) {
+        return base->counter;
+    }
+    return 0;
+}
+static void set_version_node(apr_uint64_t val)
+{
+    version_data *base;
+    if (storage->dptr(version_node_mem, 0, (void **)&base) == APR_SUCCESS) {
+        base->counter = val;
+    }
 }
 
 /**
@@ -224,7 +240,6 @@ static unsigned loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
     int size;
     server_rec *s = (server_rec *)data;
     unsigned last = 0;
-    version_data *base;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
     (void)pool;
 
@@ -233,8 +248,7 @@ static unsigned loc_worker_nodes_need_update(void *data, apr_pool_t *pool)
         return 0; /* broken */
     }
 
-    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
-    last = base->counter;
+    last = get_version_node();
 
     if (last != mconf->tableversion) {
         return last;
@@ -500,12 +514,8 @@ static apr_status_t cleanup_manager(void *param)
     balancerstatsmem = NULL;
     sessionidstatsmem = NULL;
     domainstatsmem = NULL;
+    version_node_mem = NULL;
     (void)param;
-
-    if (versionipc_shm) {
-        apr_shm_destroy(versionipc_shm);
-        versionipc_shm = NULL;
-    }
     return APR_SUCCESS;
 }
 
@@ -528,19 +538,6 @@ static void normalize_balancer_name(char *balancer_name, const server_rec *s)
     if (upper_case_char_found) {
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, SBALBAD, balancer_name);
     }
-}
-
-/*
- * Whether the module is called from a MPM that re-enter main() and
- * pre/post_config phases.
- */
-static APR_INLINE int is_child_process(void)
-{
-#ifdef WIN32
-    return getenv("AP_PARENT_PID") != NULL;
-#else
-    return 0;
-#endif
 }
 
 /*
@@ -570,7 +567,6 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
     char *sessionid;
     char *domain;
     char *version;
-    version_data *base;
     apr_uuid_t uuid;
     mod_manager_config *mconf = ap_get_module_config(s->module_config, &manager_module);
     apr_status_t rv;
@@ -666,25 +662,13 @@ static int manager_init(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, serv
         return !OK;
     }
 
-    if (is_child_process()) {
-        rv = apr_shm_attach(&versionipc_shm, (const char *)version, p);
-    } else {
-        /* Use anonymous shm by default, fall back on name-based. */
-        rv = apr_shm_create(&versionipc_shm, sizeof(version_data), NULL, p);
-        if (rv == APR_ENOTIMPL) {
-            /* For a name-based segment, remove it first in case of a
-             * previous unclean shutdown. */
-            apr_shm_remove((const char *)version, p);
-            /* Now create that segment */
-            rv = apr_shm_create(&versionipc_shm, sizeof(version_data), (const char *)version, p);
-        }
-    }
+    /* For the version node we just need a apr_uint64_t in shared memory */
+    rv = storage->create(&version_node_mem, version, sizeof(apr_uint64_t), 1, AP_SLOTMEM_TYPE_PREGRAB, p);
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, rv, s, "manager_init: create_share_version failed");
         return !OK;
     }
-    base = (version_data *)apr_shm_baseaddr_get(versionipc_shm);
-    base->counter = 0;
+    set_version_node(0);
 
     /* Get a provider to ping/pong logics */
     balancerhandler = ap_lookup_provider("proxy_cluster", "balancer", "0");
