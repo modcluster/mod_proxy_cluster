@@ -177,7 +177,7 @@ jobs:
     runs-on: windows-latest
     env:
       APACHE_LOUNGE_DISTRO_VERSION: 2.4.57
-      HTTPD_DEV_HOME: '${{ github.workspace }}\httpd-apache-lounge\Apache24'
+      HTTPD_DEV_HOME: 'C:\Apache24'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -186,10 +186,29 @@ jobs:
       - name: Get httpd
         run: |
           curl.exe --output "httpd-apache-lounge.zip" --url "https://www.apachelounge.com/download/VS16/binaries/httpd-${{ env.APACHE_LOUNGE_DISTRO_VERSION }}-win64-VS16.zip"
-          Expand-Archive -Path "httpd-apache-lounge.zip" -DestinationPath "httpd-apache-lounge"
+          Expand-Archive -Path "httpd-apache-lounge.zip" -DestinationPath "C:\"
       - name: Build
         run: |
           ./native/scripts/windows-build.bat
+          cp cmakebuild/modules/*.so C:/Apache24/modules/
+      - name: Fix and prepare config files
+        run: |
+          cp test\httpd\mod_proxy_cluster.conf ${{ env.HTTPD_DEV_HOME }}\conf\mod_proxy_cluster.conf
+          echo "LogLevel debug"                      >> ${{ env.HTTPD_DEV_HOME }}\conf\mod_proxy_cluster.conf
+          echo "Include conf/mod_proxy_cluster.conf" >> ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
+          (Get-Content ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf) | %{$_ -replace "Listen 80","Listen 8000"} | Set-Content -Path ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
+      - name: Run
+        run: |
+          Start-Process -FilePath ${{ env.HTTPD_DEV_HOME }}\bin\httpd.exe
+          curl --fail --max-time 10 http://localhost:8000
+          curl --fail --max-time 10 http://localhost:6666/mod_cluster_manager
+      - name: Preserve logs
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: Windows logs
+          path: C:\Apache24\logs\
+          retention-days: 7
 
   tests:
     runs-on: ubuntu-latest
