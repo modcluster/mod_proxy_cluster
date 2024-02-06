@@ -16,7 +16,7 @@ jobs:
         compiler: [ gcc, clang ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: mod_proxy_cluster
       - name: Setup Podman
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: mod_proxy_cluster
       - name: Setup Podman
@@ -79,7 +79,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: mod_proxy_cluster
       - name: Install clang-format
@@ -114,7 +114,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Build
         run: |
           cd native
@@ -131,16 +131,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: mod_proxy_cluster
       - name: Checkout latest httpd
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: apache/httpd
           path: httpd
       - name: Checkout apr for httpd
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: apache/apr
           path: httpd/srclib/apr
@@ -180,7 +180,7 @@ jobs:
       HTTPD_DEV_HOME: '${{ github.workspace }}\httpd-apache-lounge\Apache24'
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Developer Command Prompt for Microsoft Visual C++
         uses: ilammy/msvc-dev-cmd@v1
       - name: Get httpd
@@ -202,7 +202,7 @@ jobs:
       TOMCAT_CYCLE_COUNT: 2
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 # this occupies 8084 port on Ubuntu 20.04 and we don't use it.
       - name: Remove mono blocking 8084 port
         run: sudo kill -9 $(sudo lsof -t -i:8084)
@@ -219,7 +219,7 @@ jobs:
           cd test
           sh testsuite.sh
       - name: Preserve test logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Test logs
@@ -231,7 +231,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Get doxygen
         run: |
           sudo apt-get update -y
@@ -239,7 +239,7 @@ jobs:
       - name: Build doxygen docs
         run: doxygen
       - name: Preserve doxygen docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Doxygen docs
           path: doxygen-out/html/*
