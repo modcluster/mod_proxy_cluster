@@ -176,7 +176,7 @@ jobs:
   cmake-windows-latest:
     runs-on: windows-latest
     env:
-      APACHE_LOUNGE_DISTRO_VERSION: 2.4.57
+      APACHE_LOUNGE_DISTRO_VERSION: 2.4.58-240131
       HTTPD_DEV_HOME: 'C:\Apache24'
     steps:
       - name: Checkout
@@ -185,7 +185,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
       - name: Get httpd
         run: |
-          curl.exe --output "httpd-apache-lounge.zip" --url "https://www.apachelounge.com/download/VS16/binaries/httpd-${{ env.APACHE_LOUNGE_DISTRO_VERSION }}-win64-VS16.zip"
+          curl.exe --output "httpd-apache-lounge.zip" --url "https://www.apachelounge.com/download/VS17/binaries/httpd-${{ env.APACHE_LOUNGE_DISTRO_VERSION }}-win64-VS17.zip"
           Expand-Archive -Path "httpd-apache-lounge.zip" -DestinationPath "C:\"
       - name: Build
         run: |
