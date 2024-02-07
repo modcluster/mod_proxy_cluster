@@ -219,7 +219,7 @@ jobs:
           cd test
           sh testsuite.sh
       - name: Preserve test logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Test logs
@@ -239,7 +239,7 @@ jobs:
       - name: Build doxygen docs
         run: doxygen
       - name: Preserve doxygen docs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Doxygen docs
           path: doxygen-out/html/*
