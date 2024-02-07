@@ -2706,6 +2706,17 @@ static void node_command_string(request_rec *r, const char *JVMRoute)
                node_string(r, JVMRoute));
 }
 
+/*
+ * Helper function for html escaping of non-NULL terminated strings.
+ */
+static char *mc_escape_html(apr_pool_t *pool, const char *str, int len)
+{
+    char *s = apr_palloc(pool, len + 1);
+    memcpy(s, str, len);
+    s[len] = '\0';
+    return ap_escape_html(pool, s);
+}
+
 static void domain_command_string(request_rec *r, const char *Domain)
 {
     ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=DOMAIN&Domain=%s\">Enable Nodes</a> ", r->uri,
@@ -2743,8 +2754,9 @@ static void manager_info_contexts(request_rec *r, int reduce_display, int allow_
         if (ou->node != node || ou->vhost != host) {
             continue;
         }
-        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int)sizeof(ou->context), ou->context,
-                   context_status_to_string(ou->status), ou->nbrequests);
+        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int)sizeof(ou->context),
+                   mc_escape_html(r->pool, ou->context, sizeof(ou->context)), context_status_to_string(ou->status),
+                   ou->nbrequests);
         if (allow_cmd) {
             context_command_string(r, ou, Alias, JVMRoute);
         }
@@ -2795,7 +2807,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
             }
             vhost = ou->vhost;
 
-            ap_rprintf(r, "%.*s", (int)sizeof(ou->host), ou->host);
+            ap_rprintf(r, "%.*s", (int)sizeof(ou->host), mc_escape_html(r->pool, ou->host, sizeof(ou->host)));
             ap_rprintf(r, reduce_display ? " " : "\n");
 
             /* Go ahead and check for any other later alias entries for this vhost and print them now */
@@ -2817,7 +2829,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
                 if (i == j - 1) {
                     i++;
                 }
-                ap_rprintf(r, "%.*s", (int)sizeof(pv->host), pv->host);
+                ap_rprintf(r, "%.*s", (int)sizeof(pv->host), mc_escape_html(r->pool, pv->host, sizeof(pv->host)));
                 ap_rprintf(r, reduce_display ? " " : "\n");
             }
         }

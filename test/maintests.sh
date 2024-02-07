@@ -115,12 +115,13 @@ fi
 
 # Restart the tomcat
 tomcat_start ${NAME}
+tomcat_wait_for_n_nodes 2
 
 # Test a keepalived connection finds the 2 webapps on each tomcat
 echotestlabel "Testing keepalived with 2 webapps on each tomcat"
 docker cp testapp tomcat1:/usr/local/tomcat/webapps/testapp1
 docker cp testapp tomcat2:/usr/local/tomcat/webapps/testapp2
-sleep 10
+sleep 12
 java -jar includes/target/test-1.0.jar HTTPTest
 if [ $? -ne 0 ]; then
   echo "Something was wrong... with HTTP tests"
