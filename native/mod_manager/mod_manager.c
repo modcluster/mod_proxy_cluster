@@ -2103,7 +2103,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         char *s = hostinfo.host;
         unsigned j = 1;
         strncpy(hostinfo.host, vhost->host, HOSTALIASZ);
-        while (*s != ',' && j < sizeof(hostinfo.host)) {
+        while (*s != '\0' && *s != ',' && j < sizeof(hostinfo.host)) {
             j++;
             s++;
         }
