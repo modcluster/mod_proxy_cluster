@@ -90,7 +90,6 @@ static struct sessionid_storage_method *sessionid_storage = NULL;
 static struct domain_storage_method *domain_storage = NULL;
 
 #define LB_CLUSTER_WATHCHDOG_NAME ("_mod_cluster_")
-static APR_OPTIONAL_FN_TYPE(ap_watchdog_set_callback_interval) *mc_watchdog_set_interval;
 static ap_watchdog_t *watchdog;
 
 #if MC_USE_THREADS
@@ -1210,6 +1209,13 @@ static apr_status_t read_node_worker(int id, nodeinfo_t **node, const proxy_work
     return APR_SUCCESS;
 }
 
+static void mc_watchdog_targs_destroy(apr_thread_t *thread, watchdog_thread_args_t *targs)
+{
+    if (thread) {
+        apr_pool_destroy(targs->pool);
+    }
+}
+
 static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data)
 {
     apr_status_t rv;
@@ -1257,6 +1263,7 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
 
     /* We have checked the worker... check if we were told to stop */
     if (child_stopping) {
+        mc_watchdog_targs_destroy(thread, targs);
         return APR_SUCCESS;
     }
 
@@ -1264,6 +1271,7 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     if (read_node_worker(id, &ou, worker) != APR_SUCCESS) {
         /* the node is gone or something like that */
         node_storage->unlock_nodes();
+        mc_watchdog_targs_destroy(thread, targs);
         return APR_SUCCESS;
     }
 
@@ -1282,6 +1290,8 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     }
 
     node_storage->unlock_nodes();
+    mc_watchdog_targs_destroy(thread, targs);
+
     return APR_SUCCESS;
 }
 
@@ -2306,24 +2316,21 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
 
     case AP_WATCHDOG_STATE_RUNNING:
         if (s) {
-            apr_time_t wait = cache_share_for;
             /* It is called for every server defined in httpd */
             proxy_cluster_watchdog_func(s, pool);
-            /* set the next call back to cache_share_for or 1 if zero */
-            if (!wait) {
-                wait = apr_time_from_sec(1);
-            }
-            mc_watchdog_set_interval(watchdog, wait, s, mc_watchdog_callback);
         }
         break;
 
     case AP_WATCHDOG_STATE_STOPPING:
+    default:
 #if MC_USE_THREADS
-        res = apr_thread_pool_destroy(mc_thread_pool);
-        if (res != APR_SUCCESS) {
-            ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, "mc_watchdog_callback: apr_thread_pool_destroy failed");
+        if (mc_thread_pool) {
+            res = apr_thread_pool_destroy(mc_thread_pool);
+            if (res != APR_SUCCESS) {
+                ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, "mc_watchdog_callback: apr_thread_pool_destroy failed");
+            }
+            mc_thread_pool = NULL;
         }
-        mc_thread_pool = NULL;
 #endif
         break;
     }
@@ -2389,6 +2396,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     int idx;
     int has_static_workers = 0;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
+    apr_time_t watchdog_interval = cache_share_for ? cache_share_for : apr_time_from_sec(1);
 
     (void)plog;
     (void)ptemp;
@@ -2524,8 +2532,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     /* add our watchdog callback */
     mc_watchdog_get_instance = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_get_instance);
     mc_watchdog_register_callback = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_register_callback);
-    mc_watchdog_set_interval = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_set_callback_interval);
-    if (!mc_watchdog_get_instance || !mc_watchdog_register_callback || !mc_watchdog_set_interval) {
+    if (!mc_watchdog_get_instance || !mc_watchdog_register_callback) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, APLOGNO(03262) "mod_watchdog is required");
         return !OK;
     }
@@ -2536,7 +2543,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
         return !OK;
     }
 
-    if (mc_watchdog_register_callback(watchdog, AP_WD_TM_SLICE, s, mc_watchdog_callback)) {
+    if (mc_watchdog_register_callback(watchdog, watchdog_interval, s, mc_watchdog_callback)) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, APLOGNO(03264) "Failed to register watchdog callback (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
