@@ -19,7 +19,7 @@
      define subcomponents such as "Valves" at this level.
      Documentation at /docs/config/server.html
  -->
-<Server port="8005" shutdown="SHUTDOWN" address="127.0.0.1" portOffset="port_offset">
+<Server port="8005" shutdown="SHUTDOWN" address="tomcat_address" portOffset="port_offset">
   <!-- <Listener className="org.jboss.modcluster.container.tomcat.ModClusterListener"
             advertise="true" stickySession="true" stickySessionForce="false" stickySessionRemove="true" /> -->
   <Listener className="org.jboss.modcluster.container.catalina.standalone.ModClusterListener"
@@ -28,7 +28,7 @@
             stickySession="true"
             stickySessionForce="false"
             stickySessionRemove="true"
-            proxyList="127.0.0.1:proxyport" />
+            proxyList="proxy_address:proxy_port" />
   <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
   <!-- Security listener. Documentation at /docs/config/listeners.html
   <Listener className="org.apache.catalina.security.SecurityListener" />
@@ -76,7 +76,7 @@
          Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
     -->
     <Connector port="8080" protocol="HTTP/1.1"
-               address="127.0.0.1"
+               address="tomcat_address"
                connectionTimeout="20000"
                redirectPort="8443"
                portOffset="port_offset" />
@@ -123,11 +123,11 @@
     </Connector>
     -->
 
-    <!-- Define an AJP 1.3 Connector on port 8009 -->
+    <!-- Define an AJP 1.3 Connector on port 8900 -->
     
     <Connector protocol="AJP/1.3"
-               address="127.0.0.1"
-               port="8009"
+               address="tomcat_address"
+               port="8900"
                secretRequired="false"
                redirectPort="8443"
                portOffset="port_offset" />
