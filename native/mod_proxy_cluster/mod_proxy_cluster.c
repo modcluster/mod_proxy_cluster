@@ -268,9 +268,34 @@ static void check_workers(const proxy_server_conf *conf, const server_rec *s)
     }
 }
 
+/*
+ * NOTE: It's caller's responsibility to make sure pointers are not NULL.
+ */
+static void pair_worker_node(proxy_worker_shared *worker, nodeinfo_t *node)
+{
+    worker->index = node->mess.id;
+    node->mess.has_workers++;
+}
+
+/*
+ * NOTE: It's caller's responsibility to make sure pointers are not NULL.
+ */
+static void unpair_worker_node(proxy_worker_shared *worker, nodeinfo_t *node)
+{
+    worker->index = -1;
+    if (node->mess.has_workers > 0) {
+        node->mess.has_workers--;
+    }
+}
+
+static int node_has_workers(nodeinfo_t *node)
+{
+    return node && node->mess.has_workers > 0;
+}
+
 static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr_node, proxy_worker *worker,
                                         proxy_cluster_helper **helper_ptr, server_rec *server,
-                                        proxy_worker_shared **shared, const nodeinfo_t *node, const char *url)
+                                        proxy_worker_shared **shared, nodeinfo_t *node, const char *url)
 {
     apr_status_t rv;
     proxy_cluster_helper *helper;
@@ -352,7 +377,8 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
         return rv;
     }
 
-    worker->s->index = node->mess.id;
+    pair_worker_node(worker->s, node);
+
     /* add health check */
     worker->s->updated = apr_time_now();
     if (proxyhctemplate != NULL) {
@@ -382,7 +408,7 @@ static char *create_worker_build_name(const nodeinfo_t *node, apr_uri_t *uri, se
 }
 
 static void create_worker_arrange_shared_mem(proxy_server_conf *conf, proxy_worker *worker, server_rec *server,
-                                             proxy_worker_shared *shared, const nodeinfo_t *node, const char *url)
+                                             proxy_worker_shared *shared, nodeinfo_t *node, const char *url)
 {
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: worker for %s arranging shared memory %s:%s", url,
 #ifdef PROXY_WORKER_EXT_NAME_SIZE
@@ -390,8 +416,10 @@ static void create_worker_arrange_shared_mem(proxy_server_conf *conf, proxy_work
 #else
                  worker->s->name, shared->name);
 #endif
+
     worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
-    worker->s->index = node->mess.id;
+    pair_worker_node(worker->s, node);
+
 #ifdef PROXY_WORKER_EXT_NAME_SIZE
     strncpy(worker->s->name_ex, shared->name_ex, sizeof(worker->s->name_ex));
 #else
@@ -465,7 +493,7 @@ static void create_worker_arrange_shared_mem(proxy_server_conf *conf, proxy_work
  *
  */
 static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balancer, server_rec *server,
-                                  const nodeinfo_t *node, const char *ptr_node, apr_pool_t *pool)
+                                  nodeinfo_t *node, const char *ptr_node, apr_pool_t *pool)
 {
     char *url;
     const char *ptr;
@@ -544,7 +572,8 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
                      rv, url, ptr);
         return rv;
     }
-    worker->s->index = node->mess.id;
+
+    pair_worker_node(worker->s, node);
 
     /* The Shared datastatus may already contain a valid information */
     if (!worker->s->status) {
@@ -765,7 +794,7 @@ static void add_balancers_workers(nodeinfo_t *node, const char *ptr_node, apr_po
  * NOTE: we need to compare the shared memory pointer too
  */
 static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int id, const proxy_worker_shared *stat,
-                                             const nodeinfo_t *node)
+                                             nodeinfo_t *node)
 {
     int i;
     char *ptr = conf->balancers->elts;
@@ -785,7 +814,7 @@ static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int 
                 return *worker;
             }
             if (helper->index == id) {
-                (*worker)->s->index = -1;
+                unpair_worker_node((*worker)->s, node);
             }
         }
     }
@@ -1795,7 +1824,9 @@ static int proxy_node_isup(request_rec *r, int id, int load)
         void *sconf = s->module_config;
         conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
+        ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
         worker = get_worker_from_id_stat(conf, id, stat, node);
+        node_storage->unlock_nodes();
         if (worker != NULL) {
             break;
         }
@@ -2044,7 +2075,7 @@ static void init_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_worker
     worker->s->redirect[0] = '\0';
     worker->s->lbstatus = 0;
     worker->s->lbfactor = -1; /* prevent using the node using status message */
-    worker->s->index = node->mess.id;
+    pair_worker_node(worker->s, node);
 
     /* add health check */
     worker->s->updated = apr_time_now();
@@ -2084,32 +2115,6 @@ static const struct balancer_method balancerhandler = {
 };
 /* clang-format on */
 
-static int node_has_workers(const server_rec *server, const proxy_server_conf *conf, int id)
-{
-    int i, j;
-    proxy_balancer *balancer;
-    balancer = (proxy_balancer *)conf->balancers->elts;
-    for (i = 0; i < conf->balancers->nelts; i++, balancer++) {
-        proxy_worker **workers;
-        workers = (proxy_worker **)balancer->workers->elts;
-        for (j = 0; j < balancer->workers->nelts; j++, workers++) {
-            proxy_worker *worker = *workers;
-            proxy_cluster_helper *helper = (proxy_cluster_helper *)worker->context;
-            ap_assert(helper); /* we are in trouble ... */
-            if (helper->index == id) {
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                             "remove_removed_node: %d for REMOVED node_has_workers %d (%s)", id, getpid(),
-                             worker->s->hostname_ex);
-                return 1;
-            }
-        }
-    }
-
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                 "remove_removed_node: %d for REMOVED node_has_workers NO WORKERS %d", id, getpid());
-    return 0;
-}
-
 /* Remove node that have beeen marked removed for more than 10 seconds. */
 static void remove_removed_node(apr_pool_t *pool, const proxy_server_conf *conf, const server_rec *server)
 {
@@ -2118,6 +2123,7 @@ static void remove_removed_node(apr_pool_t *pool, const proxy_server_conf *conf,
     /* read the ident of the nodes */
     size = node_storage->get_max_size_node();
     (void)server;
+    (void)conf;
 
     if (size == 0) {
         return;
@@ -2130,10 +2136,10 @@ static void remove_removed_node(apr_pool_t *pool, const proxy_server_conf *conf,
             continue;
         }
         if (strcmp(ou->mess.JVMRoute, "REMOVED") == 0 && (now - ou->updatetime) >= wait_for_remove) {
-            if (node_has_workers(server, conf, ou->mess.id)) {
+            if (node_has_workers(ou)) {
                 ou->updatetime = now;
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "remove_removed_node: %d for REMOVED wait %d",
-                             ou->mess.id, getpid());
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                             "remove_removed_node: %d for REMOVED wait %d (node has workers)", ou->mess.id, getpid());
             } else {
                 ou->mess.num_remove_check++;
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "remove_removed_node: %d %s for REMOVED done %d",
@@ -3633,6 +3639,9 @@ static const char *cmd_proxy_cluster_use_nocanon(cmd_parms *parms, void *mconfig
 static const char *cmd_proxy_cluster_responsecode_when_no_context(cmd_parms *parms, void *mconfig, const char *arg)
 {
     int val = atoi(arg);
+    (void)parms;
+    (void)mconfig;
+
     if (val < 0) {
         return "ResponseStatusCodeOnNoContext must be greater than 0";
     } else {
