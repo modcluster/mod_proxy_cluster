@@ -982,115 +982,95 @@ cleanup:
     return status;
 }
 
-static apr_status_t ap_proxygetline(apr_bucket_brigade *bb, char *s, int n, request_rec *r, int fold, int *writen)
+static void copy_and_trim_crlf(char *buffer, const char *ptr, apr_size_t len)
 {
-    char *tmp_s = s;
-    apr_status_t rv;
-    apr_size_t len;
-
-    rv = ap_rgetline(&tmp_s, n, &len, r, fold, bb);
-    apr_brigade_cleanup(bb);
-
-    if (rv == APR_SUCCESS) {
-        *writen = (int)len;
-    } else if (rv == APR_ENOSPC) {
-        *writen = n;
-    } else {
-        *writen = -1;
+    if (len >= HUGE_STRING_LEN) {
+        len = HUGE_STRING_LEN - 1;
     }
 
-    return rv;
-}
+    strncpy(buffer, ptr, len);
 
-/* In 2.4.x the routine is public any more */
-static request_rec *ap_proxy_make_fake_req(conn_rec *c, request_rec *r)
-{
-    apr_pool_t *pool;
-    request_rec *rp;
-
-    apr_pool_create(&pool, c->pool);
-
-    rp = apr_pcalloc(pool, sizeof(*r));
-
-    rp->pool = pool;
-    rp->status = HTTP_OK;
-
-    rp->headers_in = apr_table_make(pool, 50);
-    rp->subprocess_env = apr_table_make(pool, 50);
-    rp->headers_out = apr_table_make(pool, 12);
-    rp->err_headers_out = apr_table_make(pool, 5);
-    rp->notes = apr_table_make(pool, 5);
-
-    rp->server = r->server;
-    rp->log = r->log;
-    rp->proxyreq = r->proxyreq;
-    rp->request_time = r->request_time;
-    rp->connection = c;
-    rp->output_filters = c->output_filters;
-    rp->input_filters = c->input_filters;
-    rp->proto_output_filters = c->output_filters;
-    rp->proto_input_filters = c->input_filters;
-    rp->useragent_ip = c->client_ip;
-    rp->useragent_addr = c->client_addr;
-
-    rp->request_config = ap_create_request_config(pool);
-    proxy_run_create_req(r, rp);
-
-    return rp;
+    if (len >= 2 && buffer[len - 2] == APR_ASCII_CR && buffer[len - 1] == APR_ASCII_LF) {
+        buffer[len - 2] = '\0';
+    } else if (len >= 1 && buffer[len - 1] == APR_ASCII_LF) {
+        buffer[len - 1] = '\0';
+    } else {
+        buffer[len] = '\0';
+    }
 }
 
 /* Do a ping/pong to the node */
 static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn, request_rec *r, apr_interval_time_t timeout)
 {
     char *srequest;
-    char buffer[HUGE_STRING_LEN];
-    int len;
-    apr_status_t status, rv;
+    apr_size_t len;
+    apr_status_t rv;
     apr_interval_time_t org;
-    apr_bucket_brigade *header_brigade, *tmp_bb;
+    apr_bucket_brigade *brigade;
     apr_bucket *e;
-    request_rec *rp;
+    const char *ptr;
+    char buffer[HUGE_STRING_LEN] = {0};
+    int eos;
 
     srequest = apr_pstrcat(r->pool, "OPTIONS * HTTP/1.0\r\nUser-Agent: ", ap_get_server_banner(),
                            " (internal mod_cluster connection)\r\n\r\n", NULL);
-    header_brigade = apr_brigade_create(r->pool, p_conn->connection->bucket_alloc);
+    brigade = apr_brigade_create(r->pool, p_conn->connection->bucket_alloc);
     e = apr_bucket_pool_create(srequest, strlen(srequest), r->pool, p_conn->connection->bucket_alloc);
-    APR_BRIGADE_INSERT_TAIL(header_brigade, e);
+    APR_BRIGADE_INSERT_TAIL(brigade, e);
     e = apr_bucket_flush_create(p_conn->connection->bucket_alloc);
-    APR_BRIGADE_INSERT_TAIL(header_brigade, e);
+    APR_BRIGADE_INSERT_TAIL(brigade, e);
 
-    status = ap_pass_brigade(p_conn->connection->output_filters, header_brigade);
-    apr_brigade_cleanup(header_brigade);
-    if (status != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, status, r->server, "http_cping_cpong: send failed");
+    rv = ap_pass_brigade(p_conn->connection->output_filters, brigade);
+    apr_brigade_cleanup(brigade);
+    if (rv != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR, rv, r->server, "http_cping_cpong: send failed");
         p_conn->close = 1;
-        return status;
+        return rv;
     }
 
-    status = apr_socket_timeout_get(p_conn->sock, &org);
-    if (status != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, status, r->server, "http_cping_cpong: apr_socket_timeout_get failed");
+    rv = apr_socket_timeout_get(p_conn->sock, &org);
+    if (rv != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_ERR, rv, r->server, "http_cping_cpong: apr_socket_timeout_get failed");
         p_conn->close = 1;
-        return status;
+        return rv;
     }
-    status = apr_socket_timeout_set(p_conn->sock, timeout);
 
-    /* we need to read the answer */
-    status = APR_EGENERAL;
-    rp = ap_proxy_make_fake_req(p_conn->connection, r);
-    rp->proxyreq = PROXYREQ_RESPONSE;
-    tmp_bb = apr_brigade_create(r->pool, p_conn->connection->bucket_alloc);
-    while (1) {
-        ap_proxygetline(tmp_bb, buffer, sizeof(buffer), rp, 0, &len);
-        if (len <= 0) {
-            break;
+    apr_socket_timeout_set(p_conn->sock, timeout);
+
+    eos = 0;
+    len = 0;
+    while (!eos) {
+        apr_brigade_cleanup(brigade);
+        if (APR_SUCCESS !=
+            ap_get_brigade(p_conn->connection->input_filters, brigade, AP_MODE_GETLINE, APR_BLOCK_READ, 0)) {
+            if (len != 0) {
+                /* We have read something already... */
+                break;
+            }
+            /* Nothing was read */
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, rv, r->server, "http_cping_cpong: ap_get_brigade failed");
+            p_conn->close = 1;
+            return APR_EGENERAL;
         }
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "http_cping_cpong: received %s", buffer);
-        status = APR_SUCCESS;
+
+        for (e = APR_BRIGADE_FIRST(brigade); e != APR_BRIGADE_SENTINEL(brigade); e = APR_BUCKET_NEXT(e)) {
+            if (APR_BUCKET_IS_EOS(e)) {
+                eos = 1;
+                continue;
+            }
+
+            rv = apr_bucket_read(e, &ptr, &len, APR_BLOCK_READ);
+            if (rv != APR_SUCCESS) {
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, rv, r->server, "http_cping_cpong: reading response failed");
+                p_conn->close = 1;
+                return rv;
+            }
+
+            copy_and_trim_crlf(buffer, ptr, len);
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, rv, r->server, "http_cping_cpong: received %s", buffer);
+        }
     }
-    if (status != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, status, r->server, "http_cping_cpong: ap_getline failed");
-    }
+
     rv = apr_socket_timeout_set(p_conn->sock, org);
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "http_cping_cpong: apr_socket_timeout_set failed");
@@ -1100,7 +1080,7 @@ static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn, request_rec 
 
     p_conn->close = 1;
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "http_cping_cpong: Done");
-    return status;
+    return APR_SUCCESS;
 }
 
 static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *worker, char *url, proxy_server_conf *conf,
