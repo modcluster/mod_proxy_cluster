@@ -2946,25 +2946,14 @@ static void process_error(request_rec *r, char *errstring, int errtype)
     ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "manager_handler %s error: %s", r->method, errstring);
 }
 
+static int cmp_nodes(const void *n1, const void *n2)
+{
+    return strcmp(((nodeinfo_t *)n1)->mess.Domain, ((nodeinfo_t *)n2)->mess.Domain);
+}
+
 static void sort_nodes(nodeinfo_t *nodes, int nbnodes)
 {
-    int i;
-    int changed = -1;
-    if (nbnodes <= 1) {
-        return;
-    }
-    while (changed) {
-        changed = 0;
-        for (i = 0; i < nbnodes - 1; i++) {
-            if (strcmp(nodes[i].mess.Domain, nodes[i + 1].mess.Domain) > 0) {
-                nodeinfo_t node;
-                node = nodes[i + 1];
-                nodes[i + 1] = nodes[i];
-                nodes[i] = node;
-                changed = -1;
-            }
-        }
-    }
+    qsort(nodes, nbnodes, sizeof(nodeinfo_t), cmp_nodes);
 }
 
 static char *process_domain(request_rec *r, char **ptr, int *errtype, const char *cmd, const char *domain)
