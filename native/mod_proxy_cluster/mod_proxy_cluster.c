@@ -3655,7 +3655,7 @@ static const command_rec proxy_cluster_cmds[] = {
                   "UseAlias - Check that the Alias corresponds to the ServerName Off: Don't check (ignore Aliases), On: "
                   "Check aliases (Default: Off)"),
     AP_INIT_TAKE1("LBstatusRecalTime", cmd_proxy_cluster_lbstatus_recalc_time, NULL, OR_ALL,
-                  "LBstatusRecalTime - Time interval in seconds for loadbalancing logic to recalculate the status of a "
+                  "LBstatusRecalTime - Time interval in seconds for load balancing logic to recalculate the status of a "
                   "node: (Default: 5 seconds)"),
     AP_INIT_TAKE1("WaitBeforeRemove", cmd_proxy_cluster_wait_for_remove, NULL, OR_ALL,
                   "WaitBeforeRemove - Time in seconds before a node removed is forgotten by httpd: (Default: 10 seconds)"),
