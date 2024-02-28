@@ -1744,6 +1744,19 @@ static char *process_dump(request_rec *r, int *errtype)
     return NULL;
 }
 
+static char *flush_to_str(int flush)
+{
+    switch (flush) {
+    case flush_on:
+        return "On";
+    case flush_auto:
+        return "Auto";
+    case flush_off:
+    default:
+        return "Off";
+    }
+}
+
 /*
  * Process a INFO command.
  * Statics informations ;-)
@@ -1807,14 +1820,7 @@ static char *process_info(request_rec *r, int *errtype)
             break;
         }
 
-        flushpackets = "Off";
-        switch (ou->mess.flushpackets) {
-        case flush_on:
-            flushpackets = "On";
-            break;
-        case flush_auto:
-            flushpackets = "Auto";
-        }
+        flushpackets = flush_to_str(ou->mess.flushpackets);
 
         switch (type) {
         case TEXT_XML:
@@ -2546,7 +2552,7 @@ static apr_status_t decodeenc(char **ptr)
 /*
  * Check that the method is one of ours
  */
-static int check_method(const request_rec *r)
+static int is_our_method(const request_rec *r)
 {
     int ours = 0;
     if (strcasecmp(r->method, "CONFIG") == 0) {
@@ -2588,7 +2594,6 @@ static int check_method(const request_rec *r)
  */
 static int manager_trans(request_rec *r)
 {
-    int ours = 0;
     core_dir_config *conf = (core_dir_config *)ap_get_module_config(r->per_dir_config, &core_module);
     mod_manager_config *mconf = ap_get_module_config(r->server->module_config, &manager_module);
 
@@ -2604,8 +2609,7 @@ static int manager_trans(request_rec *r)
         return DECLINED; /* Not allowed to receive MCMP */
     }
 
-    ours = check_method(r);
-    if (ours) {
+    if (is_our_method(r)) {
         int i;
         /* The method one of ours */
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_trans: %s (%s)", r->method, r->uri);
@@ -2627,7 +2631,6 @@ static int manager_trans(request_rec *r)
  */
 static int manager_map_to_storage(request_rec *r)
 {
-    int ours = 0;
     mod_manager_config *mconf = ap_get_module_config(r->server->module_config, &manager_module);
     if (r->method_number != M_INVALID) {
         return DECLINED;
@@ -2636,8 +2639,7 @@ static int manager_map_to_storage(request_rec *r)
         return DECLINED; /* Not allowed to receive MCMP */
     }
 
-    ours = check_method(r);
-    if (ours) {
+    if (is_our_method(r)) {
         /* The method one of ours */
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_map_to_storage: %s (%s)", r->method, r->uri);
         return OK;
@@ -2956,6 +2958,27 @@ static void sort_nodes(nodeinfo_t *nodes, int nbnodes)
     qsort(nodes, nbnodes, sizeof(nodeinfo_t), cmp_nodes);
 }
 
+/*
+ * Helper function, returns 1 in case of the application command. Otherwise returns 0
+ */
+static int process_appl(const char *cmd, request_rec *r, char **ptr, int *errtype, int global, char **errstring,
+                        int fromnode)
+{
+    if (strcasecmp(cmd, "ENABLE-APP") == 0) {
+        *errstring = process_enable(r, ptr, errtype, global);
+    } else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
+        *errstring = process_disable(r, ptr, errtype, global);
+    } else if (strcasecmp(cmd, "STOP-APP") == 0) {
+        *errstring = process_stop(r, ptr, errtype, global, fromnode);
+    } else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
+        *errstring = process_remove(r, ptr, errtype, global);
+    } else {
+        return 0;
+    }
+
+    return 1;
+}
+
 static char *process_domain(request_rec *r, char **ptr, int *errtype, const char *cmd, const char *domain)
 {
     int size, i;
@@ -2986,15 +3009,7 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
         }
         /* add the JVMRoute */
         ptr[pos + 1] = apr_pstrdup(r->pool, ou->mess.JVMRoute);
-        if (strcasecmp(cmd, "ENABLE-APP") == 0) {
-            errstring = process_enable(r, ptr, errtype, RANGENODE);
-        } else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
-            errstring = process_disable(r, ptr, errtype, RANGENODE);
-        } else if (strcasecmp(cmd, "STOP-APP") == 0) {
-            errstring = process_stop(r, ptr, errtype, RANGENODE, 0);
-        } else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
-            errstring = process_remove(r, ptr, errtype, RANGENODE);
-        }
+        process_appl(cmd, r, ptr, errtype, RANGENODE, &errstring, 0);
     }
     return errstring;
 }
@@ -3003,15 +3018,14 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
 static void printproxy_stat(request_rec *r, int reduce_display, nodeinfo_t *node)
 {
     char *status;
+    proxy_worker_shared tmp;
     const proxy_worker_shared *proxystat = read_shared_by_node(r, node);
     if (!proxystat) {
-        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "printproxy_stat: can't find worker");
         status = "NOTOK";
-        proxystat = apr_pcalloc(r->pool, sizeof(proxy_worker_shared));
+        proxystat = &tmp;
     } else {
         status = proxystat->status & PROXY_WORKER_NOT_USABLE_BITMAP ? "NOTOK" : "OK";
     }
-
 
     if (reduce_display) {
         ap_rprintf(r, " %s ", status);
@@ -3058,133 +3072,144 @@ static void modules_info(request_rec *r)
     }
 }
 
-/*
- * Process INFO message and mod_cluster_manager pages generation
- */
-static int manager_info(request_rec *r)
+static void manager_node(request_rec *r, nodeinfo_t *ou, const mod_manager_config *mconf, int sizesessionid)
 {
-    int size, i, sizesessionid;
-    int *id;
-    apr_table_t *params = apr_table_make(r->pool, 10);
-    int access_status;
-    const char *name;
-    nodeinfo_t *nodes;
-    int nbnodes = 0;
     char *domain = "";
-    char *errstring = NULL;
-    void *sconf = r->server->module_config;
-    mod_manager_config *mconf = ap_get_module_config(sconf, &manager_module);
 
-    if (r->args) {
-        char *args = apr_pstrdup(r->pool, r->args);
-        char *tok, *val;
-        while (args && *args) {
-            if ((val = ap_strchr(args, '='))) {
-                *val++ = '\0';
-                if ((tok = ap_strchr(val, '&'))) {
-                    *tok++ = '\0';
-                }
-                /*
-                 * Special case: contexts contain path information
-                 */
-                if ((access_status = ap_unescape_url(val)) != OK) {
-                    if (strcmp(args, "Context") || (access_status != HTTP_NOT_FOUND)) {
-                        return access_status;
-                    }
-                }
-                apr_table_setn(params, args, val);
-                args = tok;
-            } else {
-                return HTTP_BAD_REQUEST;
+    if (mconf->reduce_display) {
+        if (strcmp(domain, ou->mess.Domain) != 0) {
+            ap_rprintf(r, "<br/><br/>LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
+            domain = ou->mess.Domain;
+            if (mconf->allow_cmd) {
+                domain_command_string(r, domain);
             }
         }
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_info: request: %s", r->args);
+
+        ap_rprintf(r, "<br/><br/>Node %.*s ", (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute);
+        printproxy_stat(r, mconf->reduce_display, ou);
+
+        if (mconf->allow_cmd) {
+            node_command_string(r, ou->mess.JVMRoute);
+        }
+
+        ap_rprintf(r, "<br/>\n");
+    } else {
+        if (strcmp(domain, ou->mess.Domain) != 0) {
+            ap_rprintf(r, "<h1> LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
+            domain = ou->mess.Domain;
+            if (mconf->allow_cmd) {
+                domain_command_string(r, domain);
+            }
+            if (!mconf->reduce_display) {
+                ap_rprintf(r, "</h1>\n");
+            }
+        }
+
+        ap_rprintf(r, "<h1> Node %.*s (%.*s://%.*s:%.*s): </h1>\n", (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute,
+                   (int)sizeof(ou->mess.Type), ou->mess.Type, (int)sizeof(ou->mess.Host), ou->mess.Host,
+                   (int)sizeof(ou->mess.Port), ou->mess.Port);
+
+        if (mconf->allow_cmd) {
+            node_command_string(r, ou->mess.JVMRoute);
+        }
+
+        ap_rprintf(r, "<br/>\n");
+        ap_rprintf(r, "Balancer: %.*s,LBGroup: %.*s", (int)sizeof(ou->mess.balancer), ou->mess.balancer,
+                   (int)sizeof(ou->mess.Domain), ou->mess.Domain);
+
+        ap_rprintf(r, ",Flushpackets: %s,Flushwait: %d,Ping: %d,Smax: %d,Ttl: %d", flush_to_str(ou->mess.flushpackets),
+                   ou->mess.flushwait, (int)ou->mess.ping, ou->mess.smax, (int)ou->mess.ttl);
+
+        printproxy_stat(r, mconf->reduce_display, ou);
     }
 
-    /*
-     * Check that the supplied nonce matches this server's nonce;
-     * otherwise ignore all parameters, to prevent a CSRF attack.
-     */
-    if (mconf->nonce && ((name = apr_table_get(params, "nonce")) == NULL || strcmp(balancer_nonce, name) != 0)) {
-        apr_table_clear(params);
+    if (sizesessionid) {
+        ap_rprintf(r, ",Num sessions: %d", count_sessionid(r, ou->mess.JVMRoute));
+    }
+    ap_rprintf(r, "\n");
+}
+
+/*
+ * Helper function for processing parameters. Returns the command it got.
+ */
+static const char *process_params(request_rec *r, apr_table_t *params, int allow_cmd, char **errstr)
+{
+    const char *val = apr_table_get(params, "Refresh");
+    const char *cmd = apr_table_get(params, "Cmd");
+    const char *range = apr_table_get(params, "Range");
+    const char *domain = apr_table_get(params, "Domain");
+    char *errstring = *errstr;
+    /* Process the Refresh parameter */
+    int errtype = 0;
+
+    if (val) {
+        long t = atol(val);
+        apr_table_set(r->headers_out, "Refresh", apr_ltoa(r->pool, t < 1 ? 10 : t));
     }
 
-    /* process the parameters */
-    if (r->args) {
-        const char *val = apr_table_get(params, "Refresh");
-        const char *cmd = apr_table_get(params, "Cmd");
-        const char *typ = apr_table_get(params, "Range");
-        const char *domain = apr_table_get(params, "Domain");
-        /* Process the Refresh parameter */
-        if (val) {
-            long t = atol(val);
-            apr_table_set(r->headers_out, "Refresh", apr_ltoa(r->pool, t < 1 ? 10 : t));
+    if (!cmd) {
+        return NULL;
+    }
+
+    /* Process INFO and DUMP */
+    if (strcasecmp(cmd, "DUMP") == 0) {
+        errstring = process_dump(r, &errtype);
+        if (!errstring) {
+            return cmd;
         }
-        /* Process INFO and DUMP */
-        if (cmd != NULL) {
-            int errtype = 0;
-            if (strcasecmp(cmd, "DUMP") == 0) {
-                errstring = process_dump(r, &errtype);
-                if (!errstring) {
-                    return OK;
-                }
-            } else if (strcasecmp(cmd, "INFO") == 0) {
-                errstring = process_info(r, &errtype);
-                if (!errstring) {
-                    return OK;
-                }
-            }
-            if (errstring) {
-                process_error(r, errstring, errtype);
-            }
+    } else if (strcasecmp(cmd, "INFO") == 0) {
+        errstring = process_info(r, &errtype);
+        if (!errstring) {
+            return cmd;
         }
-        /* Process other command if any */
-        if (cmd != NULL && typ != NULL && mconf->allow_cmd && errstring == NULL) {
-            int global = RANGECONTEXT;
-            int errtype = 0;
-            int i;
-            char **ptr;
-            const apr_array_header_t *arr = apr_table_elts(params);
-            const apr_table_entry_t *elts = (const apr_table_entry_t *)arr->elts;
+    }
+    if (errstring) {
+        process_error(r, errstring, errtype);
+    }
+    /* Process other command if any */
+    if (range != NULL && allow_cmd && errstring == NULL) {
+        int global = RANGECONTEXT;
+        int i;
+        char **ptr;
+        const apr_array_header_t *arr = apr_table_elts(params);
+        const apr_table_entry_t *elts = (const apr_table_entry_t *)arr->elts;
+        errtype = 0;
 
-            if (strcasecmp(typ, "NODE") == 0) {
-                global = RANGENODE;
-            } else if (strcasecmp(typ, "DOMAIN") == 0) {
-                global = RANGEDOMAIN;
-            }
+        if (strcasecmp(range, "NODE") == 0) {
+            global = RANGENODE;
+        } else if (strcasecmp(range, "DOMAIN") == 0) {
+            global = RANGEDOMAIN;
+        }
+        if (global == RANGEDOMAIN) {
+            ptr = apr_palloc(r->pool, sizeof(char *) * (arr->nelts + 2) * 2);
+        } else {
+            ptr = apr_palloc(r->pool, sizeof(char *) * (arr->nelts + 1) * 2);
+        }
 
-            if (global == RANGEDOMAIN) {
-                ptr = apr_palloc(r->pool, sizeof(char *) * (arr->nelts + 2) * 2);
-            } else {
-                ptr = apr_palloc(r->pool, sizeof(char *) * (arr->nelts + 1) * 2);
-            }
-            for (i = 0; i < arr->nelts; i++) {
-                ptr[i * 2] = elts[i].key;
-                ptr[i * 2 + 1] = elts[i].val;
-            }
-            ptr[arr->nelts * 2] = NULL;
-            ptr[arr->nelts * 2 + 1] = NULL;
+        for (i = 0; i < arr->nelts; i++) {
+            ptr[i * 2] = elts[i].key;
+            ptr[i * 2 + 1] = elts[i].val;
+        }
+        ptr[arr->nelts * 2] = NULL;
+        ptr[arr->nelts * 2 + 1] = NULL;
 
-            if (global == RANGEDOMAIN) {
-                errstring = process_domain(r, ptr, &errtype, cmd, domain);
-            } else if (strcasecmp(cmd, "ENABLE-APP") == 0) {
-                errstring = process_enable(r, ptr, &errtype, global);
-            } else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
-                errstring = process_disable(r, ptr, &errtype, global);
-            } else if (strcasecmp(cmd, "STOP-APP") == 0) {
-                errstring = process_stop(r, ptr, &errtype, global, 0);
-            } else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
-                errstring = process_remove(r, ptr, &errtype, global);
-            } else {
-                errstring = SCMDUNS;
-                errtype = TYPESYNTAX;
-            }
-            if (errstring) {
-                process_error(r, errstring, errtype);
-            }
+        if (global == RANGEDOMAIN) {
+            errstring = process_domain(r, ptr, &errtype, cmd, domain);
+        } else if (!process_appl(cmd, r, ptr, &errtype, global, errstr, 0)) {
+            errstring = SCMDUNS;
+            errtype = TYPESYNTAX;
+        }
+
+        if (errstring) {
+            process_error(r, errstring, errtype);
         }
     }
 
+    return cmd;
+}
+
+static void manager_fileheader(request_rec *r, const mod_manager_config *mconf, const char *errstring)
+{
     ap_set_content_type(r, "text/html; charset=ISO-8859-1");
     ap_rputs(DOCTYPE_HTML_3_2 "<html><head>\n<title>Mod_cluster Status</title>\n</head><body>\n", r);
     ap_rvputs(r, "<h1>", MOD_CLUSTER_EXPOSED_VERSION, "</h1>", NULL);
@@ -3207,30 +3232,27 @@ static int manager_info(request_rec *r)
     }
 
     ap_rvputs(r, "<a href=\"", r->uri, "?", balancer_nonce_string(r), "refresh=10", "\">Auto Refresh</a>", NULL);
-
     ap_rvputs(r, " <a href=\"", r->uri, "?", balancer_nonce_string(r), "Cmd=DUMP&Range=ALL", "\">show DUMP output</a>",
               NULL);
-
     ap_rvputs(r, " <a href=\"", r->uri, "?", balancer_nonce_string(r), "Cmd=INFO&Range=ALL", "\">show INFO output</a>",
               NULL);
-
     ap_rputs("\n", r);
+}
 
-    sizesessionid = loc_get_max_size_sessionid();
+static void manager_nodes(request_rec *r, const mod_manager_config *mconf, int size, int sizesessionid)
+{
+    int *ids;
+    int i, nbnodes;
+    nodeinfo_t *nodes;
 
-    size = loc_get_max_size_node();
-    if (size == 0) {
-        return OK;
-    }
-    id = apr_palloc(r->pool, sizeof(int) * size);
-    size = get_ids_used_node(nodestatsmem, id);
+    ids = apr_palloc(r->pool, sizeof(int) * size);
+    size = get_ids_used_node(nodestatsmem, ids);
 
-
-    /* read the node to sort them by domain */
+    /* Read the node to sort them by domain */
     nodes = apr_palloc(r->pool, sizeof(nodeinfo_t) * size);
-    for (i = 0; i < size; i++) {
+    for (i = nbnodes = 0; i < size; i++) {
         nodeinfo_t *ou;
-        if (get_node(nodestatsmem, &ou, id[i]) != APR_SUCCESS) {
+        if (get_node(nodestatsmem, &ou, ids[i]) != APR_SUCCESS) {
             continue;
         }
         memcpy(&nodes[nbnodes], ou, sizeof(nodeinfo_t));
@@ -3238,71 +3260,82 @@ static int manager_info(request_rec *r)
     }
     sort_nodes(nodes, nbnodes);
 
-    /* display the ordered nodes */
+    /* Display the ordered nodes */
     for (i = 0; i < size; i++) {
-        char *flushpackets;
         nodeinfo_t *ou = &nodes[i];
-
-        if (strcmp(domain, ou->mess.Domain) != 0) {
-            if (mconf->reduce_display) {
-                ap_rprintf(r, "<br/><br/>LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
-            } else {
-                ap_rprintf(r, "<h1> LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
-            }
-            domain = ou->mess.Domain;
-            if (mconf->allow_cmd) {
-                domain_command_string(r, domain);
-            }
-            if (!mconf->reduce_display) {
-                ap_rprintf(r, "</h1>\n");
-            }
-        }
-        if (mconf->reduce_display) {
-            ap_rprintf(r, "<br/><br/>Node %.*s ", (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute);
-        } else {
-            ap_rprintf(r, "<h1> Node %.*s (%.*s://%.*s:%.*s): </h1>\n", (int)sizeof(ou->mess.JVMRoute),
-                       ou->mess.JVMRoute, (int)sizeof(ou->mess.Type), ou->mess.Type, (int)sizeof(ou->mess.Host),
-                       ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port);
-        }
-        if (mconf->reduce_display) {
-            printproxy_stat(r, mconf->reduce_display, ou);
-        }
-
-        if (mconf->allow_cmd) {
-            node_command_string(r, ou->mess.JVMRoute);
-        }
-
-        if (!mconf->reduce_display) {
-            ap_rprintf(r, "<br/>\n");
-            ap_rprintf(r, "Balancer: %.*s,LBGroup: %.*s", (int)sizeof(ou->mess.balancer), ou->mess.balancer,
-                       (int)sizeof(ou->mess.Domain), ou->mess.Domain);
-
-            flushpackets = "Off";
-            switch (ou->mess.flushpackets) {
-            case flush_on:
-                flushpackets = "On";
-                break;
-            case flush_auto:
-                flushpackets = "Auto";
-            }
-            ap_rprintf(r, ",Flushpackets: %s,Flushwait: %d,Ping: %d,Smax: %d,Ttl: %d", flushpackets, ou->mess.flushwait,
-                       (int)ou->mess.ping, ou->mess.smax, (int)ou->mess.ttl);
-        }
-
-        if (mconf->reduce_display) {
-            ap_rprintf(r, "<br/>\n");
-        } else {
-            printproxy_stat(r, mconf->reduce_display, ou);
-        }
-
-        if (sizesessionid) {
-            ap_rprintf(r, ",Num sessions: %d", count_sessionid(r, ou->mess.JVMRoute));
-        }
-        ap_rprintf(r, "\n");
-
+        manager_node(r, &nodes[i], mconf, sizesessionid);
         /* Process the Vhosts */
         manager_info_hosts(r, mconf->reduce_display, mconf->allow_cmd, ou->mess.id, ou->mess.JVMRoute);
     }
+}
+
+/*
+ * Process INFO message and mod_cluster_manager pages generation
+ */
+static int manager_info(request_rec *r)
+{
+    int size, sizesessionid, access_status;
+    apr_table_t *params = apr_table_make(r->pool, 10);
+    const char *name;
+    char *errstring = NULL;
+    mod_manager_config *mconf = ap_get_module_config(r->server->module_config, &manager_module);
+
+    if (r->args) {
+        char *args = apr_pstrdup(r->pool, r->args);
+        char *tok, *val;
+        while (args && *args) {
+            val = ap_strchr(args, '=');
+            if (!val) {
+                return HTTP_BAD_REQUEST;
+            }
+            *val++ = '\0';
+            if ((tok = ap_strchr(val, '&'))) {
+                *tok++ = '\0';
+            }
+            /*
+             * Special case: contexts contain path information
+             */
+            if ((access_status = ap_unescape_url(val)) != OK) {
+                if (strcmp(args, "Context") || (access_status != HTTP_NOT_FOUND)) {
+                    return access_status;
+                }
+            }
+            apr_table_setn(params, args, val);
+            args = tok;
+        }
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_info: request: %s", r->args);
+    }
+
+    /*
+     * Check that the supplied nonce matches this server's nonce;
+     * otherwise ignore all parameters, to prevent a CSRF attack.
+     */
+    if (mconf->nonce && ((name = apr_table_get(params, "nonce")) == NULL || strcmp(balancer_nonce, name) != 0)) {
+        apr_table_clear(params);
+    }
+
+    /* Process the parameters */
+    if (r->args) {
+        const char *cmd = process_params(r, params, mconf->allow_cmd, &errstring);
+        if (cmd && (strcasecmp(cmd, "INFO") == 0 || strcasecmp(cmd, "DUMP") == 0)) {
+            return OK;
+        }
+    }
+
+    manager_fileheader(r, mconf, errstring);
+    if (errstring) {
+        return OK;
+    }
+
+    size = loc_get_max_size_node();
+    if (size == 0) {
+        return OK;
+    }
+
+    sizesessionid = loc_get_max_size_sessionid();
+    /* Display nodes sorted by domain */
+    manager_nodes(r, mconf, size, sizesessionid);
+
     /* Display the sessions */
     if (sizesessionid) {
         manager_sessionid(r);
@@ -3318,15 +3351,11 @@ static int manager_info(request_rec *r)
 static int manager_handler(request_rec *r)
 {
     apr_bucket_brigade *input_brigade;
-    char *errstring = NULL;
-    int errtype = 0;
-    char *buff;
+    char *buff, *errstring = NULL;
+    int errtype = 0, global = 0;
     apr_size_t bufsiz = 0, maxbufsiz, len;
     apr_status_t status;
-    int global = 0;
-    int ours = 0;
     char **ptr;
-    void *sconf = r->server->module_config;
     mod_manager_config *mconf;
 
     if (strcmp(r->handler, "mod_cluster-manager") == 0) {
@@ -3337,13 +3366,12 @@ static int manager_handler(request_rec *r)
         return manager_info(r);
     }
 
-    mconf = ap_get_module_config(sconf, &manager_module);
+    mconf = ap_get_module_config(r->server->module_config, &manager_module);
     if (!mconf->enable_mcpm_receive) {
         return DECLINED; /* Not allowed to receive MCMP */
     }
 
-    ours = check_method(r);
-    if (!ours) {
+    if (!is_our_method(r)) {
         return DECLINED;
     }
 
@@ -3362,8 +3390,8 @@ static int manager_handler(request_rec *r)
     buff = apr_pcalloc(r->pool, maxbufsiz);
     input_brigade = apr_brigade_create(r->pool, r->connection->bucket_alloc);
     len = maxbufsiz;
-    while ((status = ap_get_brigade(r->input_filters, input_brigade, AP_MODE_READBYTES, APR_BLOCK_READ, len)) ==
-           APR_SUCCESS) {
+    while (APR_SUCCESS ==
+           (status = ap_get_brigade(r->input_filters, input_brigade, AP_MODE_READBYTES, APR_BLOCK_READ, len))) {
         apr_brigade_flatten(input_brigade, buff + bufsiz, &len);
         apr_brigade_cleanup(input_brigade);
         bufsiz += len;
@@ -3374,12 +3402,7 @@ static int manager_handler(request_rec *r)
     }
 
     if (status != APR_SUCCESS) {
-        errstring = apr_psprintf(r->pool, SREADER, r->method);
-        r->status_line = apr_psprintf(r->pool, "ERROR");
-        apr_table_setn(r->err_headers_out, "Version", VERSION_PROTOCOL);
-        apr_table_setn(r->err_headers_out, "Type", "SYNTAX");
-        apr_table_setn(r->err_headers_out, "Mess", errstring);
-        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "manager_handler: %s error: %s", r->method, errstring);
+        process_error(r, apr_psprintf(r->pool, SREADER, r->method), TYPESYNTAX);
         return 500;
     }
     buff[bufsiz] = '\0';
@@ -3399,19 +3422,8 @@ static int manager_handler(request_rec *r)
 
     if (strcasecmp(r->method, "CONFIG") == 0) {
         errstring = process_config(r, ptr, &errtype);
-    }
-    /* Application handling */
-    else if (strcasecmp(r->method, "ENABLE-APP") == 0) {
-        errstring = process_enable(r, ptr, &errtype, global);
-    } else if (strcasecmp(r->method, "DISABLE-APP") == 0) {
-        errstring = process_disable(r, ptr, &errtype, global);
-    } else if (strcasecmp(r->method, "STOP-APP") == 0) {
-        errstring = process_stop(r, ptr, &errtype, global, 1);
-    } else if (strcasecmp(r->method, "REMOVE-APP") == 0) {
-        errstring = process_remove(r, ptr, &errtype, global);
-    }
-    /* Status handling */
-    else if (strcasecmp(r->method, "STATUS") == 0) {
+        /* Status handling */
+    } else if (strcasecmp(r->method, "STATUS") == 0) {
         errstring = process_status(r, (const char *const *)ptr, &errtype);
     } else if (strcasecmp(r->method, "DUMP") == 0) {
         errstring = process_dump(r, &errtype);
@@ -3421,7 +3433,8 @@ static int manager_handler(request_rec *r)
         errstring = process_ping(r, (const char *const *)ptr, &errtype);
     } else if (strcasecmp(r->method, "VERSION") == 0) {
         errstring = process_version(r, (const char *const *)ptr, &errtype);
-    } else {
+        /* Application handling */
+    } else if (!process_appl(r->method, r, ptr, &errtype, global, &errstring, 1)) {
         errstring = SCMDUNS;
         errtype = TYPESYNTAX;
     }
