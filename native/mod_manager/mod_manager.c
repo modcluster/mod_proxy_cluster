@@ -3193,7 +3193,7 @@ static int manager_info(request_rec *r)
         ap_rvputs(r, "<h1> Command failed: ", errstring, "</h1>\n", NULL);
         ap_rvputs(r, " <a href=\"", r->uri, "\">Continue</a>\n", NULL);
         ap_rputs("</body></html>\n", r);
-        return OK;
+        return;
     }
 
     /* Advertise information */
