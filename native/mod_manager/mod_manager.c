@@ -2669,7 +2669,7 @@ static char *balancer_nonce_string(request_rec *r)
     return ret;
 }
 
-static void context_command_string(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
+static void print_context_command(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
 {
     if (ou->status == DISABLED) {
         ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=CONTEXT&%s\">Enable</a> ", r->uri, balancer_nonce_string(r),
@@ -2699,7 +2699,7 @@ static char *node_string(request_rec *r, const char *JVMRoute)
     return apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, NULL);
 }
 
-static void node_command_string(request_rec *r, const char *JVMRoute)
+static void print_node_command(request_rec *r, const char *JVMRoute)
 {
     ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=NODE&%s\">Enable Contexts</a> ", r->uri,
                balancer_nonce_string(r), node_string(r, JVMRoute));
@@ -2720,7 +2720,7 @@ static char *mc_escape_html(apr_pool_t *pool, const char *str, int len)
     return ap_escape_html(pool, s);
 }
 
-static void domain_command_string(request_rec *r, const char *Domain)
+static void print_domain_command(request_rec *r, const char *Domain)
 {
     ap_rprintf(r, "<a href=\"%s?%sCmd=ENABLE-APP&Range=DOMAIN&Domain=%s\">Enable Nodes</a> ", r->uri,
                balancer_nonce_string(r), Domain);
@@ -2733,8 +2733,8 @@ static void domain_command_string(request_rec *r, const char *Domain)
 /*
  * Process the parameters and display corresponding informations
  */
-static void manager_info_contexts(request_rec *r, int reduce_display, int allow_cmd, int node, int host,
-                                  const char *Alias, const char *JVMRoute)
+static void print_contexts(request_rec *r, int reduce_display, int allow_cmd, int node, int host, const char *Alias,
+                           const char *JVMRoute)
 {
     int size, i;
     int *id;
@@ -2761,14 +2761,14 @@ static void manager_info_contexts(request_rec *r, int reduce_display, int allow_
                    mc_escape_html(r->pool, ou->context, sizeof(ou->context)), context_status_to_string(ou->status),
                    ou->nbrequests);
         if (allow_cmd) {
-            context_command_string(r, ou, Alias, JVMRoute);
+            print_context_command(r, ou, Alias, JVMRoute);
         }
         ap_rprintf(r, "\n");
     }
     ap_rprintf(r, "</pre>");
 }
 
-static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd, int node, const char *JVMRoute)
+static void print_hosts(request_rec *r, int reduce_display, int allow_cmd, int node, const char *JVMRoute)
 {
     int size, i, j;
     int *id, *idChecker;
@@ -2801,7 +2801,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
             if (!reduce_display) {
                 ap_rprintf(r, "<h2> Virtual Host %d:</h2>", ou->vhost);
             }
-            manager_info_contexts(r, reduce_display, allow_cmd, ou->node, ou->vhost, ou->host, JVMRoute);
+            print_contexts(r, reduce_display, allow_cmd, ou->node, ou->vhost, ou->host, JVMRoute);
             if (reduce_display) {
                 ap_rprintf(r, "Aliases: ");
             } else {
@@ -2842,7 +2842,7 @@ static void manager_info_hosts(request_rec *r, int reduce_display, int allow_cmd
     }
 }
 
-static void manager_sessionid(request_rec *r)
+static void print_sessionid(request_rec *r)
 {
     int size, i;
     int *id;
@@ -2870,7 +2870,7 @@ static void manager_sessionid(request_rec *r)
     ap_rprintf(r, "</pre>");
 }
 
-static void manager_domain(request_rec *r, int reduce_display)
+static void print_domain(request_rec *r, int reduce_display)
 {
 #if HAVE_CLUSTER_EX_DEBUG
     int size, i;
@@ -3015,7 +3015,7 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
 }
 
 /* XXX: move to mod_proxy_cluster as a provider ? */
-static void printproxy_stat(request_rec *r, int reduce_display, nodeinfo_t *node)
+static void print_proxystat(request_rec *r, int reduce_display, nodeinfo_t *node)
 {
     char *status;
     proxy_worker_shared tmp;
@@ -3072,7 +3072,7 @@ static void modules_info(request_rec *r)
     }
 }
 
-static void manager_node(request_rec *r, nodeinfo_t *ou, const mod_manager_config *mconf, int sizesessionid)
+static void print_node(request_rec *r, nodeinfo_t *ou, const mod_manager_config *mconf, int sizesessionid)
 {
     char *domain = "";
 
@@ -3081,15 +3081,15 @@ static void manager_node(request_rec *r, nodeinfo_t *ou, const mod_manager_confi
             ap_rprintf(r, "<br/><br/>LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
             domain = ou->mess.Domain;
             if (mconf->allow_cmd) {
-                domain_command_string(r, domain);
+                print_domain_command(r, domain);
             }
         }
 
         ap_rprintf(r, "<br/><br/>Node %.*s ", (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute);
-        printproxy_stat(r, mconf->reduce_display, ou);
+        print_proxystat(r, mconf->reduce_display, ou);
 
         if (mconf->allow_cmd) {
-            node_command_string(r, ou->mess.JVMRoute);
+            print_node_command(r, ou->mess.JVMRoute);
         }
 
         ap_rprintf(r, "<br/>\n");
@@ -3098,7 +3098,7 @@ static void manager_node(request_rec *r, nodeinfo_t *ou, const mod_manager_confi
             ap_rprintf(r, "<h1> LBGroup %.*s: ", (int)sizeof(ou->mess.Domain), ou->mess.Domain);
             domain = ou->mess.Domain;
             if (mconf->allow_cmd) {
-                domain_command_string(r, domain);
+                print_domain_command(r, domain);
             }
             if (!mconf->reduce_display) {
                 ap_rprintf(r, "</h1>\n");
@@ -3110,7 +3110,7 @@ static void manager_node(request_rec *r, nodeinfo_t *ou, const mod_manager_confi
                    (int)sizeof(ou->mess.Port), ou->mess.Port);
 
         if (mconf->allow_cmd) {
-            node_command_string(r, ou->mess.JVMRoute);
+            print_node_command(r, ou->mess.JVMRoute);
         }
 
         ap_rprintf(r, "<br/>\n");
@@ -3120,7 +3120,7 @@ static void manager_node(request_rec *r, nodeinfo_t *ou, const mod_manager_confi
         ap_rprintf(r, ",Flushpackets: %s,Flushwait: %d,Ping: %d,Smax: %d,Ttl: %d", flush_to_str(ou->mess.flushpackets),
                    ou->mess.flushwait, (int)ou->mess.ping, ou->mess.smax, (int)ou->mess.ttl);
 
-        printproxy_stat(r, mconf->reduce_display, ou);
+        print_proxystat(r, mconf->reduce_display, ou);
     }
 
     if (sizesessionid) {
@@ -3208,7 +3208,7 @@ static const char *process_params(request_rec *r, apr_table_t *params, int allow
     return cmd;
 }
 
-static void manager_fileheader(request_rec *r, const mod_manager_config *mconf, const char *errstring)
+static void print_fileheader(request_rec *r, const mod_manager_config *mconf, const char *errstring)
 {
     ap_set_content_type(r, "text/html; charset=ISO-8859-1");
     ap_rputs(DOCTYPE_HTML_3_2 "<html><head>\n<title>Mod_cluster Status</title>\n</head><body>\n", r);
@@ -3239,7 +3239,7 @@ static void manager_fileheader(request_rec *r, const mod_manager_config *mconf, 
     ap_rputs("\n", r);
 }
 
-static void manager_nodes(request_rec *r, const mod_manager_config *mconf, int size, int sizesessionid)
+static void print_nodes(request_rec *r, const mod_manager_config *mconf, int size, int sizesessionid)
 {
     int *ids;
     int i, nbnodes;
@@ -3260,12 +3260,12 @@ static void manager_nodes(request_rec *r, const mod_manager_config *mconf, int s
     }
     sort_nodes(nodes, nbnodes);
 
-    /* Display the ordered nodes */
+    /* Print the ordered nodes */
     for (i = 0; i < size; i++) {
         nodeinfo_t *ou = &nodes[i];
-        manager_node(r, &nodes[i], mconf, sizesessionid);
+        print_node(r, &nodes[i], mconf, sizesessionid);
         /* Process the Vhosts */
-        manager_info_hosts(r, mconf->reduce_display, mconf->allow_cmd, ou->mess.id, ou->mess.JVMRoute);
+        print_hosts(r, mconf->reduce_display, mconf->allow_cmd, ou->mess.id, ou->mess.JVMRoute);
     }
 }
 
@@ -3322,7 +3322,7 @@ static int manager_info(request_rec *r)
         }
     }
 
-    manager_fileheader(r, mconf, errstring);
+    print_fileheader(r, mconf, errstring);
     if (errstring) {
         return OK;
     }
@@ -3334,14 +3334,14 @@ static int manager_info(request_rec *r)
 
     sizesessionid = loc_get_max_size_sessionid();
     /* Display nodes sorted by domain */
-    manager_nodes(r, mconf, size, sizesessionid);
+    print_nodes(r, mconf, size, sizesessionid);
 
     /* Display the sessions */
     if (sizesessionid) {
-        manager_sessionid(r);
+        print_sessionid(r);
     }
 
-    manager_domain(r, mconf->reduce_display);
+    print_domain(r, mconf->reduce_display);
 
     ap_rputs("</body></html>\n", r);
     return OK;
