@@ -18,24 +18,29 @@ Mod_cluster boasts the following advantages over other httpd-based load-balancer
 [https://modcluster.io](https://modcluster.io)
 
 
-Project Structure
------------------
+Native modules for httpd
+------------------------
 
-```
-native (native httpd modules)
-```
+Sources for the mod_proxy_cluster module are in the native directory. To build the components from
+the sources, you need following tools:
 
-### Reverse Proxy (httpd) Modules
-
-To build the native component from the sources you need a C compiler and the following tools:
-* m4
-* perl
-* autoconf
-* automake
-* libtool
+* C compiler
+* cmake, or autoconf, automake, and libtool
 * make
-* patch
-* python
+* httpd (with header files)
+
+For compilation using Linux with cmake, execute following (from the root of this repository):
+
+```sh
+mkdir native/build
+cd native/build
+cmake ..
+make
+```
+
+The built modules are within `modules` subdirectory.
+
+For more detailed instructions (incl. building on Windows) check out the online documentation.
 
 Styles
 ------
@@ -47,7 +52,7 @@ To apply all suggestions to a file automatically, run `clang-format -i <file>`.
 However, there are some cases where breaking the code style may result in better clarity. In those cases
 enclose the corresponding part of code like this
 
-```
+```c
 /* clang-format off */
 <code>
 /* clang-format on */
@@ -72,11 +77,17 @@ You can also get additional information in case you compile mod_proxy_cluster wi
 set. That will make more information visible within mod_manager. It will also add more information to the context
 search, but bear in mind that this may affect the performance.
 
-Doxygen documentation
----------------------
+Documentation
+-------------
+
+The documentation can be found on the project's site – [docs.modcluster.io](https://docs.modcluster.io) – where
+you can find Getting started guide and documentation for the worker side (Java) part – mod_cluster. 
+
+### Doxygen API docs
 
 The project source files contain doxygen-style comments. To build doxygen doumentation, execute `doxygen` command.
-The output can be found in newly created `doxygen-out/` directory.
+The output can be found in newly created `doxygen-out/` directory. It is
+[available online](https://docs.modcluster.io/apidocs/mpc-2.0/) as well.
 
 License
 -------
