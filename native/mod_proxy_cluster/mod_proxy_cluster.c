@@ -310,7 +310,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     helper = *helper_ptr;
     if (helper->index == -1) {
         /* We are going to reuse a removed one */
-        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server, "create_worker_reuse: reusing removed worker for %s", url);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker_reuse: reusing removed worker for %s", url);
         return APR_SUCCESS;
     }
 
@@ -737,7 +737,6 @@ static void reuse_balancer(proxy_balancer *balancer, const char *name, apr_pool_
     balancer->s->max_attempts = balan->Maxattempts;
     balancer->s->max_attempts_set = 1;
     if (changed) {
-        /* log a warning */
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, "Balancer %s changed", &balancer->s->name[11]);
     }
 }
@@ -847,7 +846,7 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
     if (helper) {
         i = helper->count_active;
     } else {
-        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server, "remove_workers_node: helper is NULL");
+        ap_log_error(APLOG_MARK, APLOG_INFO, 0, server, "remove_workers_node: helper is NULL");
     }
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "remove_workers_node: helper count_active: %d JVMRoute: %s", i,
                  node->mess.JVMRoute);
@@ -859,11 +858,11 @@ static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_po
         /* Here that is tricky the worker needs shared but we don't and CONFIG will reset it */
         worker->s = helper->shared;
         helper->isinnodes = 0;
-        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server,
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                      "remove_workers_node: scheme %s hostname %s port %d route %s name (%s):(%s) id (%d:%d)",
                      stat->scheme, stat->hostname_ex, stat->port, stat->route, stat->name, helper->shared->name,
                      stat->index, helper->index);
-        ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, server,
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                      "remove_workers_node: restored: scheme %s hostname %s port %d route %s name %s id:%d",
                      worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name,
                      worker->s->index);
@@ -2020,7 +2019,7 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
                 volatile proxy_worker *worker = *workers;
                 proxy_cluster_helper *helper;
                 if (worker->s->index >= node_table_size) {
-                    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, r->server,
+                    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
                                  "proxy_node_get_free_id: skipping worker index (%d) higher than node_table_size (%d)",
                                  worker->s->index, node_table_size);
                     continue;
