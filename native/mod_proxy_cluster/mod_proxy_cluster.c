@@ -1294,24 +1294,69 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     return APR_SUCCESS;
 }
 
-/* Returns 1 if the caller function should continue processing. */
-static int internal_update_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server, apr_time_t now,
-                                    nodeinfo_t *ou, int id, const proxy_worker_shared *stat)
+/*
+ * NOTE: node_storage must be locked!
+ */
+static proxy_worker *update_lbstatus_get_worker(server_rec *s, proxy_server_conf *conf, nodeinfo_t *ou, int id,
+                                                const proxy_worker_shared *stat)
 {
     char sport[7];
-    watchdog_thread_args_t targs;
     proxy_worker *worker;
     worker = get_worker_from_id_stat(conf, id, stat, ou);
 
     if (worker == NULL) {
-        node_storage->unlock_nodes();
+        return NULL; /* skip it */
+    }
+
+    apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
+
+    if (strcmp(worker->s->scheme, ou->mess.Type) || compare_hostname(worker->s->hostname, ou->mess.Host) ||
+        strcmp(sport, ou->mess.Port)) {
+        /* the worker doesn't correspond to the node something is very broken */
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s,
+                     "update_workers_lbstatus worker: (%s) does not correspond to the node (%s)", worker->s->hostname,
+                     ou->mess.Host);
+        return NULL;
+    }
+
+    return worker;
+}
+
+/*
+ * NOTE: node_storage must be locked!
+ */
+static void update_lbstatus_failure_idle(nodeinfo_t *ou, proxy_worker *worker, apr_time_t now)
+{
+    if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
+        /* marked errored by hcheck */
+        ou->mess.num_failure_idle++;
+        if (ou->mess.num_failure_idle > 60) {
+            /* Failing for 5 minutes: time to mark it removed */
+            ou->mess.remove = 1;
+            ou->updatetime = now;
+        }
+    } else {
+        ou->mess.num_failure_idle = 0;
+    }
+}
+
+/* Returns 1 if the caller function should continue processing.
+ * NOTE: node_storage must be locked!
+ */
+static int update_lbstatus_hcheck(proxy_server_conf *conf, server_rec *server, apr_time_t now, nodeinfo_t *ou, int id,
+                                  const proxy_worker_shared *stat)
+{
+    char sport[7];
+    proxy_worker *worker;
+    worker = get_worker_from_id_stat(conf, id, stat, ou);
+
+    if (worker == NULL) {
         return 1; /* skip it */
     }
     apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
 
     if (strcmp(worker->s->scheme, ou->mess.Type) || compare_hostname(worker->s->hostname, ou->mess.Host) ||
         strcmp(sport, ou->mess.Port)) {
-        node_storage->unlock_nodes();
         /* the worker doesn't correspond to the node something is very broken */
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, server,
                      "update_workers_lbstatus worker: (%s) does not correspond to the node (%s)", worker->s->hostname,
@@ -1319,27 +1364,21 @@ static int internal_update_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
         return 1;
     }
 
-    /* Here we should decide about using hcheck result or a request that pings the node */
-    if (proxyhctemplate != NULL) {
+    if (proxyhctemplate) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus: Using hcheck!");
-        if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
-            /* marked errored by hcheck */
-            ou->mess.num_failure_idle++;
-            if (ou->mess.num_failure_idle > 60) {
-                /* Failing for 5 minutes: time to mark it removed */
-                ou->mess.remove = 1;
-                ou->updatetime = now;
-            }
-        } else {
-            ou->mess.num_failure_idle = 0;
-        }
-        node_storage->unlock_nodes();
-        return 1; /* Done in this case */
+        update_lbstatus_failure_idle(ou, worker, now);
+        return 1;
     }
 
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus: Using old logic!");
-    node_storage->unlock_nodes();
+    /* hcheck is not used, we should use the old method */
+    return 0;
+}
 
+/* Returns 1 if the caller function should continue processing. */
+static int update_lbstatus_oldcheck(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server, apr_time_t now,
+                                    nodeinfo_t *ou, int id, proxy_worker *worker)
+{
+    watchdog_thread_args_t targs;
     /* We are going to check the worker... check if we are told to stop */
     if (child_stopping) {
         return 0;
@@ -1401,7 +1440,7 @@ static int internal_update_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
 /* Update the lbfactor of each node if needed. */
 static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
 {
-    int *id, size, i;
+    int *ids, size, i;
     apr_time_t now;
 
     now = apr_time_now();
@@ -1411,8 +1450,8 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
     if (size == 0) {
         return;
     }
-    id = apr_pcalloc(pool, sizeof(int) * size);
-    size = node_storage->get_ids_used_node(id);
+    ids = apr_pcalloc(pool, sizeof(int) * size);
+    size = node_storage->get_ids_used_node(ids);
 
     /* update lbstatus if needed */
     for (i = 0; i < size; i++) {
@@ -1424,7 +1463,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
             return;
         }
 
-        if (node_storage->read_node(id[i], &ou) != APR_SUCCESS) {
+        if (node_storage->read_node(ids[i], &ou) != APR_SUCCESS) {
             node_storage->unlock_nodes();
             continue;
         }
@@ -1458,9 +1497,18 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 /* it is set to zero when the back-end is back to normal.        */
                 /* worker->s->retries is also set to zero is a connection is     */
                 /* establish so we use read to check for changes                 */
-                if (!internal_update_lbstatus(conf, pool, server, now, ou, id[i], stat)) {
+                proxy_worker *worker = update_lbstatus_get_worker(server, conf, ou, ids[i], stat);
+                if (update_lbstatus_hcheck(conf, server, now, ou, ids[i], stat)) {
+                    node_storage->unlock_nodes();
                     return;
                 }
+                /* We must unlock because check_proxy_worker takes care of locking by itself. */
+                /* Don't forget it may or may not be scheduled for another thread. */
+                node_storage->unlock_nodes();
+                if (!update_lbstatus_oldcheck(conf, pool, server, now, ou, ids[i], worker)) {
+                    return;
+                }
+                continue;
             } else {
                 ou->mess.num_failure_idle = 0;
             }
