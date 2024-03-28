@@ -162,8 +162,8 @@ typedef struct mod_manager_config
     int reduce_display;
     /* maximum message size */
     int maxmesssize;
-    /* Enable MCPM receiver */
-    int enable_mcpm_receive;
+    /* Enable MCMP receiver */
+    int enable_mcmp_receive;
     /* Enable WebSocket Proxy */
     int enable_ws_tunnel;
     /* WebSocket upgrade header */
@@ -2605,7 +2605,7 @@ static int manager_trans(request_rec *r)
     if (r->method_number != M_INVALID) {
         return DECLINED;
     }
-    if (!mconf->enable_mcpm_receive) {
+    if (!mconf->enable_mcmp_receive) {
         return DECLINED; /* Not allowed to receive MCMP */
     }
 
@@ -2635,7 +2635,7 @@ static int manager_map_to_storage(request_rec *r)
     if (r->method_number != M_INVALID) {
         return DECLINED;
     }
-    if (!mconf->enable_mcpm_receive) {
+    if (!mconf->enable_mcmp_receive) {
         return DECLINED; /* Not allowed to receive MCMP */
     }
 
@@ -3367,7 +3367,7 @@ static int manager_handler(request_rec *r)
     }
 
     mconf = ap_get_module_config(r->server->module_config, &manager_module);
-    if (!mconf->enable_mcpm_receive) {
+    if (!mconf->enable_mcmp_receive) {
         return DECLINED; /* Not allowed to receive MCMP */
     }
 
@@ -3721,16 +3721,25 @@ static const char *cmd_manager_maxmesssize(cmd_parms *cmd, void *mconfig, const 
     return NULL;
 }
 
-static const char *cmd_manager_enable_mcpm_receive(cmd_parms *cmd, void *dummy)
+static const char *cmd_manager_enable_mcmp_receive(cmd_parms *cmd, void *dummy)
 {
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     (void)dummy;
 
     if (!cmd->server->is_virtual) {
-        return "EnableMCPMReceive must be in a VirtualHost";
+        return "EnableMCMPReceive must be in a VirtualHost";
     }
-    mconf->enable_mcpm_receive = 1;
+    mconf->enable_mcmp_receive = 1;
     return NULL;
+}
+
+static const char *cmd_manager_enable_mcmp_receive_deprecated(cmd_parms *cmd, void *dummy)
+{
+    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, cmd->server,
+                 "EnableMCPMReceive is deprecated misspelled version of 'EnableMCMPReceive' configuration option. "
+                 "Please update your configuration.");
+
+    return cmd_manager_enable_mcmp_receive(cmd, dummy);
 }
 
 static const char *cmd_manager_enable_ws_tunnel(cmd_parms *cmd, void *dummy)
@@ -3842,8 +3851,11 @@ static const command_rec manager_cmds[] = {
                   "displayed)"),
     AP_INIT_TAKE1("MaxMCMPMessSize", cmd_manager_maxmesssize, NULL, OR_ALL,
                   "MaxMCMPMaxMessSize - Maximum size of MCMP messages. (Default: calculated min value: 1024)"),
-    AP_INIT_NO_ARGS("EnableMCPMReceive", cmd_manager_enable_mcpm_receive, NULL, OR_ALL,
-                    "EnableMCPMReceive - Allow the VirtualHost to receive MCPM."),
+    AP_INIT_NO_ARGS("EnableMCMPReceive", cmd_manager_enable_mcmp_receive, NULL, OR_ALL,
+                    "EnableMCMPReceive - Allow the VirtualHost to receive MCMP."),
+    AP_INIT_NO_ARGS("EnableMCPMReceive", cmd_manager_enable_mcmp_receive_deprecated, NULL, OR_ALL,
+                    "EnableMCPMReceive - Deprecated misspelled version of 'EnableMCMPReceive' configuration option "
+                    "kept in for configuration backwards compatibility."),
     AP_INIT_NO_ARGS(
         "EnableWsTunnel", cmd_manager_enable_ws_tunnel, NULL, OR_ALL,
         "EnableWsTunnel - Use ws or wss instead of http or https when creating nodes (allows WebSocket proxying)."),
@@ -3909,7 +3921,7 @@ static void *create_manager_config(apr_pool_t *p)
     mconf->allow_display = 0;
     mconf->allow_cmd = -1;
     mconf->reduce_display = 0;
-    mconf->enable_mcpm_receive = 0;
+    mconf->enable_mcmp_receive = 0;
     mconf->enable_ws_tunnel = 0;
     mconf->ws_upgrade_header = NULL;
     mconf->ajp_secret = NULL;
@@ -3995,10 +4007,10 @@ static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf, void
         mconf->reduce_display = mconf1->reduce_display;
     }
 
-    if (mconf2->enable_mcpm_receive != 0) {
-        mconf->enable_mcpm_receive = mconf2->enable_mcpm_receive;
-    } else if (mconf1->enable_mcpm_receive != 0) {
-        mconf->enable_mcpm_receive = mconf1->enable_mcpm_receive;
+    if (mconf2->enable_mcmp_receive != 0) {
+        mconf->enable_mcmp_receive = mconf2->enable_mcmp_receive;
+    } else if (mconf1->enable_mcmp_receive != 0) {
+        mconf->enable_mcmp_receive = mconf1->enable_mcmp_receive;
     }
 
     if (mconf2->enable_ws_tunnel != 0) {
