@@ -813,74 +813,77 @@ static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int 
             }
             if (helper->index == id) {
                 unpair_worker_node((*worker)->s, node);
+                helper->shared->index = -1;
             }
         }
     }
     return NULL;
 }
 
+/* Stop hcheck if in use. Worker must not be NULL */
+static void worker_stop_hcheck(proxy_worker *worker)
+{
+    if (proxyhctemplate != NULL) {
+        worker->s->method = NONE;
+        worker->s->updated = 0;
+        worker->s->status |= PROXY_WORKER_STOPPED;
+    }
+}
+
 /* Remove a node from the worker conf */
-static int remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
+static void remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_pool_t *pool, server_rec *server)
 {
     int i;
-    char *pptr = (char *)node;
     proxy_cluster_helper *helper;
-    proxy_worker *worker;
-    pptr = pptr + node->offset;
+    proxy_worker_shared *stat;
+    char *pptr = (char *)node + node->offset;
 
-    worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_shared *)pptr, node);
+    proxy_worker *worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_shared *)pptr, node);
     (void)pool;
 
     if (!worker) {
         /* XXX: Another process may use it, can't do: node_storage->remove_node(node); */
-        return 0; /* Done */
+        return; /* Done */
     }
 
     /* prevent other threads using it */
     worker->s->status = worker->s->status | PROXY_WORKER_IN_ERROR;
 
-    /* apr_reslist_acquired_count */
-    i = 0;
-
     helper = (proxy_cluster_helper *)worker->context;
-    if (helper) {
-        i = helper->count_active;
-    } else {
+    if (!helper) {
         ap_log_error(APLOG_MARK, APLOG_INFO, 0, server, "remove_workers_node: helper is NULL");
+        worker_stop_hcheck(worker);
+        return;
     }
+
+    i = helper->count_active;
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "remove_workers_node: helper count_active: %d JVMRoute: %s", i,
                  node->mess.JVMRoute);
 
-    if (i == 0) {
-        /* The worker already comes from the apr_array of the balancer */
-        proxy_worker_shared *stat = worker->s;
-
-        /* Here that is tricky the worker needs shared but we don't and CONFIG will reset it */
-        worker->s = helper->shared;
-        helper->isinnodes = 0;
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                     "remove_workers_node: scheme %s hostname %s port %d route %s name (%s):(%s) id (%d:%d)",
-                     stat->scheme, stat->hostname_ex, stat->port, stat->route, stat->name, helper->shared->name,
-                     stat->index, helper->index);
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                     "remove_workers_node: restored: scheme %s hostname %s port %d route %s name %s id:%d",
-                     worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name,
-                     worker->s->index);
-        /* XXX : look bad with new logic!!!! memcpy(worker->s, stat, sizeof(proxy_worker_shared)); */
-        ap_assert(worker->s->port != 0);
-
-        /* If we use hcheck, we need to stop it for the worker */
-        if (proxyhctemplate != NULL) {
-            worker->s->method = NONE;
-            worker->s->updated = 0;
-            worker->s->status |= PROXY_WORKER_STOPPED;
-        }
-
-        return 0;
+    if (i != 0) {
+        node->mess.lastcleantry = apr_time_now();
+        return; /* We should retry later */
     }
 
-    node->mess.lastcleantry = apr_time_now();
-    return 1; /* We should retry later */
+    /* The worker already comes from the apr_array of the balancer */
+    stat = worker->s;
+    /* Here that is tricky the worker needs shared but we don't and CONFIG will reset it */
+    worker->s = helper->shared;
+    helper->isinnodes = 0;
+    worker->s->index = stat->index;
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                 "remove_workers_node: scheme %s hostname %s port %d route %s name (%s):(%s) id (%d:%d)", stat->scheme,
+                 stat->hostname_ex, stat->port, stat->route, stat->name, helper->shared->name, stat->index,
+                 helper->index);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                 "remove_workers_node: restored: scheme %s hostname %s port %d route %s name %s id:%d",
+                 worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route, worker->s->name,
+                 worker->s->index);
+    /* XXX : look bad with new logic!!!! memcpy(worker->s, stat, sizeof(proxy_worker_shared)); */
+    ap_assert(worker->s->port != 0);
+
+    /* If we use hcheck, we need to stop it for the worker */
+    worker_stop_hcheck(worker);
 }
 
 /*
@@ -2123,8 +2126,7 @@ static void reenable_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_wo
     proxy_cluster_helper *helper;
     helper = (proxy_cluster_helper *)worker->context;
     helper->count_active = 0;
-    ap_log_error(APLOG_MARK, APLOG_ERR, 0, server, "reenable_proxy_worker = CRAP (%d %d)!!!", helper->index,
-                 node->mess.id);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "reenable_proxy_worker: (%d %d)", helper->index, node->mess.id);
     /* XXX: BAD IDEA!!! helper->shared = worker->s; */
     helper->isinnodes = 1;
     /* XXX: BAD IDEA!! helper->index = node->mess.id; */
