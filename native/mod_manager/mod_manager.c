@@ -4030,7 +4030,7 @@ static void *merge_manager_server_config(apr_pool_t *p, void *server1_conf, void
 
 /* Module declaration */
 
-module AP_MODULE_DECLARE_DATA manager_module = {
+AP_DECLARE_MODULE(manager) = {
     STANDARD20_MODULE_STUFF,
     NULL,
     NULL,

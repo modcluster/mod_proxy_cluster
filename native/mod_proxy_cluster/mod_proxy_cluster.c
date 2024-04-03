@@ -3694,7 +3694,7 @@ static const command_rec proxy_cluster_cmds[] = {
 };
 /* clang-format on */
 
-module AP_MODULE_DECLARE_DATA proxy_cluster_module = {
+AP_DECLARE_MODULE(proxy_cluster) = {
     STANDARD20_MODULE_STUFF,
     NULL,                               /* per-directory config creator */
     NULL,                               /* dir config merger */
