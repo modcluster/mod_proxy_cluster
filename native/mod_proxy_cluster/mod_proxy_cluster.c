@@ -1974,11 +1974,6 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
         proxy_balancer *balancer;
         proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
 
-        /* XXX: bad location just testing */
-        check_workers(conf, s);
-        check_workers(conf, s);
-        check_workers(conf, s);
-
         balancer = ap_proxy_get_balancer(r->pool, conf, bal, 0);
         if (balancer != NULL) {
             worker = ap_proxy_get_worker(r->pool, balancer, conf, ptr);
