@@ -203,7 +203,7 @@ jobs:
           curl --fail --max-time 10 http://localhost:8000
           curl --fail --max-time 10 http://localhost:6666/mod_cluster_manager
       - name: Preserve logs
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Windows logs
