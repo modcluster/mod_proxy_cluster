@@ -31,7 +31,7 @@ LoadModule lbmethod_cluster_module modules/mod_lbmethod_cluster.so
     KeepAliveTimeout 300
     MaxKeepAliveRequests 0
 
-    EnableMCPMReceive
+    EnableMCMPReceive
     ServerName localhost
 
     <Location /mod_cluster_manager>
