@@ -11,7 +11,6 @@ RUN apt update && apt install -y iproute2
 WORKDIR /usr/local/tomcat
 
 COPY target/*.jar ./lib/
-COPY *.war ./
 COPY $TESTSUITE_TOMCAT_CONFIG  ./conf/server.xml
 COPY $TESTSUITE_TOMCAT_CONTEXT ./conf/context.xml
 COPY start.sh ./
