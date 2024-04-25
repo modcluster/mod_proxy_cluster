@@ -64,7 +64,7 @@ res=0
 # IMG name might include specific version, we have to handle that
 IMG_NOVER=$(echo $IMG | cut -d: -f1)
 
-for tomcat_version in "8.5" "9.0" "10.1"
+for tomcat_version in "9.0" "10.1"
 do
     IMG="$IMG_NOVER:$tomcat_version" tomcat_create $tomcat_version > /dev/null 2>&1 || exit 3
     IMG="$IMG_NOVER:$tomcat_version" run_test basetests.sh "Basic tests with tomcat $tomcat_version"
