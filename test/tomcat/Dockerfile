@@ -1,4 +1,4 @@
-ARG TESTSUITE_TOMCAT_VERSION=8.5
+ARG TESTSUITE_TOMCAT_VERSION=10.1
 
 FROM tomcat:${TESTSUITE_TOMCAT_VERSION}
 
@@ -11,6 +11,7 @@ RUN apt update && apt install -y iproute2
 WORKDIR /usr/local/tomcat
 
 COPY target/*.jar ./lib/
+
 COPY $TESTSUITE_TOMCAT_CONFIG  ./conf/server.xml
 COPY $TESTSUITE_TOMCAT_CONTEXT ./conf/context.xml
 COPY start.sh ./

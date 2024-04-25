@@ -10,7 +10,12 @@ if [ ! -z ${jvm_route} ]; then
   sed -i "/<Engine name=\"Catalina\"/c\<Engine name=\"Catalina\" defaultHost=\"localhost\" jvmRoute=\"${jvm_route}\">" ./conf/server.xml
 fi
 
-# copy webapp war file.
-mv *.war webapps/ || true
+ls lib/jakartaee-migration-*.jar
+if [ $? = 0 ]; then
+  rm lib/mod_cluster-container-tomcat-9.0-*.Final-SNAPSHOT.jar
+  mkdir webapps-javaee
+else
+  rm lib/mod_cluster-container-tomcat-10.1-*.Final-SNAPSHOT.jar
+fi
 
 bin/catalina.sh run
