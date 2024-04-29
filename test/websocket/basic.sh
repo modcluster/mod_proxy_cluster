@@ -19,8 +19,15 @@ tomcat_wait_for_n_nodes 2 || exit 1
 # Now try to test the websocket
 echo "Testing websocket"
 # The websocket-hello app is at: https://github.com/jfclere/httpd_websocket
-docker cp websocket/websocket-hello-0.0.1.war tomcat1:/usr/local/tomcat/webapps
-docker cp websocket/websocket-hello-0.0.1.war tomcat2:/usr/local/tomcat/webapps
+# we must check whether webapps-javaee exists, if yes, we mut use it becuase the app is javax
+docker exec tomcat2 sh -c 'ls webapps-javaee'
+if [ $? = 0 ]; then
+  docker cp websocket/websocket-hello-0.0.1.war tomcat1:/usr/local/tomcat/webapps-javaee
+  docker cp websocket/websocket-hello-0.0.1.war tomcat2:/usr/local/tomcat/webapps-javaee
+else
+  docker cp websocket/websocket-hello-0.0.1.war tomcat1:/usr/local/tomcat/webapps
+  docker cp websocket/websocket-hello-0.0.1.war tomcat2:/usr/local/tomcat/webapps
+fi
 
 # Put the testapp in the  tomcat we restarted.
 docker cp testapp tomcat1:/usr/local/tomcat/webapps

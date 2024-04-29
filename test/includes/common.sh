@@ -108,13 +108,18 @@ clean_and_exit() {
 #####################################################
 # Function that build a container. IMG variable is used for the container's tag.
 # By passing arguments you can change
-#       $1 tomcat version      (default is 8.5)
+#       $1 tomcat version      (default is 10.1, see tomcat/Dockerfile)
 #       $2 tomcat config file  (default is server.xml)
 #       $3 tomcat context file (default is context.xml)
 tomcat_create() {
-    docker build -t $IMG tomcat/ --build-arg TESTSUITE_TOMCAT_VERSION=${1:-8.5} \
-                                 --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
-                                 --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
+    if [ -z "$1" ]; then
+        docker build -t $IMG tomcat/ --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
+                                     --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
+    else
+        docker build -t $IMG tomcat/ --build-arg TESTSUITE_TOMCAT_VERSION=$1 \
+                                     --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
+                                     --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
+    fi
 }
 
 # Start tomcat$1 container on $2 or 127.0.0.$1 if $2 is not given.
