@@ -74,7 +74,7 @@ jobs:
 
   clang-format-style-check:
     # The ubuntu-latest has an old version of clang-format, let's just use the latest installed via brew.
-    runs-on: macos-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,11 +82,9 @@ jobs:
           path: mod_proxy_cluster
       - name: Install clang-format
         run: |
-          brew install clang-format
+          sudo apt-get update
+          sudo apt-get install -y clang-format
       - name: Check styles
-        # Take full control over shell parameters by providing a template string to the shell options
-        # to display the resulting diff in the build logs.
-        shell: bash {0}
         run: |
           code=0
           cd mod_proxy_cluster/native
