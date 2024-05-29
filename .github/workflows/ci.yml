@@ -117,7 +117,7 @@ jobs:
           for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager/; do \
             cd $module; \
             sh buildconf; \
-            ./configure  --with-apxs=/usr/local/apache2/bin/apxs; \
+            ./configure CFLAGS="-Wall -Werror" --with-apxs=/usr/local/apache2/bin/apxs; \
             make clean; \
             make || exit 1; \
             cd ..; \
@@ -163,7 +163,7 @@ jobs:
           for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager/; do \
             cd $module; \
             sh buildconf; \
-            ./configure  --with-apxs=/usr/local/apache2/bin/apxs; \
+            ./configure CFLAGS="-Wall -Werror" --with-apxs=/usr/local/apache2/bin/apxs; \
             make clean; \
             make || exit 1; \
             cd ..; \
