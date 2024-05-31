@@ -28,6 +28,14 @@
 #error Please update your HTTPD, mod_proxy_cluster requires version 2.4.53 or newer.
 #endif
 
+/* BALANCER_PREFIX is defined in mod_proxy */
+/* if the prefix chagnes, don't forget to change the warning as well */
+#ifndef BALANCER_PREFIX
+#define BALANCER_PREFIX "balancer://"
+#warning "BALANCER_PREFIX macro was undefined, now set to balancer://"
+#endif
+#define BALANCER_PREFIX_LENGTH (sizeof(BALANCER_PREFIX) - 1)
+
 struct balancer_method
 {
     /**
