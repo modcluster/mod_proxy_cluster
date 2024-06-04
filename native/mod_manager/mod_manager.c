@@ -735,28 +735,41 @@ static char **process_buff(request_rec *r, char *buff)
     return ptr;
 }
 
+static apr_status_t insert_update_host_guard(server_rec *s, mem_t *mem, hostinfo_t *info, char *alias)
+{
+    int len = strlen(alias);
+    if (len > HOSTALIASZ) {
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
+                     "process_config: received alias %s is too long (trimmed to 255 characters)", alias);
+    }
+    strncpy(info->host, alias, HOSTALIASZ);
+    info->host[HOSTALIASZ] = '\0';
+    return insert_update_host(mem, info);
+}
+
 /**
  * Insert the hosts from Alias information
  */
-static apr_status_t insert_update_hosts(mem_t *mem, char *str, int node, int vhost)
+static apr_status_t insert_update_hosts(server_rec *s, mem_t *mem, char *str, int node, int vhost)
 {
+    hostinfo_t info;
+    apr_status_t status;
     char *ptr = str;
     char *previous = str;
-    hostinfo_t info;
-    char empty[1] = {'\0'};
-    apr_status_t status;
+
+    char empty[] = {'\0'};
+    if (str == NULL) {
+        ptr = empty;
+        previous = empty;
+    }
 
     info.node = node;
     info.vhost = vhost;
-    if (ptr == NULL) {
-        ptr = empty;
-        previous = ptr;
-    }
+
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            strncpy(info.host, previous, HOSTALIASZ);
-            status = insert_update_host(mem, &info);
+            status = insert_update_host_guard(s, mem, &info, previous);
             if (status != APR_SUCCESS) {
                 return status;
             }
@@ -764,8 +777,8 @@ static apr_status_t insert_update_hosts(mem_t *mem, char *str, int node, int vho
         }
         ptr++;
     }
-    strncpy(info.host, previous, sizeof(info.host));
-    return insert_update_host(mem, &info);
+
+    return insert_update_host_guard(s, mem, &info, previous);
 }
 
 /**
@@ -1499,7 +1512,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
-        if (insert_update_hosts(hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
+        if (insert_update_hosts(r->server, hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
             loc_unlock_nodes();
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
         }
@@ -2131,7 +2144,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                          vid, node->mess.id, nodeinfo.mess.JVMRoute);
 
             /* If the Host doesn't exist yet create it */
-            if (insert_update_hosts(hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
+            if (insert_update_hosts(r->server, hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
                 loc_unlock_nodes();
                 *errtype = TYPEMEM;
                 return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
