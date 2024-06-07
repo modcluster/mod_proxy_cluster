@@ -2234,6 +2234,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         contextinfo_t *ou;
         in.id = 0;
         strncpy(in.context, vhost->context, CONTEXTSZ);
+        in.context[CONTEXTSZ] = '\0';
         in.vhost = host->vhost;
         in.node = node->mess.id;
         ou = read_context(contextstatsmem, &in);
@@ -2651,7 +2652,8 @@ static int manager_map_to_storage(request_rec *r)
 static char *context_string(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
 {
     char context[CONTEXTSZ + 1];
-    strncpy(context, ou->context, CONTEXTSZ + 1);
+    strncpy(context, ou->context, CONTEXTSZ);
+    context[CONTEXTSZ] = '\0';
     return apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
 }
 
@@ -2754,8 +2756,8 @@ static void print_contexts(request_rec *r, int reduce_display, int allow_cmd, in
         if (ou->node != node || ou->vhost != host) {
             continue;
         }
-        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int)sizeof(ou->context),
-                   mc_escape_html(r->pool, ou->context, sizeof(ou->context)), context_status_to_string(ou->status),
+        ap_rprintf(r, "%.*s, Status: %s Request: %d ", CONTEXTSZ,
+                   mc_escape_html(r->pool, ou->context, CONTEXTSZ), context_status_to_string(ou->status),
                    ou->nbrequests);
         if (allow_cmd) {
             print_context_command(r, ou, Alias, JVMRoute);
@@ -2807,7 +2809,7 @@ static void print_hosts(request_rec *r, int reduce_display, int allow_cmd, int n
             }
             vhost = ou->vhost;
 
-            ap_rprintf(r, "%.*s", (int)sizeof(ou->host), mc_escape_html(r->pool, ou->host, sizeof(ou->host)));
+            ap_rprintf(r, "%.*s", HOSTALIASZ, mc_escape_html(r->pool, ou->host, HOSTALIASZ));
             ap_rprintf(r, reduce_display ? " " : "\n");
 
             /* Go ahead and check for any other later alias entries for this vhost and print them now */
@@ -2829,7 +2831,7 @@ static void print_hosts(request_rec *r, int reduce_display, int allow_cmd, int n
                 if (i == j - 1) {
                     i++;
                 }
-                ap_rprintf(r, "%.*s", (int)sizeof(pv->host), mc_escape_html(r->pool, pv->host, sizeof(pv->host)));
+                ap_rprintf(r, "%.*s", HOSTALIASZ, mc_escape_html(r->pool, pv->host, HOSTALIASZ));
                 ap_rprintf(r, reduce_display ? " " : "\n");
             }
         }
@@ -2861,8 +2863,7 @@ static void print_sessionid(request_rec *r)
         if (get_sessionid(sessionidstatsmem, &ou, id[i]) != APR_SUCCESS) {
             continue;
         }
-        ap_rprintf(r, "id: %.*s route: %.*s\n", (int)sizeof(ou->sessionid), ou->sessionid, (int)sizeof(ou->JVMRoute),
-                   ou->JVMRoute);
+        ap_rprintf(r, "id: %.*s route: %.*s\n", SESSIONIDSZ, ou->sessionid, JVMROUTESZ, ou->JVMRoute);
     }
     ap_rprintf(r, "</pre>");
 }
