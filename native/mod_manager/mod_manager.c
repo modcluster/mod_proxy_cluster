@@ -740,7 +740,7 @@ static apr_status_t insert_update_host_guard(server_rec *s, mem_t *mem, hostinfo
     int len = strlen(alias);
     if (len > HOSTALIASZ) {
         ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "process_config: received alias %s is too long (trimmed to 255 characters)", alias);
+                     "process_config: received alias %s is too long (trimmed to %d characters)", alias, HOSTALIASZ);
     }
     strncpy(info->host, alias, HOSTALIASZ);
     info->host[HOSTALIASZ] = '\0';
@@ -809,7 +809,7 @@ static apr_status_t insert_update_context_guard(server_rec *s, mem_t *mem, conte
 
     if (len > CONTEXTSZ) {
         ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "process_config: received context %s is too long (trimmed to 80 characters)", context);
+                     "process_config: received context %s is too long (trimmed to %d characters)", context, CONTEXTSZ);
     }
 
     return insert_update_context(mem, info);
