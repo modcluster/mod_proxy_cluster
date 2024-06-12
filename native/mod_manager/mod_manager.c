@@ -740,7 +740,7 @@ static apr_status_t insert_update_host_guard(server_rec *s, mem_t *mem, hostinfo
     int len = strlen(alias);
     if (len > HOSTALIASZ) {
         ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "process_config: received alias %s is too long (trimmed to 255 characters)", alias);
+                     "process_config: received alias %s is too long (trimmed to %d characters)", alias, HOSTALIASZ);
     }
     strncpy(info->host, alias, HOSTALIASZ);
     info->host[HOSTALIASZ] = '\0';
@@ -794,53 +794,64 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
     }
 }
 
+static apr_status_t insert_update_context_guard(server_rec *s, mem_t *mem, contextinfo_t *info, char *context,
+                                                int status)
+{
+    int len = strlen(context);
+
+    info->id = 0;
+    strncpy(info->context, context, CONTEXTSZ);
+    info->context[CONTEXTSZ] = '\0';
+    if (status == REMOVE) {
+        read_remove_context(mem, info);
+        return APR_SUCCESS;
+    }
+
+    if (len > CONTEXTSZ) {
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
+                     "process_config: received context %s is too long (trimmed to %d characters)", context, CONTEXTSZ);
+    }
+
+    return insert_update_context(mem, info);
+}
+
 /**
  * Insert the context from Context information
  * Note:
  *     1 - if status is REMOVE remove_context will be called
  *     2 - return codes of REMOVE are ignored (always success)
  */
-static apr_status_t insert_update_contexts(mem_t *mem, char *str, int node, int vhost, int status)
+static apr_status_t insert_update_contexts(server_rec *s, mem_t *mem, char *str, int node, int vhost, int status)
 {
     char *ptr = str;
     char *previous = str;
     apr_status_t ret = APR_SUCCESS;
     contextinfo_t info;
-    char empty[2] = {'/', '\0'};
+
+    char root[] = "/";
+    if (ptr == NULL) {
+        ptr = root;
+        previous = root;
+    }
 
     info.node = node;
     info.vhost = vhost;
     info.status = status;
-    if (ptr == NULL) {
-        ptr = empty;
-        previous = ptr;
-    }
+
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            info.id = 0;
-            strncpy(info.context, previous, sizeof(info.context));
-            if (status != REMOVE) {
-                ret = insert_update_context(mem, &info);
-                if (ret != APR_SUCCESS) {
-                    return ret;
-                }
-            } else {
-                read_remove_context(mem, &info);
+            ret = insert_update_context_guard(s, mem, &info, previous, status);
+            if (ret != APR_SUCCESS) {
+                return ret;
             }
 
             previous = ptr + 1;
         }
         ptr++;
     }
-    info.id = 0;
-    strncpy(info.context, previous, sizeof(info.context));
-    if (status != REMOVE) {
-        ret = insert_update_context(mem, &info);
-    } else {
-        read_remove_context(mem, &info);
-    }
-    return ret;
+
+    return insert_update_context_guard(s, mem, &info, previous, status);
 }
 
 /**
@@ -1516,7 +1527,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             loc_unlock_nodes();
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
         }
-        if (insert_update_contexts(contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
+        if (insert_update_contexts(r->server, contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
             loc_unlock_nodes();
             return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
         }
@@ -2193,7 +2204,8 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     }
 
     /* Now update each context from Context: part */
-    if (insert_update_contexts(contextstatsmem, vhost->context, node->mess.id, host->vhost, status) != APR_SUCCESS) {
+    if (insert_update_contexts(r->server, contextstatsmem, vhost->context, node->mess.id, host->vhost, status) !=
+        APR_SUCCESS) {
         loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MCONTUI, node->mess.JVMRoute);
@@ -2234,6 +2246,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         contextinfo_t *ou;
         in.id = 0;
         strncpy(in.context, vhost->context, CONTEXTSZ);
+        in.context[CONTEXTSZ] = '\0';
         in.vhost = host->vhost;
         in.node = node->mess.id;
         ou = read_context(contextstatsmem, &in);
@@ -2651,7 +2664,8 @@ static int manager_map_to_storage(request_rec *r)
 static char *context_string(request_rec *r, contextinfo_t *ou, const char *Alias, const char *JVMRoute)
 {
     char context[CONTEXTSZ + 1];
-    strncpy(context, ou->context, CONTEXTSZ + 1);
+    strncpy(context, ou->context, CONTEXTSZ);
+    context[CONTEXTSZ] = '\0';
     return apr_pstrcat(r->pool, "JVMRoute=", JVMRoute, "&Alias=", Alias, "&Context=", context, NULL);
 }
 
@@ -2754,9 +2768,8 @@ static void print_contexts(request_rec *r, int reduce_display, int allow_cmd, in
         if (ou->node != node || ou->vhost != host) {
             continue;
         }
-        ap_rprintf(r, "%.*s, Status: %s Request: %d ", (int)sizeof(ou->context),
-                   mc_escape_html(r->pool, ou->context, sizeof(ou->context)), context_status_to_string(ou->status),
-                   ou->nbrequests);
+        ap_rprintf(r, "%.*s, Status: %s Request: %d ", CONTEXTSZ, mc_escape_html(r->pool, ou->context, CONTEXTSZ),
+                   context_status_to_string(ou->status), ou->nbrequests);
         if (allow_cmd) {
             print_context_command(r, ou, Alias, JVMRoute);
         }
@@ -2807,7 +2820,7 @@ static void print_hosts(request_rec *r, int reduce_display, int allow_cmd, int n
             }
             vhost = ou->vhost;
 
-            ap_rprintf(r, "%.*s", (int)sizeof(ou->host), mc_escape_html(r->pool, ou->host, sizeof(ou->host)));
+            ap_rprintf(r, "%.*s", HOSTALIASZ, mc_escape_html(r->pool, ou->host, HOSTALIASZ));
             ap_rprintf(r, reduce_display ? " " : "\n");
 
             /* Go ahead and check for any other later alias entries for this vhost and print them now */
@@ -2829,7 +2842,7 @@ static void print_hosts(request_rec *r, int reduce_display, int allow_cmd, int n
                 if (i == j - 1) {
                     i++;
                 }
-                ap_rprintf(r, "%.*s", (int)sizeof(pv->host), mc_escape_html(r->pool, pv->host, sizeof(pv->host)));
+                ap_rprintf(r, "%.*s", HOSTALIASZ, mc_escape_html(r->pool, pv->host, HOSTALIASZ));
                 ap_rprintf(r, reduce_display ? " " : "\n");
             }
         }
@@ -2861,8 +2874,7 @@ static void print_sessionid(request_rec *r)
         if (get_sessionid(sessionidstatsmem, &ou, id[i]) != APR_SUCCESS) {
             continue;
         }
-        ap_rprintf(r, "id: %.*s route: %.*s\n", (int)sizeof(ou->sessionid), ou->sessionid, (int)sizeof(ou->JVMRoute),
-                   ou->JVMRoute);
+        ap_rprintf(r, "id: %.*s route: %.*s\n", SESSIONIDSZ, ou->sessionid, JVMROUTESZ, ou->JVMRoute);
     }
     ap_rprintf(r, "</pre>");
 }
