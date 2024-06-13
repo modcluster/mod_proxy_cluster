@@ -2211,6 +2211,12 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         return apr_psprintf(r->pool, MCONTUI, node->mess.JVMRoute);
     }
 
+    if (insert_update_hosts(r->server, hoststatsmem, vhost->host, node->mess.id, host->vhost) != APR_SUCCESS) {
+        loc_unlock_nodes();
+        *errtype = TYPEMEM;
+        return apr_psprintf(r->pool, MHOSTUI, node->mess.JVMRoute);
+    }
+
     /* Remove the host if all the contextes have been removed */
     if (status == REMOVE) {
         int size = loc_get_max_size_context();
