@@ -10,6 +10,11 @@
 #ifndef MOD_CLUSTERSIZE_H
 #define MOD_CLUSTERSIZE_H
 
+#include "mod_proxy.h"
+#ifndef PROXY_WORKER_MAX_ROUTE_SIZE
+#error "PROXY_WORKER_MAX_ROUTE_SIZE is not defined"
+#endif
+
 /* For host.h */
 #define HOSTALIASZ  255
 
@@ -18,7 +23,7 @@
 
 /* For node.h */
 #define BALANCERSZ  40
-#define JVMROUTESZ  64
+#define JVMROUTESZ  PROXY_WORKER_MAX_ROUTE_SIZE
 #define DOMAINNDSZ  20
 #define HOSTNODESZ  64
 #define PORTNODESZ  7
