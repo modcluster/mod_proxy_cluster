@@ -1199,7 +1199,7 @@ static const proxy_worker_shared *read_shared_by_node(request_rec *r, nodeinfo_t
 {
     void *sconf = r->server->module_config;
     int i, port;
-    char *name = apr_pstrcat(r->pool, "balancer://", node->mess.balancer, NULL);
+    char *name = apr_pstrcat(r->pool, BALANCER_PREFIX, node->mess.balancer, NULL);
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
     proxy_balancer *balancer = (proxy_balancer *)conf->balancers->elts;
     if (sscanf(node->mess.Port, "%u", &port) != 1) {

@@ -622,7 +622,7 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
                                          const server_rec *server)
 {
     proxy_balancer *balancer = NULL;
-    char *name = apr_pstrcat(pool, "balancer://", node->mess.balancer, NULL);
+    char *name = apr_pstrcat(pool, BALANCER_PREFIX, node->mess.balancer, NULL);
 
     balancer = ap_proxy_get_balancer(pool, conf, name, 0);
     if (!balancer) {
@@ -659,7 +659,7 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
 
     if (balancer && balancer->workers->nelts == 0) {
         /* Logic to copy the shared memory information to the balancer */
-        balancerinfo_t *balan = read_balancer_name(&balancer->s->name[11], pool);
+        balancerinfo_t *balan = read_balancer_name(&balancer->s->name[BALANCER_PREFIX_LENGTH], pool);
         if (balan == NULL) {
             return balancer; /* Done broken */
         }
@@ -751,7 +751,7 @@ static void reuse_balancer(proxy_balancer *balancer, const char *name, apr_pool_
  */
 static void add_balancers_workers_for_server(nodeinfo_t *node, const char *ptr_node, apr_pool_t *pool, server_rec *s)
 {
-    char *name = apr_pstrcat(pool, "balancer://", node->mess.balancer, NULL);
+    char *name = apr_pstrcat(pool, BALANCER_PREFIX, node->mess.balancer, NULL);
 
     void *sconf = s->module_config;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
@@ -764,7 +764,7 @@ static void add_balancers_workers_for_server(nodeinfo_t *node, const char *ptr_n
         balancer = add_balancer_node(node, conf, pool, s);
     } else {
         /* We "reuse" the balancer */
-        reuse_balancer(balancer, &balancer->s->name[11], pool, s);
+        reuse_balancer(balancer, &balancer->s->name[BALANCER_PREFIX_LENGTH], pool, s);
     }
     if (balancer) {
         create_worker(conf, balancer, s, node, ptr_node, pool);
@@ -2027,7 +2027,7 @@ static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, 
         return NULL; /* Should not happend */
     }
 
-    bal = apr_pstrcat(r->pool, "balancer://", balancername, NULL);
+    bal = apr_pstrcat(r->pool, BALANCER_PREFIX, balancername, NULL);
     /* search for the worker in the VirtualHosts */
     worker = searchworker(r, bal, url, id, the_conf);
     if (worker == NULL) {
@@ -2704,8 +2704,8 @@ static int proxy_cluster_trans(request_rec *r)
         } else {
             use_uri = r->uri;
         }
-        if (strncmp(use_uri, "balancer://", 11)) {
-            r->filename = apr_pstrcat(r->pool, "proxy:balancer://", balancer, use_uri, NULL);
+        if (strncmp(use_uri, BALANCER_PREFIX, BALANCER_PREFIX_LENGTH)) {
+            r->filename = apr_pstrcat(r->pool, ("proxy:" BALANCER_PREFIX), balancer, use_uri, NULL);
         } else {
             r->filename = apr_pstrcat(r->pool, "proxy:", use_uri, NULL);
         }
@@ -2762,8 +2762,8 @@ static int proxy_cluster_canon(request_rec *r, char *url)
         return HTTP_BAD_REQUEST;
     }
 
-    r->filename =
-        apr_pstrcat(r->pool, "proxy:balancer://", host, "/", path, (search) ? "?" : "", (search) ? search : "", NULL);
+    r->filename = apr_pstrcat(r->pool, ("proxy:" BALANCER_PREFIX), host, "/", path, (search) ? "?" : "",
+                              (search) ? search : "", NULL);
 
     r->path_info = apr_pstrcat(r->pool, "/", path, NULL);
 
@@ -3192,7 +3192,7 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_pre_request: url %s", *url);
     }
     /* Step 1: check if the url is for us
-     * The url we can handle starts with 'balancer://'
+     * The url we can handle starts with BALANCER_PREFIX
      * If balancer is already provided skip the search
      * for balancer, because this is failover attempt.
      */

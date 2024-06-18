@@ -308,7 +308,8 @@ int hassession_byname(request_rec *r, int nodeid, const char *route, const proxy
     ptr = conf->balancers->elts;
     for (i = 0; i < conf->balancers->nelts; i++, ptr = ptr + sizeb) {
         balancer = (proxy_balancer *)ptr;
-        if (strlen(balancer->s->name) > 11 && strcasecmp(&balancer->s->name[11], node->mess.balancer) == 0) {
+        if (strlen(balancer->s->name) > BALANCER_PREFIX_LENGTH &&
+            strcasecmp(&balancer->s->name[BALANCER_PREFIX_LENGTH], node->mess.balancer) == 0) {
             break;
         }
     }
@@ -433,7 +434,8 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
             if (node == NULL) {
                 continue;
             }
-            if (strlen(balancer->s->name) > 11 && strcasecmp(&balancer->s->name[11], node->mess.balancer) != 0) {
+            if (strlen(balancer->s->name) > BALANCER_PREFIX_LENGTH &&
+                strcasecmp(&balancer->s->name[BALANCER_PREFIX_LENGTH], node->mess.balancer) != 0) {
                 continue;
             }
         }
@@ -549,7 +551,7 @@ const char *get_route_balancer(request_rec *r, const proxy_server_conf *conf, co
         if (balancer->s->sticky[0] == '\0' || balancer->s->sticky_path[0] == '\0') {
             continue;
         }
-        if (strlen(balancer->s->name) <= 11) {
+        if (strlen(balancer->s->name) <= BALANCER_PREFIX_LENGTH) {
             continue;
         }
         sticky = apr_psprintf(r->pool, "%s|%s", balancer->s->sticky, balancer->s->sticky_path);
@@ -580,9 +582,10 @@ const char *get_route_balancer(request_rec *r, const proxy_server_conf *conf, co
             if (route && *route) {
                 const char *domain = NULL;
                 ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "cluster: Found route %s", route);
-                if (find_nodedomain(r, &domain, route, &balancer->s->name[11], node_table) == APR_SUCCESS) {
+                if (find_nodedomain(r, &domain, route, &balancer->s->name[BALANCER_PREFIX_LENGTH], node_table) ==
+                    APR_SUCCESS) {
                     ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "cluster: Found balancer %s for %s",
-                                 &balancer->s->name[11], route);
+                                 &balancer->s->name[BALANCER_PREFIX_LENGTH], route);
                     /* here we have the route and domain for find_session_route ... */
                     apr_table_setn(r->notes, "session-sticky", sticky_used);
                     apr_table_setn(r->notes, "session-route", route);
@@ -594,7 +597,7 @@ const char *get_route_balancer(request_rec *r, const proxy_server_conf *conf, co
                                      route);
                         apr_table_setn(r->notes, "CLUSTER_DOMAIN", domain);
                     }
-                    return &balancer->s->name[11];
+                    return &balancer->s->name[BALANCER_PREFIX_LENGTH];
                 }
             }
         }
@@ -641,7 +644,7 @@ const char *get_context_host_balancer(request_rec *r, proxy_vhost_table *vhost_t
 
         if (node != NULL && node->mess.balancer[0] != '\0') {
             /* Check that it is in our proxy_server_conf */
-            char *name = apr_pstrcat(r->pool, "balancer://", node->mess.balancer, NULL);
+            char *name = apr_pstrcat(r->pool, BALANCER_PREFIX, node->mess.balancer, NULL);
             proxy_balancer *balancer = ap_proxy_get_balancer(r->pool, conf, name, 0);
             if (balancer) {
                 return node->mess.balancer;
