@@ -884,7 +884,7 @@ static int is_same_node(const nodeinfo_t *nodeinfo, const nodeinfo_t *node)
     }
 
     /* All other fields can be modified without causing problems */
-    return -1;
+    return 1;
 }
 
 /**
@@ -919,7 +919,7 @@ static int is_same_worker_existing(const request_rec *r, const nodeinfo_t *node)
             ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
                          "process_config: nodes %s and %s correspond to the same worker", node->mess.JVMRoute,
                          ou->mess.JVMRoute);
-            return -1;
+            return 1;
         }
     }
     return 0;
@@ -955,11 +955,8 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
 
     /* set the health check (requires mod_proxy_hcheck) */
     /* CPING for AJP and OPTIONS for HTTP/1.1 */
-    if (strcmp(node->mess.Type, "ajp")) {
-        apr_table_set(params, "w_hm", "OPTIONS");
-    } else {
-        apr_table_set(params, "w_hm", "CPING");
-    }
+    apr_table_set(params, "w_hm", strcmp(node->mess.Type, "ajp") ? "OPTIONS" : "CPING");
+
     /* Use 10 sec for the moment, the idea is to adjust it with the STATUS frequency */
     apr_table_set(params, "w_hi", "10000");
     return balancer_manage(r, params);
@@ -1440,13 +1437,12 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NOT NEW (%d %s) %s %s (%s)",
                          workernode->mess.id, workernode->mess.JVMRoute, workernode->mess.Host, workernode->mess.Port,
                          nodeinfo.mess.JVMRoute);
+
+            id = workernode->mess.id;
             if (strcmp(workernode->mess.JVMRoute, "REMOVED") == 0) {
-                id = workernode->mess.id; /* we are reusing it */
                 strcpy(workernode->mess.JVMRoute, nodeinfo.mess.JVMRoute);
                 workernode->mess.remove = 0;
                 workernode->mess.num_remove_check = 0;
-            } else {
-                id = workernode->mess.id;
             }
         } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s", nodeinfo.mess.JVMRoute,
@@ -2096,12 +2092,12 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         loc_unlock_nodes();
         if (status == REMOVE) {
             return NULL; /* Already done */
-        } else {
-            /* Act has if the node wasn't found */
-            *errtype = TYPEMEM;
-            return apr_psprintf(r->pool, MNODERD, node->mess.JVMRoute);
         }
+        /* Act has if the node wasn't found */
+        *errtype = TYPEMEM;
+        return apr_psprintf(r->pool, MNODERD, node->mess.JVMRoute);
     }
+
     inc_version_node();
 
     /* Process the * APP commands */
@@ -2129,51 +2125,50 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     hostinfo.id = 0;
     host = read_host(hoststatsmem, &hostinfo);
     if (host == NULL) {
+        int vid, size, *id;
+
         /* If REMOVE ignores it */
         if (status == REMOVE) {
             loc_unlock_nodes();
             return NULL;
-        } else {
-            int vid, size, *id;
-            /* Find the first available vhost id */
-            vid = 0;
-            size = loc_get_max_size_host();
-            id = apr_palloc(r->pool, sizeof(int) * size);
-            size = get_ids_used_host(hoststatsmem, id);
-            for (i = 0; i < size; i++) {
-                hostinfo_t *ou;
-                if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS) {
-                    continue;
-                }
+        }
 
-                if (ou->node == node->mess.id && ou->vhost > vid) {
-                    vid = ou->vhost;
-                }
+        /* Find the first available vhost id */
+        vid = 0;
+        size = loc_get_max_size_host();
+        id = apr_palloc(r->pool, sizeof(int) * size);
+        size = get_ids_used_host(hoststatsmem, id);
+        for (i = 0; i < size; i++) {
+            hostinfo_t *ou;
+            if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS) {
+                continue;
             }
-            vid++; /* Use next one. */
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: adding vhost: %d node: %d route: %s",
-                         vid, node->mess.id, nodeinfo.mess.JVMRoute);
+            if (ou->node == node->mess.id && ou->vhost > vid) {
+                vid = ou->vhost;
+            }
+        }
+        vid++; /* Use next one. */
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: adding vhost: %d node: %d route: %s",
+                     vid, node->mess.id, nodeinfo.mess.JVMRoute);
+        /* If the Host doesn't exist yet create it */
+        if (insert_update_hosts(r->server, hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
+            loc_unlock_nodes();
+            *errtype = TYPEMEM;
+            return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
+        }
+        hostinfo.id = 0;
+        hostinfo.node = node->mess.id;
+        hostinfo.host[0] = '\0';
+        if (vhost->host != NULL) {
+            strncpy(hostinfo.host, vhost->host, sizeof(hostinfo.host));
+            hostinfo.host[sizeof(hostinfo.host) - 1] = '\0';
+        }
 
-            /* If the Host doesn't exist yet create it */
-            if (insert_update_hosts(r->server, hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
-                loc_unlock_nodes();
-                *errtype = TYPEMEM;
-                return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
-            }
-            hostinfo.id = 0;
-            hostinfo.node = node->mess.id;
-            if (vhost->host != NULL) {
-                strncpy(hostinfo.host, vhost->host, sizeof(hostinfo.host));
-                hostinfo.host[sizeof(hostinfo.host) - 1] = '\0';
-            } else {
-                hostinfo.host[0] = '\0';
-            }
-            host = read_host(hoststatsmem, &hostinfo);
-            if (host == NULL) {
-                loc_unlock_nodes();
-                *errtype = TYPEMEM;
-                return apr_psprintf(r->pool, MHOSTRD, node->mess.JVMRoute);
-            }
+        host = read_host(hoststatsmem, &hostinfo);
+        if (host == NULL) {
+            loc_unlock_nodes();
+            *errtype = TYPEMEM;
+            return apr_psprintf(r->pool, MHOSTRD, node->mess.JVMRoute);
         }
     }
 
