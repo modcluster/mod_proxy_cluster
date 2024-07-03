@@ -180,7 +180,7 @@ jobs:
   cmake-windows-latest:
     runs-on: windows-latest
     env:
-      APACHE_LOUNGE_DISTRO_VERSION: 2.4.60-240701
+      APACHE_LOUNGE_DISTRO_VERSION: 2.4.61-240703
       HTTPD_DEV_HOME: 'C:\Apache24'
     steps:
       - name: Checkout
