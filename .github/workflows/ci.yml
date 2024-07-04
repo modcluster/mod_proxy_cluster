@@ -3,9 +3,17 @@ on:
   push:
     branches:
       - '*'
+    paths-ignore:
+      - '.gitignore'
+      - '**.md'
+      - 'LICENSE'
   pull_request:
     branches:
       - '*'
+    paths-ignore:
+      - '.gitignore'
+      - '**.md'
+      - 'LICENSE'
 jobs:
 
   cmake-fedora-latest:
