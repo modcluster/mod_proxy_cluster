@@ -81,7 +81,7 @@ jobs:
           podman build -f ./podmanfile
 
   clang-format-style-check:
-    # The ubuntu-latest has an old version of clang-format, let's just use the latest installed via brew.
+    # The ubuntu-latest has an old version of clang-format, let's use ubuntu-24.04 which is in Beta
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

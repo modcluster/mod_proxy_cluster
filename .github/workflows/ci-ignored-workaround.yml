@@ -1,0 +1,45 @@
+name: Skip CI on ignored paths
+on:
+  push:
+    branches:
+      - '*'
+    paths:
+      - '.gitignore'
+      - '**.md'
+      - 'LICENSE'
+  pull_request:
+    branches:
+      - '*'
+    paths:
+      - '.gitignore'
+      - '**.md'
+      - 'LICENSE'
+
+jobs:
+  cmake-fedora-latest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [ gcc, clang ]
+    steps:
+      - name: Skip
+        run: echo "Skipping the job"
+
+  clang-format-style-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip
+        run: echo "Skipping the job"
+
+  make-fedora-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip
+        run: echo "Skipping the job"
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip
+        run: echo "Skipping the job"
