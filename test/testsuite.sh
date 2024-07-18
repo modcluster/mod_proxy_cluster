@@ -76,11 +76,11 @@ run_test maintests.sh               "Main tests"
 res=$(expr $res + $?)
 run_test websocket/basic.sh         "Websocket tests"
 res=$(expr $res + $?)
-run_test JBCS-1236/testit.sh        "JBCS-1236"
-res=$(expr $res + $?)
 run_test MODCLUSTER-640/testit.sh   "MODCLUSTER-640"
 res=$(expr $res + $?)
 run_test MODCLUSTER-734/testit.sh   "MODCLUSTER-734"
+res=$(expr $res + $?)
+run_test MODCLUSTER-736/testit.sh   "MODCLUSTER-736"
 res=$(expr $res + $?)
 run_test MODCLUSTER-755/testit.sh   "MODCLUSTER-755"
 res=$(expr $res + $?)

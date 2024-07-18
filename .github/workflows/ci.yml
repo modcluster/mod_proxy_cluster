@@ -226,9 +226,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-# this occupies 8084 port on Ubuntu 20.04 and we don't use it.
-      - name: Remove mono blocking 8084 port
-        run: sudo kill -9 $(sudo lsof -t -i:8084)
+      - name: Stop Mono and XSP
+        # These occupy port 8084 unnecessarily
+        run: |
+          sudo systemctl stop mono-xsp4.service || true
+          sudo systemctl disable mono-xsp4.service || true
+          sudo killall mono || true
+          sudo killall xsp4 || true
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
       - name: Setup dependencies
         run: |
           sudo apt-get update -y

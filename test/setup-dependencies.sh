@@ -35,7 +35,7 @@ if [ ! -d httpd_websocket-testsuite ]; then
 fi
 cd httpd_websocket-testsuite
 git pull --rebase
-mvn install || exit 1
+mvn --batch-mode --no-transfer-progress install || exit 1
 cp target/websocket-hello-0.0.1.war $TEST_DIR/websocket/
 cd ..
 
@@ -45,11 +45,11 @@ if [ ! -d mod_cluster-testsuite ]; then
 fi
 cd mod_cluster-testsuite
 git pull --rebase
-mvn install || exit 2
+mvn --batch-mode --no-transfer-progress install || exit 2
 cd $TEST_DIR
 
 # prepare jars
-mvn install
+mvn --batch-mode --no-transfer-progress install
 
 # prepare tomcat test apps
-mvn -f includes/pom-groovy.xml install
+mvn --batch-mode --no-transfer-progress -f includes/pom-groovy.xml install
