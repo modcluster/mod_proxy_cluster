@@ -1,4 +1,4 @@
-ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.61.tar.gz"
+ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.62.tar.gz"
 
 FROM fedora:40
 
