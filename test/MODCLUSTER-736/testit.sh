@@ -4,7 +4,7 @@
 
 httpd_all_clean
 tomcat_all_remove
-MPC_NAME=JBCS-1236 httpd_run
+MPC_NAME=MODCLUSTER-736 httpd_run
 
 # Start a bunch ($1, or 6 if no argument is given) of tomcat
 # containers, then test them and stop them
@@ -195,9 +195,9 @@ cyclestomcats() {
     done
 }
 
-# run test for https://issues.redhat.com/browse/JBCS-1236
+# run test for https://issues.redhat.com/browse/MODCLUSTER-736
 # basically start and stop random tomcats...
-runjbcs1236() {
+runmodcluster736() {
     # start 3 tomcats
     tomcat_start 2
     tomcat_start 3
@@ -213,26 +213,26 @@ runjbcs1236() {
     tomcat_test_app 4 || exit 1
 
     # start a bunch of tomcats, test, shutdown, remove and try in a loop.
-    runjbcs1236=0
+    runmodcluster736=0
     while true
     do
-        runjbcs1236=$(expr $runjbcs1236 + 1)
-        if [ $runjbcs1236 -gt 2 ]; then
-            echo "Looks OK, runjbcs1236 stopping!"
+        runmodcluster736=$(expr $runmodcluster736 + 1)
+        if [ $runmodcluster736 -gt 2 ]; then
+            echo "Looks OK, runmodcluster736 stopping!"
             break
         fi
         # cycle the tomcats
         runtomcatbatch
 
         if [ $? -ne 0 ]; then
-            echo "runtomcatbatch: runjbcs1236 Failed!"
+            echo "runtomcatbatch: runmodcluster736 Failed!"
             exit 1
         fi
         tomcat_shutdown 2
 
         tomcat_wait_for_n_nodes 2
         if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 2: runjbcs1236 Failed!"
+            echo "tomcat_wait_for_n_nodes 2: runmodcluster736 Failed!"
             exit 1
         fi
         tomcat_remove 2
@@ -240,18 +240,18 @@ runjbcs1236() {
 
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 3: runjbcs1236 Failed!"
+            echo "tomcat_wait_for_n_nodes 3: runmodcluster736 Failed!"
             exit 1
         fi
         tomcat_start_webapp 5
         if [ $? -ne 0 ]; then
-            echo "tomcat_start_webapp 5: runjbcs1236 Failed!"
+            echo "tomcat_start_webapp 5: runmodcluster736 Failed!"
             exit 1
         fi
         sleep 20
         tomcat_test_app 5
         if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 5: runjbcs1236 Failed!"
+            echo "tomcat_test_app 5: runmodcluster736 Failed!"
             exit 1
         fi
         # we have 5 3 4 in shared memory
@@ -259,18 +259,18 @@ runjbcs1236() {
         tomcat_start 2
         tomcat_wait_for_n_nodes 4
         if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 4: runjbcs1236 Failed!"
+            echo "tomcat_wait_for_n_nodes 4: runmodcluster736 Failed!"
             exit 1
         fi
         tomcat_start_webapp 2
         if [ $? -ne 0 ]; then
-            echo "tomcat_start_webapp 2: runjbcs1236 Failed!"
+            echo "tomcat_start_webapp 2: runmodcluster736 Failed!"
             exit 1
         fi
         sleep 20
         tomcat_test_app 2
         if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 2: runjbcs1236 Failed!"
+            echo "tomcat_test_app 2: runmodcluster736 Failed!"
             exit 1
         fi
 
@@ -282,29 +282,29 @@ runjbcs1236() {
 
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 3: runjbcs1236 Failed!"
+            echo "tomcat_wait_for_n_nodes 3: runmodcluster736 Failed!"
             exit 1
         fi
         tomcat_remove 5
 
         tomcat_test_app 2
         if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 2: runjbcs1236 Failed!"
+            echo "tomcat_test_app 2: runmodcluster736 Failed!"
             exit 1
         fi
 
         tomcat_test_app 3
         if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 3: runjbcs1236 Failed!"
+            echo "tomcat_test_app 3: runmodcluster736 Failed!"
             exit 1
         fi
 
         tomcat_test_app 4
         if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 4: runjbcs1236 Failed!"
+            echo "tomcat_test_app 4: runmodcluster736 Failed!"
             exit 1
         fi
-        echo "runjbcs1236 loop: $runjbcs1236 DONE"
+        echo "runmodcluster736 loop: $runmodcluster736 DONE"
     done
 
     # cleanup
@@ -317,25 +317,25 @@ runjbcs1236() {
     tomcat_remove 4
 }
 
-# JBCS-1236
-echo "Testing JBCS-1236"
+# MODCLUSTER-736
+echo "Testing MODCLUSTER-736"
 cyclestomcats ${TOMCAT_CYCLE_COUNT:-10}
 if [ $? -ne 0 ]; then
-  echo "JBCS-1236 cyclestomcats 100 FAILED!"
+  echo "MODCLUSTER-736 cyclestomcats 100 FAILED!"
   exit 1
 fi
 echo "cycletomcats DONE"
 forevertomcat
 if [ $? -ne 0 ]; then
-  echo "JBCS-1236 forevertomcat FAILED!"
+  echo "MODCLUSTER-736 forevertomcat FAILED!"
   exit 1
 fi
 echo "forevertomcat DONE"
-runjbcs1236
+runmodcluster736
 if [ $? -ne 0 ]; then
-  echo "JBCS-1236 runjbcs1236 FAILED!"
+  echo "MODCLUSTER-736 runmodcluster736 FAILED!"
   exit 1
 fi
-echo "runjbcs1236 DONE"
+echo "runmodcluster736 DONE"
 
 tomcat_all_remove
