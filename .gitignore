@@ -44,6 +44,7 @@ test/dependency-reduced-pom.xml
 test/mod_proxy_cluster_new.conf
 test/new.xml
 test/server.xml
+test/includes/dependency-reduced-pom.xml
 
 # patch files
 **/*.patch
