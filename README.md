@@ -15,7 +15,7 @@ Mod_cluster boasts the following advantages over other httpd-based load-balancer
 * Fine grained web-app lifecycle control
 * AJP is optional
 
-[https://modcluster.io](https://modcluster.io)
+[https://www.modcluster.io](https://www.modcluster.io)
 
 
 Native modules for httpd
