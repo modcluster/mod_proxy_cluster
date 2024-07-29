@@ -1416,7 +1416,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                     }
                     removed = id; /* we save the id of the worknode in case insert/update fails */
                 }
-                ap_assert(the_conf);
             }
             clean = 0;
             ap_assert(worker->s->port != 0);
