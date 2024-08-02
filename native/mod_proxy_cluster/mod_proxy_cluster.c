@@ -237,7 +237,7 @@ static void check_workers(const proxy_server_conf *conf, const server_rec *s)
                 /* this happens when a new child process is created and it "cleaned" some old slotmem */
                 /* it is like the remove_workers_node we try to restore the non shared memory allocated in
                  * create_worker() */
-                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "check_workers: DOING (empty port : %d id : %d",
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "check_workers: DOING (empty port : %d id : %d)",
                              helper->shared->port, helper->index);
                 stop_worker = 1;
             }
