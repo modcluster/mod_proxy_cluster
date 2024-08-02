@@ -1465,7 +1465,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "process_config: insert_update_node failed for %s clean: %d", nodeinfo.mess.JVMRoute, clean);
-        loc_unlock_nodes();
         if (removed) {
             nodeinfo_t *workernode = read_node_by_id(nodestatsmem, removed);
             mark_node_removed(workernode);
