@@ -1407,8 +1407,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         nodeinfo.mess.ResponseFieldSize = mconf->response_field_size;
     }
     /* Insert or update balancer description */
-    rv = loc_lock_nodes();
-    ap_assert(rv == APR_SUCCESS);
+    ap_assert(loc_lock_nodes() == APR_SUCCESS);
     if (insert_update_balancer(balancerstatsmem, &balancerinfo) != APR_SUCCESS) {
         loc_unlock_nodes();
         *errtype = TYPEMEM;
