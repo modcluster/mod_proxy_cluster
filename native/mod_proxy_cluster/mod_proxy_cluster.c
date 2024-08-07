@@ -336,6 +336,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
             worker->s->redirect[0] = '\0';
             worker->s->lbstatus = 0;
             worker->s->lbfactor = -1; /* prevent using the node using status message */
+            worker->s->busy = 0;
 
             /* add health check */
             worker->s->updated = apr_time_now();
@@ -582,6 +583,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->redirect[0] = '\0';
         worker->s->lbstatus = 0;
         worker->s->lbfactor = -1; /* prevent using the node using status message */
+        worker->s->busy = 0;
     }
 
     return APR_SUCCESS;
@@ -2110,6 +2112,7 @@ static void init_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_worker
     worker->s->redirect[0] = '\0';
     worker->s->lbstatus = 0;
     worker->s->lbfactor = -1; /* prevent using the node using status message */
+    worker->s->busy = 0;
     pair_worker_node(worker->s, node);
 
     /* add health check */
