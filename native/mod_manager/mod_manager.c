@@ -1287,7 +1287,9 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         }
 
         /* XXX: Node part */
+        ap_assert(loc_lock_nodes() == APR_SUCCESS);
         msg = process_config_node(ptr[i], ptr[i + 1], &nodeinfo, errtype);
+        loc_unlock_nodes();
         if (msg != NULL) {
             return msg;
         }
