@@ -1574,11 +1574,11 @@ static char *process_dump(request_rec *r, int *errtype)
     (void)errtype;
 
     if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
-        ap_set_content_type(r, "text/xml");
+        ap_set_content_type_ex(r, "text/xml", 1);
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
     } else {
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type_ex(r, "text/plain", 1);
         type = TEXT_PLAIN;
     }
 
@@ -1773,11 +1773,11 @@ static char *process_info(request_rec *r, int *errtype)
     (void)errtype;
 
     if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
-        ap_set_content_type(r, "text/xml");
+        ap_set_content_type_ex(r, "text/xml", 1);
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
     } else {
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type_ex(r, "text/plain", 1);
         type = TEXT_PLAIN;
     }
 
@@ -2254,7 +2254,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP nbrequests %d",
                          ou->nbrequests);
             if (fromnode) {
-                ap_set_content_type(r, "text/plain");
+                ap_set_content_type_ex(r, "text/plain", 1);
                 ap_rprintf(r, "Type=STOP-APP-RSP&JvmRoute=%.*s&Alias=%.*s&Context=%.*s&Requests=%d",
                            (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute, (int)sizeof(vhost->host),
                            vhost->host, (int)sizeof(vhost->context), vhost->context, ou->nbrequests);
@@ -2352,7 +2352,7 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
      * If the node is usualable do a ping/pong to prevent Split-Brain Syndrome
      * and update the worker status and load factor acccording to the test result.
      */
-    ap_set_content_type(r, "text/plain");
+    ap_set_content_type_ex(r, "text/plain", 1);
     ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
     ap_rprintf(r, isnode_up(r, node->mess.id, Load) != OK ? "&State=NOTOK" : "&State=OK");
@@ -2373,12 +2373,12 @@ static char *process_version(request_rec *r, const char *const *const ptr, int *
     (void)errtype;
 
     if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
-        ap_set_content_type(r, "text/xml");
+        ap_set_content_type_ex(r, "text/xml", 1);
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
         ap_rprintf(r, "<version><release>%s</release><protocol>%s</protocol></version>", MOD_CLUSTER_EXPOSED_VERSION,
                    VERSION_PROTOCOL);
     } else {
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type_ex(r, "text/plain", 1);
         ap_rprintf(r, "release: %s, protocol: %s", MOD_CLUSTER_EXPOSED_VERSION, VERSION_PROTOCOL);
     }
     ap_rprintf(r, "\n");
@@ -2428,14 +2428,14 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
     if (nodeinfo.mess.id == -1) {
         /* PING scheme, host, port or just httpd */
         if (scheme == NULL && host == NULL && port == NULL) {
-            ap_set_content_type(r, "text/plain");
+            ap_set_content_type_ex(r, "text/plain", 1);
             ap_rprintf(r, "Type=PING-RSP&State=OK");
         } else {
             if (scheme == NULL || host == NULL || port == NULL) {
                 *errtype = TYPESYNTAX;
                 return apr_psprintf(r->pool, SMISFLD);
             }
-            ap_set_content_type(r, "text/plain");
+            ap_set_content_type_ex(r, "text/plain", 1);
             ap_rprintf(r, "Type=PING-RSP");
             ap_rprintf(r, ishost_up(r, scheme, host, port) != OK ? "&State=NOTOK" : "&State=OK");
         }
@@ -2454,7 +2454,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
          * If the node is usualable do a ping/pong to prevent Split-Brain Syndrome
          * and update the worker status and load factor acccording to the test result.
          */
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type_ex(r, "text/plain", 1);
         ap_rprintf(r, "Type=PING-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
         ap_rprintf(r, isnode_up(r, node->mess.id, -2) != OK ? "&State=NOTOK" : "&State=OK");
@@ -3219,7 +3219,7 @@ static const char *process_params(request_rec *r, apr_table_t *params, int allow
 
 static void print_fileheader(request_rec *r, const mod_manager_config *mconf, const char *errstring)
 {
-    ap_set_content_type(r, "text/html; charset=ISO-8859-1");
+    ap_set_content_type_ex(r, "text/html; charset=ISO-8859-1", 1);
     ap_rputs(DOCTYPE_HTML_3_2 "<html><head>\n<title>Mod_cluster Status</title>\n</head><body>\n", r);
     ap_rvputs(r, "<h1>", MOD_CLUSTER_EXPOSED_VERSION, "</h1>", NULL);
 
