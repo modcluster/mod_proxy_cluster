@@ -1255,7 +1255,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     int i = 0;
     int id = -1;
     int vid = 1; /* zero and "" is empty */
-    int removed = 0;
+    int removed = -1;
     void *sconf = r->server->module_config;
     mod_manager_config *mconf = ap_get_module_config(sconf, &manager_module);
     int clean = 1;
@@ -1465,7 +1465,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     if (insert_update_node(nodestatsmem, &nodeinfo, &id, clean) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "process_config: insert_update_node failed for %s clean: %d", nodeinfo.mess.JVMRoute, clean);
-        if (removed) {
+        if (removed != -1) {
             nodeinfo_t *workernode = read_node_by_id(nodestatsmem, removed);
             mark_node_removed(workernode);
         }
