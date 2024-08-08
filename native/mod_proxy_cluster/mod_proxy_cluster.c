@@ -336,6 +336,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
             worker->s->redirect[0] = '\0';
             worker->s->lbstatus = 0;
             worker->s->lbfactor = -1; /* prevent using the node using status message */
+            worker->s->busy = 0;
 
             /* add health check */
             worker->s->updated = apr_time_now();
@@ -581,6 +582,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
         worker->s->redirect[0] = '\0';
         worker->s->lbstatus = 0;
         worker->s->lbfactor = -1; /* prevent using the node using status message */
+        worker->s->busy = 0;
     }
 
     return APR_SUCCESS;
@@ -1738,10 +1740,8 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
 
     /* create workers for new nodes */
     if (!cache_share_for) {
-        ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
         update_workers_node(conf, r->pool, r->server, 1, node_table);
         check_workers(conf, r->server);
-        node_storage->unlock_nodes();
     }
 
     /* do this once now to avoid repeating find_node_context_host through loop iterations */
@@ -2110,6 +2110,7 @@ static void init_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_worker
     worker->s->redirect[0] = '\0';
     worker->s->lbstatus = 0;
     worker->s->lbfactor = -1; /* prevent using the node using status message */
+    worker->s->busy = 0;
     pair_worker_node(worker->s, node);
 
     /* add health check */
@@ -2989,8 +2990,10 @@ static proxy_worker *find_best_worker(const proxy_balancer *balancer, const prox
         return NULL;
     }
 
+    ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
     candidate = internal_find_best_byrequests(balancer, conf, r, domain, failoverdomain, vhost_table, context_table,
                                               node_table);
+    node_storage->unlock_nodes();
 
     if ((rv = PROXY_THREAD_UNLOCK(balancer)) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR, rv, r->server,
@@ -3237,7 +3240,6 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
         check_workers(conf, r->server);
         node_storage->unlock_nodes();
         if (!(*balancer = ap_proxy_get_balancer(r->pool, conf, *url, 0))) {
-            /* node_storage->unlock_nodes(); */
             ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_cluster_pre_request: CLUSTER no balancer for %s",
                          *url);
             return DECLINED;
@@ -3247,8 +3249,9 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
     }
 
     /* Step 2: find the session route */
-
+    ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
     runtime = find_session_route(*balancer, r, &route, &sticky, url, &domain, vhost_table, context_table, node_table);
+    node_storage->unlock_nodes();
 
     /* Lock the LoadBalancer
      * XXX: perhaps we need the process lock here
@@ -3329,9 +3332,6 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
         *worker = runtime;
     }
 
-    (*worker)->s->busy++;
-    apr_pool_cleanup_register(r->pool, *worker, decrement_busy_count, apr_pool_cleanup_null);
-
     /* Also mark the context here note that find_best_worker set BALANCER_CONTEXT_ID */
     context_id = apr_table_get(r->subprocess_env, "BALANCER_CONTEXT_ID");
     ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
@@ -3343,7 +3343,9 @@ static int proxy_cluster_pre_request(proxy_worker **worker, proxy_balancer **bal
     /* XXX: Do we need the lock here??? */
     helper = (proxy_cluster_helper *)(*worker)->context;
     helper->count_active++;
+    (*worker)->s->busy++;
     node_storage->unlock_nodes();
+    apr_pool_cleanup_register(r->pool, *worker, decrement_busy_count, apr_pool_cleanup_null);
 
     /*
      * get_route_balancer already fills all of the notes and some subprocess_env
@@ -3466,6 +3468,7 @@ static int proxy_cluster_post_request(proxy_worker *worker, proxy_balancer *bala
                               worker->s->name,
 #endif
                               val);
+
                 worker->s->status |= PROXY_WORKER_IN_ERROR;
                 worker->s->error_time = apr_time_now();
                 break;
