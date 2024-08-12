@@ -3411,7 +3411,7 @@ static int manager_handler(request_rec *r)
 
     if (status != APR_SUCCESS) {
         process_error(r, apr_psprintf(r->pool, SREADER, r->method), TYPESYNTAX);
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
     buff[bufsiz] = '\0';
 
@@ -3422,7 +3422,7 @@ static int manager_handler(request_rec *r)
     ptr = process_buff(r, buff);
     if (ptr == NULL) {
         process_error(r, SMESPAR, TYPESYNTAX);
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
     if (strstr(r->filename, NODE_COMMAND)) {
         global = 1;
@@ -3450,7 +3450,7 @@ static int manager_handler(request_rec *r)
     /* Check error string and build the error message */
     if (errstring) {
         process_error(r, errstring, errtype);
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "manager_handler: %s  OK", r->method);
