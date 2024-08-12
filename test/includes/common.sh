@@ -67,7 +67,7 @@ httpd_run() {
         echo "    NAME:    ${MPC_NAME:-httpd-mod_proxy_cluster}"
         echo "You can config those with envars MPC_SOURCES, MPC_BRANCH, MPC_CONF, MPC_NAME respectively"
     fi
-    docker run -d --network=host --name ${MPC_NAME:-httpd-mod_proxy_cluster} \
+    docker run -d --network=host --ulimit nofile=65536:65536 --name ${MPC_NAME:-httpd-mod_proxy_cluster} \
                -e CONF=${MPC_CONF:-httpd/mod_proxy_cluster.conf} \
                $HTTPD_IMG
 
