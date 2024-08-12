@@ -1844,10 +1844,10 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     char *ptr;
 
     if (node_storage->read_node(id, &node) != APR_SUCCESS) {
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
     if (node->mess.remove) {
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
 
     /* Calculate the address of our shared memory that corresponds to the stat info of the worker */
@@ -1875,7 +1875,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     if (worker == NULL) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "proxy_cluster_isup: Can't find worker for %d. Check balancer names.", id);
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
 
     /* Try a  ping/pong to check the node */
@@ -1887,7 +1887,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
             if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                              "proxy_cluster_isup: health check says PROXY_WORKER_IN_ERROR");
-                return 500;
+                return HTTP_INTERNAL_SERVER_ERROR;
             }
 
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_isup: health check says OK");
@@ -1904,7 +1904,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
             if (proxy_cluster_try_pingpong(r, worker, url, conf, node->mess.ping, node->mess.timeout) != APR_SUCCESS) {
                 worker->s->status |= PROXY_WORKER_IN_ERROR;
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_isup: pingpong %s failed", url);
-                return 500;
+                return HTTP_INTERNAL_SERVER_ERROR;
             }
         }
     }
@@ -1936,19 +1936,19 @@ static int proxy_host_isup(request_rec *r, const char *scheme, const char *host,
     rv = apr_socket_create(&sock, APR_INET, SOCK_STREAM, 0, r->pool);
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server, "proxy_host_isup: pingpong (apr_socket_create) failed");
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
     rv = apr_sockaddr_info_get(&to, host, APR_INET, nport, 0, r->pool);
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
                      "proxy_host_isup: pingpong (apr_sockaddr_info_get(%s, %d)) failed", host, nport);
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
 
     rv = apr_socket_connect(sock, to);
     if (rv != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_host_isup: pingpong (apr_socket_connect) failed");
-        return 500;
+        return HTTP_INTERNAL_SERVER_ERROR;
     }
 
     /* XXX: For the moment we support only AJP */
@@ -1956,7 +1956,7 @@ static int proxy_host_isup(request_rec *r, const char *scheme, const char *host,
         rv = ajp_handle_cping_cpong(sock, r, apr_time_from_sec(10));
         if (rv != APR_SUCCESS) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_host_isup: cping_cpong failed");
-            return 500;
+            return HTTP_INTERNAL_SERVER_ERROR;
         }
     } else {
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, r->server, "proxy_host_isup: %s no yet supported", scheme);

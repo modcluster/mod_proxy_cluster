@@ -43,7 +43,7 @@ struct balancer_method
      * @param r request_rec structure
      * @param id ident of the worker
      * @param load load factor to set if test is ok
-     * @return 0: All OK 500 : Error
+     * @return 0 in case of success, HTTP_INTERNAL_SERVER_ERROR otherwise
      */
     int (*proxy_node_isup)(request_rec *r, int id, int load);
     /**
@@ -52,7 +52,7 @@ struct balancer_method
      * @param scheme something like ajp, http or https
      * @param host the hostname
      * @param port the port on which the node connector is running
-     * @return 0: All OK 500 : Error
+     * @return 0 in case of success, HTTP_INTERNAL_SERVER_ERROR otherwise
      */
     int (*proxy_host_isup)(request_rec *r, const char *scheme, const char *host, const char *port);
     /**
