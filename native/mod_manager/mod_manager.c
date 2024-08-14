@@ -36,65 +36,68 @@
 
 #include "mod_proxy_cluster.h"
 
-#define DEFMAXCONTEXT    100
-#define DEFMAXNODE       20
-#define DEFMAXHOST       20
-#define DEFMAXSESSIONID  0 /* it has performance/security impact */
-#define MAXMESSSIZE      1024
+#define DEFMAXCONTEXT          100
+#define DEFMAXNODE             20
+#define DEFMAXHOST             20
+#define DEFMAXSESSIONID        0 /* it has performance/security impact */
+#define MAXMESSSIZE            1024
 
 /* Warning messages */
-#define SBALBAD          "Balancer name contained an upper case character. We will use \"%s\" instead."
+#define SBALBAD                "Balancer name contained an upper case character. We will use \"%s\" instead."
 
 /* Error messages */
-#define TYPESYNTAX       1
-#define SMESPAR          "SYNTAX: Can't parse MCMP message. It might have contained illegal symbols or unknown elements."
-#define SBALBIG          "SYNTAX: Balancer field too big"
-#define SBAFBIG          "SYNTAX: A field is too big"
-#define SROUBIG          "SYNTAX: JVMRoute field too big"
-#define SROUBAD          "SYNTAX: JVMRoute can't be empty"
-#define SDOMBIG          "SYNTAX: LBGroup field too big"
-#define SHOSBIG          "SYNTAX: Host field too big"
-#define SPORBIG          "SYNTAX: Port field too big"
-#define STYPBIG          "SYNTAX: Type field too big"
-#define SALIBAD          "SYNTAX: Alias without Context"
-#define SCONBAD          "SYNTAX: Context without Alias"
-#define SBADFLD          "SYNTAX: Invalid field \"%s\" in message"
-#define SMISFLD          "SYNTAX: Mandatory field(s) missing in message"
-#define SCMDUNS          "SYNTAX: Command is not supported"
-#define SMULALB          "SYNTAX: Only one Alias in APP command"
-#define SMULCTB          "SYNTAX: Only one Context in APP command"
-#define SREADER          "SYNTAX: %s can't read POST data"
+#define TYPESYNTAX             1
+#define SMESPAR                "SYNTAX: Can't parse MCMP message. It might have contained illegal symbols or unknown elements."
+#define SBALBIG                "SYNTAX: Balancer field too big"
+#define SBAFBIG                "SYNTAX: A field is too big"
+#define SROUBIG                "SYNTAX: JVMRoute field too big"
+#define SROUBAD                "SYNTAX: JVMRoute can't be empty"
+#define SDOMBIG                "SYNTAX: LBGroup field too big"
+#define SHOSBIG                "SYNTAX: Host field too big"
+#define SPORBIG                "SYNTAX: Port field too big"
+#define STYPBIG                "SYNTAX: Type field too big"
+#define SALIBAD                "SYNTAX: Alias without Context"
+#define SCONBAD                "SYNTAX: Context without Alias"
+#define SBADFLD                "SYNTAX: Invalid field \"%s\" in message"
+#define SMISFLD                "SYNTAX: Mandatory field(s) missing in message"
+#define SCMDUNS                "SYNTAX: Command is not supported"
+#define SMULALB                "SYNTAX: Only one Alias in APP command"
+#define SMULCTB                "SYNTAX: Only one Context in APP command"
+#define SREADER                "SYNTAX: %s can't read POST data"
 
-#define SJIDBIG          "SYNTAX: JGroupUuid field too big"
-#define SJDDBIG          "SYNTAX: JGroupData field too big"
-#define SJIDBAD          "SYNTAX: JGroupUuid can't be empty"
+#define SJIDBIG                "SYNTAX: JGroupUuid field too big"
+#define SJDDBIG                "SYNTAX: JGroupData field too big"
+#define SJIDBAD                "SYNTAX: JGroupUuid can't be empty"
 
-#define TYPEMEM          2
-#define MNODEUI          "MEM: Can't update or insert node with \"%s\" JVMRoute"
-#define MNODERM          "MEM: Old node with \"%s\" JVMRoute still exists"
-#define MBALAUI          "MEM: Can't update or insert balancer for node with \"%s\" JVMRoute"
-#define MNODERD          "MEM: Can't read node with \"%s\" JVMRoute"
-#define MHOSTRD          "MEM: Can't read host alias for node with \"%s\" JVMRoute"
-#define MHOSTUI          "MEM: Can't update or insert host alias for node with \"%s\" JVMRoute"
-#define MCONTUI          "MEM: Can't update or insert context for node with \"%s\" JVMRoute"
-#define MJBIDRD          "MEM: Can't read JGroupId"
-#define MJBIDUI          "MEM: Can't update or insert JGroupId"
-#define MNODEET          "MEM: Another for the same worker already exist"
+#define TYPEMEM                2
+#define MNODEUI                "MEM: Can't update or insert node with \"%s\" JVMRoute"
+#define MNODERM                "MEM: Old node with \"%s\" JVMRoute still exists"
+#define MBALAUI                "MEM: Can't update or insert balancer for node with \"%s\" JVMRoute"
+#define MNODERD                "MEM: Can't read node with \"%s\" JVMRoute"
+#define MHOSTRD                "MEM: Can't read host alias for node with \"%s\" JVMRoute"
+#define MHOSTUI                "MEM: Can't update or insert host alias for node with \"%s\" JVMRoute"
+#define MCONTUI                "MEM: Can't update or insert context for node with \"%s\" JVMRoute"
+#define MJBIDRD                "MEM: Can't read JGroupId"
+#define MJBIDUI                "MEM: Can't update or insert JGroupId"
+#define MNODEET                "MEM: Another for the same worker already exist"
 
 /* Protocol version supported */
-#define VERSION_PROTOCOL "0.2.1"
+#define VERSION_PROTOCOL       "0.2.1"
 
 /* Internal substitution for node commands */
-#define NODE_COMMAND     "/NODE_COMMAND"
+#define NODE_COMMAND           "/NODE_COMMAND"
 
 /* range of the commands */
-#define RANGECONTEXT     0
-#define RANGENODE        1
-#define RANGEDOMAIN      2
+#define RANGECONTEXT           0
+#define RANGENODE              1
+#define RANGEDOMAIN            2
 
 /* define content-type */
-#define TEXT_PLAIN       1
-#define TEXT_XML         2
+#define TEXT_PLAIN             1
+#define TEXT_XML               2
+
+#define PLAINTEXT_CONTENT_TYPE "text/plain"
+#define XML_CONTENT_TYPE       "text/xml"
 
 /* Data structure for shared memory block */
 typedef struct version_data
@@ -1572,12 +1575,12 @@ static char *process_dump(request_rec *r, int *errtype)
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
     (void)errtype;
 
-    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
-        ap_set_content_type(r, "text/xml");
+    if (accept_header && strstr((char *)accept_header, XML_CONTENT_TYPE) != NULL) {
+        ap_set_content_type(r, XML_CONTENT_TYPE);
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
     } else {
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
         type = TEXT_PLAIN;
     }
 
@@ -1771,12 +1774,12 @@ static char *process_info(request_rec *r, int *errtype)
     const char *accept_header = apr_table_get(r->headers_in, "Accept");
     (void)errtype;
 
-    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
-        ap_set_content_type(r, "text/xml");
+    if (accept_header && strstr((char *)accept_header, XML_CONTENT_TYPE) != NULL) {
+        ap_set_content_type(r, XML_CONTENT_TYPE);
         type = TEXT_XML;
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
     } else {
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
         type = TEXT_PLAIN;
     }
 
@@ -2253,7 +2256,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP nbrequests %d",
                          ou->nbrequests);
             if (fromnode) {
-                ap_set_content_type(r, "text/plain");
+                ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
                 ap_rprintf(r, "Type=STOP-APP-RSP&JvmRoute=%.*s&Alias=%.*s&Context=%.*s&Requests=%d",
                            (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute, (int)sizeof(vhost->host),
                            vhost->host, (int)sizeof(vhost->context), vhost->context, ou->nbrequests);
@@ -2351,7 +2354,7 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
      * If the node is usualable do a ping/pong to prevent Split-Brain Syndrome
      * and update the worker status and load factor acccording to the test result.
      */
-    ap_set_content_type(r, "text/plain");
+    ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
     ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
     ap_rprintf(r, isnode_up(r, node->mess.id, Load) != OK ? "&State=NOTOK" : "&State=OK");
@@ -2371,13 +2374,13 @@ static char *process_version(request_rec *r, const char *const *const ptr, int *
     (void)ptr;
     (void)errtype;
 
-    if (accept_header && strstr((char *)accept_header, "text/xml") != NULL) {
-        ap_set_content_type(r, "text/xml");
+    if (accept_header && strstr((char *)accept_header, XML_CONTENT_TYPE) != NULL) {
+        ap_set_content_type(r, XML_CONTENT_TYPE);
         ap_rprintf(r, "<?xml version=\"1.0\" standalone=\"yes\" ?>\n");
         ap_rprintf(r, "<version><release>%s</release><protocol>%s</protocol></version>", MOD_CLUSTER_EXPOSED_VERSION,
                    VERSION_PROTOCOL);
     } else {
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
         ap_rprintf(r, "release: %s, protocol: %s", MOD_CLUSTER_EXPOSED_VERSION, VERSION_PROTOCOL);
     }
     ap_rprintf(r, "\n");
@@ -2427,14 +2430,14 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
     if (nodeinfo.mess.id == -1) {
         /* PING scheme, host, port or just httpd */
         if (scheme == NULL && host == NULL && port == NULL) {
-            ap_set_content_type(r, "text/plain");
+            ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
             ap_rprintf(r, "Type=PING-RSP&State=OK");
         } else {
             if (scheme == NULL || host == NULL || port == NULL) {
                 *errtype = TYPESYNTAX;
                 return apr_psprintf(r->pool, SMISFLD);
             }
-            ap_set_content_type(r, "text/plain");
+            ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
             ap_rprintf(r, "Type=PING-RSP");
             ap_rprintf(r, ishost_up(r, scheme, host, port) != OK ? "&State=NOTOK" : "&State=OK");
         }
@@ -2453,7 +2456,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
          * If the node is usualable do a ping/pong to prevent Split-Brain Syndrome
          * and update the worker status and load factor acccording to the test result.
          */
-        ap_set_content_type(r, "text/plain");
+        ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
         ap_rprintf(r, "Type=PING-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
 
         ap_rprintf(r, isnode_up(r, node->mess.id, -2) != OK ? "&State=NOTOK" : "&State=OK");
