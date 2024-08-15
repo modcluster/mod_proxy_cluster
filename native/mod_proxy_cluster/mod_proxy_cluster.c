@@ -369,6 +369,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
     helper->isinnodes = 1;
     helper->index = node->mess.id;
+    worker->s->status = 0; /* Reset the status and let ap_proxy_initialize_worker set it */
 
     if ((rv = ap_proxy_initialize_worker(worker, server, conf->pool)) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR, rv, server, "create_worker: ap_proxy_initialize_worker failed %d for %s",
