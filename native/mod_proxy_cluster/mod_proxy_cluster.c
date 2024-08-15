@@ -1042,8 +1042,8 @@ static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn, request_rec 
     len = 0;
     while (!eos) {
         apr_brigade_cleanup(brigade);
-        if (APR_SUCCESS !=
-            ap_get_brigade(p_conn->connection->input_filters, brigade, AP_MODE_GETLINE, APR_BLOCK_READ, 0)) {
+        if ((rv = ap_get_brigade(p_conn->connection->input_filters, brigade, AP_MODE_GETLINE, APR_BLOCK_READ, 0)) !=
+            APR_SUCCESS) {
             if (len != 0) {
                 /* We have read something already... */
                 break;
