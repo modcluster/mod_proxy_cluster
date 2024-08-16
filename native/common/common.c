@@ -434,7 +434,7 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
             if (node == NULL) {
                 continue;
             }
-            if (strlen(balancer->s->name) > BALANCER_PREFIX_LENGTH &&
+            if (strlen(balancer->s->name) <= BALANCER_PREFIX_LENGTH ||
                 strcasecmp(&balancer->s->name[BALANCER_PREFIX_LENGTH], node->mess.balancer) != 0) {
                 continue;
             }
