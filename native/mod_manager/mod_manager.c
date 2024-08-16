@@ -1467,7 +1467,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             /* XXX: really needed? offset logic OK here, we save the worker information (see mod_proxy_cluster) */
             pptr = (char *)&nodeinfo;
             offset = sizeof(nodemess_t) + sizeof(apr_time_t) +
-                     sizeof(int); /* nodeinfo.offset doesn't contain the information */
+                     sizeof(unsigned long); /* nodeinfo.offset doesn't contain the information */
             offset = APR_ALIGN_DEFAULT(offset);
             pptr = pptr + offset;
             memcpy(pptr, worker->s, sizeof(proxy_worker_shared)); /* restore the information we are going to reuse */

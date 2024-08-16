@@ -88,7 +88,7 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
         in->mess.id = ou->mess.id;
         memcpy(ou, in, sizeof(nodemess_t));
         ou->updatetime = apr_time_now();
-        ou->offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int);
+        ou->offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(unsigned long);
         ou->offset = APR_ALIGN_DEFAULT(ou->offset);
         return APR_EEXIST; /* it exists so we are done */
     }
@@ -136,7 +136,7 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
     ou->updatetime = now;
 
     /* set of offset to the proxy_worker_stat */
-    ou->offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int);
+    ou->offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(unsigned long);
     ou->offset = APR_ALIGN_DEFAULT(ou->offset);
 
     /* blank the proxy status information */
