@@ -315,7 +315,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     }
 
     /* Check if the shared memory goes to the right place */
-    ptr = ptr_node + node->offset;
+    ptr = ptr_node + NODEOFFSET;
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: reusing worker (id %d) for %s", node->mess.id,
                  url);
     if (helper->index == node->mess.id && worker->s == (proxy_worker_shared *)ptr) {
@@ -363,7 +363,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
 #else
                  worker->s->name);
 #endif
-    ptr = ptr_node + node->offset;
+    ptr = ptr_node + NODEOFFSET;
     *shared = worker->s;
     worker->s = (proxy_worker_shared *)ptr;
     worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
@@ -542,7 +542,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
      * 1 - the worker was created.
      * 2 - we are reusing a removed worker.
      */
-    ptr = ptr_node + node->offset;
+    ptr = ptr_node + NODEOFFSET;
     shared = worker->s;
     worker->s = (proxy_worker_shared *)ptr;
     helper->isinnodes = 1;
@@ -836,7 +836,7 @@ static void remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_p
     int i;
     proxy_cluster_helper *helper;
     proxy_worker_shared *stat;
-    char *pptr = (char *)node + node->offset;
+    char *pptr = (char *)node + NODEOFFSET;
 
     proxy_worker *worker = get_worker_from_id_stat(conf, node->mess.id, (proxy_worker_shared *)pptr, node);
     (void)pool;
@@ -1481,7 +1481,7 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
             proxy_worker_shared *stat;
             char *ptr = (char *)ou;
 
-            ptr = ptr + ou->offset;
+            ptr = ptr + NODEOFFSET;
             stat = (proxy_worker_shared *)ptr;
             elected = stat->elected;
             read = stat->read;
@@ -1664,7 +1664,7 @@ static proxy_worker *internal_process_worker(proxy_worker *worker, int checking_
     if (read_node_worker(worker->s->index, &node, worker) != APR_SUCCESS) {
         return NULL; /* Can't read node */
     }
-    if (worker->s != (proxy_worker_shared *)((char *)node + node->offset)) {
+    if (worker->s != (proxy_worker_shared *)((char *)node + NODEOFFSET)) {
         return NULL; /* wrong shared memory address */
     }
 
@@ -1852,7 +1852,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
 
     /* Calculate the address of our shared memory that corresponds to the stat info of the worker */
     ptr = (char *)node;
-    stat = (proxy_worker_shared *)(ptr + node->offset);
+    stat = (proxy_worker_shared *)(ptr + NODEOFFSET);
 
     /* create the balancers and workers (that could be the first time) */
     ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
@@ -2131,7 +2131,7 @@ static void reenable_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_wo
     helper->isinnodes = 1;
     /* XXX: BAD IDEA!! helper->index = node->mess.id; */
     ptr = (char *)node;
-    worker->s = (proxy_worker_shared *)(ptr + node->offset);
+    worker->s = (proxy_worker_shared *)(ptr + NODEOFFSET);
     /* merge the "new" node information */
     init_proxy_worker(server, nodeinfo, worker, the_conf);
 }
