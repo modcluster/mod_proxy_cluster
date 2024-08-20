@@ -740,13 +740,8 @@ static char **process_buff(request_rec *r, char *buff)
     return ptr;
 }
 
-static apr_status_t insert_update_host_guard(server_rec *s, mem_t *mem, hostinfo_t *info, char *alias)
+static apr_status_t insert_update_host_helper(server_rec *s, mem_t *mem, hostinfo_t *info, char *alias)
 {
-    int len = strlen(alias);
-    if (len > HOSTALIASZ) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "process_config: received alias %s is too long (trimmed to %d characters)", alias, HOSTALIASZ);
-    }
     strncpy(info->host, alias, HOSTALIASZ);
     info->host[HOSTALIASZ] = '\0';
     return insert_update_host(mem, info);
@@ -774,7 +769,7 @@ static apr_status_t insert_update_hosts(server_rec *s, mem_t *mem, char *str, in
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            status = insert_update_host_guard(s, mem, &info, previous);
+            status = insert_update_host_helper(s, mem, &info, previous);
             if (status != APR_SUCCESS) {
                 return status;
             }
@@ -783,7 +778,7 @@ static apr_status_t insert_update_hosts(server_rec *s, mem_t *mem, char *str, in
         ptr++;
     }
 
-    return insert_update_host_guard(s, mem, &info, previous);
+    return insert_update_host_helper(s, mem, &info, previous);
 }
 
 /**
@@ -799,22 +794,15 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
     }
 }
 
-static apr_status_t insert_update_context_guard(server_rec *s, mem_t *mem, contextinfo_t *info, char *context,
-                                                int status)
+static apr_status_t insert_update_context_helper(server_rec *s, mem_t *mem, contextinfo_t *info, char *context,
+                                                 int status)
 {
-    int len = strlen(context);
-
     info->id = 0;
     strncpy(info->context, context, CONTEXTSZ);
     info->context[CONTEXTSZ] = '\0';
     if (status == REMOVE) {
         read_remove_context(mem, info);
         return APR_SUCCESS;
-    }
-
-    if (len > CONTEXTSZ) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "process_config: received context %s is too long (trimmed to %d characters)", context, CONTEXTSZ);
     }
 
     return insert_update_context(mem, info);
@@ -846,7 +834,7 @@ static apr_status_t insert_update_contexts(server_rec *s, mem_t *mem, char *str,
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            ret = insert_update_context_guard(s, mem, &info, previous, status);
+            ret = insert_update_context_helper(s, mem, &info, previous, status);
             if (ret != APR_SUCCESS) {
                 return ret;
             }
@@ -856,7 +844,7 @@ static apr_status_t insert_update_contexts(server_rec *s, mem_t *mem, char *str,
         ptr++;
     }
 
-    return insert_update_context_guard(s, mem, &info, previous, status);
+    return insert_update_context_helper(s, mem, &info, previous, status);
 }
 
 /**
