@@ -1042,8 +1042,8 @@ static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn, request_rec 
     len = 0;
     while (!eos) {
         apr_brigade_cleanup(brigade);
-        if (APR_SUCCESS !=
-            ap_get_brigade(p_conn->connection->input_filters, brigade, AP_MODE_GETLINE, APR_BLOCK_READ, 0)) {
+        if ((rv = ap_get_brigade(p_conn->connection->input_filters, brigade, AP_MODE_GETLINE, APR_BLOCK_READ, 0)) !=
+            APR_SUCCESS) {
             if (len != 0) {
                 /* We have read something already... */
                 break;
@@ -1343,7 +1343,7 @@ static void update_lbstatus_failure_idle(nodeinfo_t *ou, proxy_worker *worker, a
     }
 }
 
-/* Returns 1 if the caller function should continue processing.
+/* Returns 1 if check was done, 0 in case the old method should be used.
  * NOTE: node_storage must be locked!
  */
 static int update_lbstatus_hcheck(proxy_server_conf *conf, server_rec *server, apr_time_t now, nodeinfo_t *ou, int id,
@@ -1501,17 +1501,16 @@ static void update_workers_lbstatus(proxy_server_conf *conf, apr_pool_t *pool, s
                 /* worker->s->retries is also set to zero is a connection is     */
                 /* establish so we use read to check for changes                 */
                 proxy_worker *worker = update_lbstatus_get_worker(server, conf, ou, ids[i], stat);
-                if (update_lbstatus_hcheck(conf, server, now, ou, ids[i], stat)) {
+                if (!update_lbstatus_hcheck(conf, server, now, ou, ids[i], stat)) {
                     node_storage->unlock_nodes();
-                    return;
+                    /* We must unlock because check_proxy_worker takes care of locking by itself. */
+                    /* Don't forget it may or may not be scheduled for another thread. */
+                    if (!update_lbstatus_oldcheck(conf, pool, server, now, ou, ids[i], worker)) {
+                        return;
+                    }
+                    /* continue, because we've already unlocked */
+                    continue;
                 }
-                /* We must unlock because check_proxy_worker takes care of locking by itself. */
-                /* Don't forget it may or may not be scheduled for another thread. */
-                node_storage->unlock_nodes();
-                if (!update_lbstatus_oldcheck(conf, pool, server, now, ou, ids[i], worker)) {
-                    return;
-                }
-                continue;
             } else {
                 ou->mess.num_failure_idle = 0;
             }
