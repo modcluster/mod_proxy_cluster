@@ -68,6 +68,7 @@ struct nodemess
 typedef struct nodemess nodemess_t;
 
 #define SIZEOFSCORE 1700 /* at least size of the proxy_worker_stat structure */
+#define NODEOFFSET  (APR_ALIGN_DEFAULT(sizeof(nodemess_t) + sizeof(apr_time_t)))
 
 /**
  * Status of the node as read/store in httpd
@@ -78,7 +79,6 @@ struct nodeinfo
     nodemess_t mess;
     /* filled by httpd */
     apr_time_t updatetime;  /* time of last received message */
-    unsigned long offset;   /* offset to the proxy_worker_stat structure */
     char stat[SIZEOFSCORE]; /* to store the status */
 };
 typedef struct nodeinfo nodeinfo_t;

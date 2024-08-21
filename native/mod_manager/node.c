@@ -78,18 +78,9 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     (void)pool;
 
     if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
-        /*
-         * The node information is made of several pieces:
-         * Information from the cluster (nodemess_t).
-         * updatetime (time of last received message).
-         * offset (of the area shared with the proxy logic).
-         * stat (shared area with the proxy logic we shouldn't modify it here).
-         */
         in->mess.id = ou->mess.id;
         memcpy(ou, in, sizeof(nodemess_t));
         ou->updatetime = apr_time_now();
-        ou->offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int);
-        ou->offset = APR_ALIGN_DEFAULT(ou->offset);
         return APR_EEXIST; /* it exists so we are done */
     }
     return APR_SUCCESS;
@@ -134,10 +125,6 @@ apr_status_t insert_update_node(mem_t *s, nodeinfo_t *node, int *id, int clean)
     memcpy(ou, node, sizeof(nodeinfo_t));
     ou->mess.id = *id;
     ou->updatetime = now;
-
-    /* set of offset to the proxy_worker_stat */
-    ou->offset = sizeof(nodemess_t) + sizeof(apr_time_t) + sizeof(int);
-    ou->offset = APR_ALIGN_DEFAULT(ou->offset);
 
     /* blank the proxy status information */
     if (clean) {
