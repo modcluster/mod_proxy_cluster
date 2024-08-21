@@ -56,6 +56,8 @@
 #define SHOSBIG                "SYNTAX: Host field too big"
 #define SPORBIG                "SYNTAX: Port field too big"
 #define STYPBIG                "SYNTAX: Type field too big"
+#define SALIBIG                "SYNTAX: Alias field too big"
+#define SCONBIG                "SYNTAX: Context field too big"
 #define SALIBAD                "SYNTAX: Alias without Context"
 #define SCONBAD                "SYNTAX: Context without Alias"
 #define SBADFLD                "SYNTAX: Invalid field \"%s\" in message"
@@ -738,13 +740,8 @@ static char **process_buff(request_rec *r, char *buff)
     return ptr;
 }
 
-static apr_status_t insert_update_host_guard(server_rec *s, mem_t *mem, hostinfo_t *info, char *alias)
+static apr_status_t insert_update_host_helper(server_rec *s, mem_t *mem, hostinfo_t *info, char *alias)
 {
-    int len = strlen(alias);
-    if (len > HOSTALIASZ) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "process_config: received alias %s is too long (trimmed to %d characters)", alias, HOSTALIASZ);
-    }
     strncpy(info->host, alias, HOSTALIASZ);
     info->host[HOSTALIASZ] = '\0';
     return insert_update_host(mem, info);
@@ -772,7 +769,7 @@ static apr_status_t insert_update_hosts(server_rec *s, mem_t *mem, char *str, in
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            status = insert_update_host_guard(s, mem, &info, previous);
+            status = insert_update_host_helper(s, mem, &info, previous);
             if (status != APR_SUCCESS) {
                 return status;
             }
@@ -781,7 +778,7 @@ static apr_status_t insert_update_hosts(server_rec *s, mem_t *mem, char *str, in
         ptr++;
     }
 
-    return insert_update_host_guard(s, mem, &info, previous);
+    return insert_update_host_helper(s, mem, &info, previous);
 }
 
 /**
@@ -797,22 +794,15 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
     }
 }
 
-static apr_status_t insert_update_context_guard(server_rec *s, mem_t *mem, contextinfo_t *info, char *context,
-                                                int status)
+static apr_status_t insert_update_context_helper(server_rec *s, mem_t *mem, contextinfo_t *info, char *context,
+                                                 int status)
 {
-    int len = strlen(context);
-
     info->id = 0;
     strncpy(info->context, context, CONTEXTSZ);
     info->context[CONTEXTSZ] = '\0';
     if (status == REMOVE) {
         read_remove_context(mem, info);
         return APR_SUCCESS;
-    }
-
-    if (len > CONTEXTSZ) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
-                     "process_config: received context %s is too long (trimmed to %d characters)", context, CONTEXTSZ);
     }
 
     return insert_update_context(mem, info);
@@ -844,7 +834,7 @@ static apr_status_t insert_update_contexts(server_rec *s, mem_t *mem, char *str,
     while (*ptr) {
         if (*ptr == ',') {
             *ptr = '\0';
-            ret = insert_update_context_guard(s, mem, &info, previous, status);
+            ret = insert_update_context_helper(s, mem, &info, previous, status);
             if (ret != APR_SUCCESS) {
                 return ret;
             }
@@ -854,7 +844,7 @@ static apr_status_t insert_update_contexts(server_rec *s, mem_t *mem, char *str,
         ptr++;
     }
 
-    return insert_update_context_guard(s, mem, &info, previous, status);
+    return insert_update_context_helper(s, mem, &info, previous, status);
 }
 
 /**
@@ -1226,6 +1216,76 @@ static const proxy_worker_shared *read_shared_by_node(request_rec *r, nodeinfo_t
     return NULL;
 }
 
+/* 0 if limit is OK (not exceeded), 1 otherwise */
+static int check_context_alias_length(const char *str, int limit)
+{
+    int i = 0, len = 0;
+    while (str[i]) {
+        if (str[i] == ',') {
+            len = 0;
+        }
+        if (len > limit) {
+            return 1;
+        }
+        len++;
+        i++;
+    }
+
+    return 0;
+}
+
+/**
+ * Process Alias and Context if present.
+ * We process both in two different context:
+ *     1) during CONFIG command
+ *     2) during APP command
+ * to differenciate between the two use the last argument (true -> CONFIG, false -> APP)
+ */
+static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct cluster_host *phost, int *errtype,
+                                   int in_config)
+{
+    if (strcasecmp(key, "Alias") == 0) {
+        char *tmp;
+
+        if (phost->host && ((!phost->context && in_config) || !in_config)) {
+            *errtype = TYPESYNTAX;
+            return in_config ? SALIBAD : SMULALB;
+        }
+        if (check_context_alias_length(val, HOSTALIASZ)) {
+            *errtype = TYPESYNTAX;
+            return SALIBIG;
+        }
+
+        if (phost->host) {
+            phost->next = apr_palloc(p, sizeof(struct cluster_host));
+            phost = phost->next;
+            phost->next = NULL;
+            phost->context = NULL;
+        }
+        /* Aliases to lower case for further case-insensitive treatment, IETF RFC 1035 Section 2.3.3. */
+        tmp = val;
+        while (*tmp) {
+            *tmp = apr_tolower(*tmp);
+            tmp++;
+        }
+        phost->host = val;
+    }
+
+    if (strcasecmp(key, "Context") == 0) {
+        if (phost->context) {
+            *errtype = TYPESYNTAX;
+            return in_config ? SCONBAD : SMULCTB;
+        }
+        if (check_context_alias_length(val, CONTEXTSZ)) {
+            *errtype = TYPESYNTAX;
+            return SCONBIG;
+        }
+        phost->context = val;
+    }
+
+    return NULL;
+}
+
 /*
  * Process a CONFIG message
  * Balancer: <Balancer name>
@@ -1282,42 +1342,24 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     process_config_balancer_defaults(r, &balancerinfo, mconf);
 
     while (ptr[i]) {
-        char *msg = NULL;
-        /* XXX: balancer part */
-        msg = process_config_balancer(r, ptr[i], ptr[i + 1], &balancerinfo, &nodeinfo, errtype);
-        if (msg != NULL) {
-            return msg;
+        char *err_msg = NULL;
+        /* Balancer part */
+        err_msg = process_config_balancer(r, ptr[i], ptr[i + 1], &balancerinfo, &nodeinfo, errtype);
+        if (err_msg != NULL) {
+            return err_msg;
+        }
+        /* Node part */
+        err_msg = process_config_node(ptr[i], ptr[i + 1], &nodeinfo, errtype);
+        if (err_msg != NULL) {
+            return err_msg;
+        }
+        /* Optional parameters */
+        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, phost, errtype, 1);
+        if (err_msg != NULL) {
+            return err_msg;
         }
 
-        /* XXX: Node part */
-        msg = process_config_node(ptr[i], ptr[i + 1], &nodeinfo, errtype);
-        if (msg != NULL) {
-            return msg;
-        }
-
-        /* Hosts and contexts (optional parameters) */
-        if (strcasecmp(ptr[i], "Alias") == 0) {
-            if (phost->host && !phost->context) {
-                *errtype = TYPESYNTAX;
-                return SALIBAD;
-            }
-            if (phost->host) {
-                phost->next = apr_palloc(r->pool, sizeof(struct cluster_host));
-                phost = phost->next;
-                phost->next = NULL;
-                phost->context = NULL;
-            }
-            phost->host = ptr[i + 1];
-        }
-        if (strcasecmp(ptr[i], "Context") == 0) {
-            if (phost->context) {
-                *errtype = TYPESYNTAX;
-                return SCONBAD;
-            }
-            phost->context = ptr[i + 1];
-        }
-        i++;
-        i++;
+        i += 2;
     }
 
     /* Check for JVMRoute */
@@ -2008,6 +2050,7 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
     return NULL;
 }
 
+
 /**
  * Process an enable/disable/stop/remove application message
  */
@@ -2020,7 +2063,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     int i = 0;
     hostinfo_t hostinfo;
     hostinfo_t *host;
-    char *p_tmp;
+    char *err_msg;
 
     memset(&nodeinfo.mess, '\0', sizeof(nodeinfo.mess));
     /* Map nothing by default */
@@ -2038,28 +2081,12 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = -1;
         }
-        if (strcasecmp(ptr[i], "Alias") == 0) {
-            if (vhost->host) {
-                *errtype = TYPESYNTAX;
-                return SMULALB;
-            }
-            p_tmp = ptr[i + 1];
-            /* Aliases to lower case for further case-insensitive treatment, IETF RFC 1035 Section 2.3.3. */
-            while (*p_tmp) {
-                *p_tmp = apr_tolower(*p_tmp);
-                ++p_tmp;
-            }
-            vhost->host = ptr[i + 1];
+        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, vhost, errtype, 0);
+        if (err_msg) {
+            return err_msg;
         }
-        if (strcasecmp(ptr[i], "Context") == 0) {
-            if (vhost->context) {
-                *errtype = TYPESYNTAX;
-                return SMULCTB;
-            }
-            vhost->context = ptr[i + 1];
-        }
-        i++;
-        i++;
+
+        i += 2;
     }
 
     /* Check for JVMRoute, Alias and Context */
