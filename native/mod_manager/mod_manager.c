@@ -1343,6 +1343,11 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
 
     while (ptr[i]) {
         char *err_msg = NULL;
+        if (ptr[i + 1] && *ptr[i + 1] == '\0') {
+            *errtype = TYPESYNTAX;
+            return SMESPAR;
+        }
+
         /* Balancer part */
         err_msg = process_config_balancer(r, ptr[i], ptr[i + 1], &balancerinfo, &nodeinfo, errtype);
         if (err_msg != NULL) {
