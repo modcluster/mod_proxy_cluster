@@ -30,7 +30,7 @@ run_test() {
         docker cp ${httpd_cont}:/usr/local/apache2/logs/access_log "logs/${2:-$1}-httpd_access.log" 2> /dev/null || true
     fi
     # Clean all after run
-    httpd_all_clean > /dev/null 2>&1
+    httpd_remove > /dev/null 2>&1
     tomcat_all_remove > /dev/null 2>&1
     return $ret
 }
@@ -58,9 +58,9 @@ httpd_create() {
 }
 
 # Build and run httpd container
-httpd_run() {
+httpd_start() {
     # if httpd is already running for some reason, end it
-    httpd_all_clean || true
+    httpd_remove || true
     if [ $DEBUG ]; then
         echo "httpd mod_proxy_cluster image config:"
         echo "    CONF:    ${MPC_CONF:-httpd/mod_proxy_cluster.conf}"
@@ -90,7 +90,7 @@ httpd_wait_until_ready() {
     echo "httpd ready after $i attempts"
 }
 
-httpd_all_clean() {
+httpd_remove() {
     for i in $(docker ps -a | grep "$HTTPD_IMG\|MODCLUSTER\|JBCS\|${MPC_NAME:-httpd-mod_proxy_cluster}" | cut -f1 -d' ');
     do
         docker stop $i
@@ -99,7 +99,7 @@ httpd_all_clean() {
 }
 
 clean_and_exit() {
-    httpd_all_clean
+    httpd_remove
     exit ${1:-1}
 }
 
@@ -158,30 +158,6 @@ tomcat_start() {
 	    echo "docker run for tomcat$1 failed"
 	    exit 1
     fi
-}
-
-#
-# Stop running given dockered tomcat
-tomcat_stop() {
-    docker ps | grep tomcat$1
-    if [ $? -eq 0 ]; then
-        docker stop tomcat$1
-        if [ $? -ne 0 ]; then
-            echo "Can't stop tomcat$1"
-            exit 1
-        fi
-    else
-        echo "$1 is not running"
-    fi
-}
-
-#
-# Stop running all dockered tomcats
-tomcat_all_stop() {
-    for i in $(docker ps -a --format "{{.Names}}" | grep tomcat | sed -e 's/tomcat//g')
-    do
-        tomcat_stop $i
-    done
 }
 
 #

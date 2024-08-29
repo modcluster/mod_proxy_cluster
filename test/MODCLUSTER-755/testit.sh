@@ -8,10 +8,10 @@
 
 . includes/common.sh
 
-httpd_all_clean
+httpd_remove
 tomcat_all_remove
 
-MPC_CONF=MODCLUSTER-755/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-755 httpd_run
+MPC_CONF=MODCLUSTER-755/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-755 httpd_start
 
 httpd_wait_until_ready
 

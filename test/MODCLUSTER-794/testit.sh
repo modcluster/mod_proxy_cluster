@@ -3,11 +3,10 @@
 . includes/common.sh
 
 # first stop any previously running tests.
-tomcat_all_stop
 tomcat_all_remove
-httpd_all_clean
+httpd_remove
 
-MPC_NAME=MODCLUSTER-794 MPC_CONF=MODCLUSTER-794/mod_proxy_cluster.conf httpd_run
+MPC_NAME=MODCLUSTER-794 MPC_CONF=MODCLUSTER-794/mod_proxy_cluster.conf httpd_start
 
 for i in {1..20}; do
     tomcat_start $i

@@ -55,7 +55,7 @@ echo " Done"
 
 # clean everything at first
 echo -n "Cleaning possibly running containers..."
-httpd_all_clean   > /dev/null 2>&1
+httpd_remove   > /dev/null 2>&1
 tomcat_all_remove > /dev/null 2>&1
 echo " Done"
 
@@ -104,7 +104,7 @@ res=$(expr $res + $?)
 
 
 echo -n "Cleaning containers if any..."
-httpd_all_clean   > /dev/null 2>&1
+httpd_remove   > /dev/null 2>&1
 tomcat_all_remove > /dev/null 2>&1
 echo " Done" 
 
