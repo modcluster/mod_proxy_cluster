@@ -1715,8 +1715,9 @@ static char *process_dump(request_rec *r, int *errtype)
             break;
         case TEXT_PLAIN:
         default:
-            ap_rprintf(r, "node: [%d:%d],Balancer: %.*s,JVMRoute: %.*s,LBGroup: [%.*s],Host: %.*s,Port: %.*s,\
-                           Type: %.*s,flushpackets: %d,flushwait: %d,ping: %d,smax: %d,ttl: %d,timeout: %d\n",
+            ap_rprintf(r,
+                       "node: [%d:%d],Balancer: %.*s,JVMRoute: %.*s,LBGroup: [%.*s],Host: %.*s,Port: %.*s,"
+                       "Type: %.*s,flushpackets: %d,flushwait: %d,ping: %d,smax: %d,ttl: %d,timeout: %d\n",
                        id[i], ou->mess.id, (int)sizeof(ou->mess.balancer), ou->mess.balancer,
                        (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute, (int)sizeof(ou->mess.Domain), ou->mess.Domain,
                        (int)sizeof(ou->mess.Host), ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port,
