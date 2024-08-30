@@ -1646,17 +1646,18 @@ static char *process_dump(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Balancer id=\"%d\" name=\"%.*s\">\
-                           <StickySession>\
-                               <Enabled>%d</Enabled>\
-                               <Cookie>%.*s</Cookie>\
-                               <Path>%.*s</Path>\
-                               <Remove>%d</Remove>\
-                               <Force>%d</Force>\
-                           </StickySession>\
-                           <Timeout>%d</Timeout>\
-                           <MaxAttempts>%d</MaxAttempts>\
-                           </Balancer>",
+            ap_rprintf(r,
+                       "<Balancer id=\"%d\" name=\"%.*s\">"
+                       "<StickySession>"
+                       "<Enabled>%d</Enabled>"
+                       "<Cookie>%.*s</Cookie>"
+                       "<Path>%.*s</Path>"
+                       "<Remove>%d</Remove>"
+                       "<Force>%d</Force>"
+                       "</StickySession>"
+                       "<Timeout>%d</Timeout>"
+                       "<MaxAttempts>%d</MaxAttempts>"
+                       "</Balancer>",
                        id[i], (int)sizeof(ou->balancer), ou->balancer, ou->StickySession,
                        (int)sizeof(ou->StickySessionCookie), ou->StickySessionCookie,
                        (int)sizeof(ou->StickySessionPath), ou->StickySessionPath, ou->StickySessionRemove,
@@ -1692,20 +1693,21 @@ static char *process_dump(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Node id=\"%d\">\
-                               <Balancer>%.*s</Balancer>\
-                               <JVMRoute>%.*s</JVMRoute>\
-                               <LBGroup>%.*s</LBGroup>\
-                               <Host>%.*s</Host>\
-                               <Port>%.*s</Port>\
-                               <Type>%.*s</Type>\
-                               <FlushPackets>%d</FlushPackets>\
-                               <FlushWait>%d</FlushWait>\
-                               <Ping>%d</Ping>\
-                               <Smax>%d</Smax>\
-                               <Ttl>%d</Ttl>\
-                               <Timeout>%d</Timeout>\
-                           </Node>",
+            ap_rprintf(r,
+                       "<Node id=\"%d\">"
+                       "<Balancer>%.*s</Balancer>"
+                       "<JVMRoute>%.*s</JVMRoute>"
+                       "<LBGroup>%.*s</LBGroup>"
+                       "<Host>%.*s</Host>"
+                       "<Port>%.*s</Port>"
+                       "<Type>%.*s</Type>"
+                       "<FlushPackets>%d</FlushPackets>"
+                       "<FlushWait>%d</FlushWait>"
+                       "<Ping>%d</Ping>"
+                       "<Smax>%d</Smax>"
+                       "<Ttl>%d</Ttl>"
+                       "<Timeout>%d</Timeout>"
+                       "</Node>",
                        ou->mess.id, (int)sizeof(ou->mess.balancer), ou->mess.balancer, (int)sizeof(ou->mess.JVMRoute),
                        ou->mess.JVMRoute, (int)sizeof(ou->mess.Domain), ou->mess.Domain, (int)sizeof(ou->mess.Host),
                        ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port, (int)sizeof(ou->mess.Type),
@@ -1771,11 +1773,12 @@ static char *process_dump(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Context id=\"%d\" path=\"%.*s\">\
-                            <Vhost>%d</Vhost>\
-                            <Node>%d</Node>\
-                            <Status id=\"%d\">%s</Status>\
-                           </Context>",
+            ap_rprintf(r,
+                       "<Context id=\"%d\" path=\"%.*s\">"
+                       "<Vhost>%d</Vhost>"
+                       "<Node>%d</Node>"
+                       "<Status id=\"%d\">%s</Status>"
+                       "</Context>",
                        id[i], (int)sizeof(ou->context), ou->context, ou->vhost, ou->node, ou->status,
                        context_status_to_string(ou->status));
             break;
@@ -1848,12 +1851,13 @@ static char *process_info(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Node id=\"%d\" name=\"%.*s\">\
-                           <Balancer>%.*s</Balancer>\
-                           <LBGroup>%.*s</LBGroup>\
-                           <Host>%.*s</Host>\
-                           <Port>%.*s</Port>\
-                           <Type>%.*s</Type>",
+            ap_rprintf(r,
+                       "<Node id=\"%d\" name=\"%.*s\">"
+                       "<Balancer>%.*s</Balancer>"
+                       "<LBGroup>%.*s</LBGroup>"
+                       "<Host>%.*s</Host>"
+                       "<Port>%.*s</Port>"
+                       "<Type>%.*s</Type>",
                        id[i], (int)sizeof(ou->mess.JVMRoute), ou->mess.JVMRoute, (int)sizeof(ou->mess.balancer),
                        ou->mess.balancer, (int)sizeof(ou->mess.Domain), ou->mess.Domain, (int)sizeof(ou->mess.Host),
                        ou->mess.Host, (int)sizeof(ou->mess.Port), ou->mess.Port, (int)sizeof(ou->mess.Type),
@@ -1873,11 +1877,12 @@ static char *process_info(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Flushpackets>%s</Flushpackets>\
-                           <Flushwait>%d</Flushwait>\
-                           <Ping>%d</Ping>\
-                           <Smax>%d</Smax>\
-                           <Ttl>%d</Ttl>",
+            ap_rprintf(r,
+                       "<Flushpackets>%s</Flushpackets>"
+                       "<Flushwait>%d</Flushwait>"
+                       "<Ping>%d</Ping>"
+                       "<Smax>%d</Smax>"
+                       "<Ttl>%d</Ttl>",
                        flushpackets, ou->mess.flushwait / 1000, (int)apr_time_sec(ou->mess.ping), ou->mess.smax,
                        (int)apr_time_sec(ou->mess.ttl));
             break;
@@ -1897,12 +1902,13 @@ static char *process_info(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Elected>%d</Elected>\
-                           <Read>%d</Read>\
-                           <Transfered>%d</Transfered>\
-                           <Connected>%d</Connected>\
-                           <Load>%d</Load>\
-                           </Node>",
+            ap_rprintf(r,
+                       "<Elected>%d</Elected>"
+                       "<Read>%d</Read>"
+                       "<Transfered>%d</Transfered>"
+                       "<Connected>%d</Connected>"
+                       "<Load>%d</Load>"
+                       "</Node>",
                        (int)proxystat->elected, (int)proxystat->read, (int)proxystat->transferred, (int)proxystat->busy,
                        proxystat->lbfactor);
             break;
@@ -1933,9 +1939,10 @@ static char *process_info(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Vhost id=\"%d\" alias=\"%.*s\">\
-                           <Node id=\"%d\"/>\
-                           </Vhost>",
+            ap_rprintf(r,
+                       "<Vhost id=\"%d\" alias=\"%.*s\">"
+                       "<Node id=\"%d\"/>"
+                       "</Vhost>",
                        ou->vhost, (int)sizeof(ou->host), ou->host, ou->node);
             break;
         case TEXT_PLAIN:
@@ -1967,12 +1974,13 @@ static char *process_info(request_rec *r, int *errtype)
 
         switch (type) {
         case TEXT_XML:
-            ap_rprintf(r, "<Context id=\"%d\">\
-                           <Status id=\"%d\">%s</Status>\
-                           <Context>%.*s</Context>\
-                           <Node id=\"%d\"/>\
-                           <Vhost id=\"%d\"/>\
-                           </Context>",
+            ap_rprintf(r,
+                       "<Context id=\"%d\">"
+                       "<Status id=\"%d\">%s</Status>"
+                       "<Context>%.*s</Context>"
+                       "<Node id=\"%d\"/>"
+                       "<Vhost id=\"%d\"/>"
+                       "</Context>",
                        id[i], ou->status, context_status_to_string(ou->status), (int)sizeof(ou->context), ou->context,
                        ou->node, ou->vhost);
             break;
