@@ -3,11 +3,11 @@
 . includes/common.sh
 
 # remove possibly running containers
-httpd_all_clean
+httpd_remove
 tomcat_all_remove
 
 # run a fresh httpd
-httpd_run
+httpd_start
 
 docker cp websocket/mod_proxy_cluster.conf $MPC_NAME:/usr/local/apache2/conf/mod_proxy_cluster.conf
 docker exec $MPC_NAME /usr/local/apache2/bin/apachectl restart

@@ -4,12 +4,12 @@
 
 # first stop any previously running tests.
 tomcat_all_remove
-httpd_all_clean
+httpd_remove
 
 
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
-MPC_CONF=MODCLUSTER-785/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-785 httpd_run
+MPC_CONF=MODCLUSTER-785/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-785 httpd_start
 
 
 # start tomcat1 on 8080
@@ -30,7 +30,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # Stop abruptly
-tomcat_stop 1
 tomcat_remove 1
 
 # it return 503

@@ -2,7 +2,7 @@
 
 . includes/common.sh
 
-httpd_all_clean
+httpd_remove
 tomcat_all_remove
 
 
@@ -26,7 +26,7 @@ jdbexit() {
 ####################################
 ###    S T A R T    T E S T S    ###
 ####################################
-httpd_run
+httpd_start
 
 # Create files we need
 cat << EOF > continue.txt
@@ -102,7 +102,5 @@ jdbexit
 tomcat_wait_for_n_nodes 1 || exit 1
 
 # Cleanup at the end
-tomcat_all_stop
-tomcat_wait_for_n_nodes 0 || exit 1
-
 tomcat_all_remove
+tomcat_wait_for_n_nodes 0 || exit 1

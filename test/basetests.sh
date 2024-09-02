@@ -2,10 +2,10 @@
 
 . includes/common.sh
 
-httpd_all_clean
+httpd_remove
 tomcat_all_remove
 
-httpd_run || exit 1
+httpd_start || exit 1
 
 # Start 2 tomcats, on 8080 and 8081
 tomcat_start_two || exit 1

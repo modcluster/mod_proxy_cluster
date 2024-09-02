@@ -2,9 +2,9 @@
 
 . includes/common.sh
 
-httpd_all_clean
+httpd_remove
 tomcat_all_remove
-MPC_NAME=MODCLUSTER-736 httpd_run
+MPC_NAME=MODCLUSTER-736 httpd_start
 
 # Start a bunch ($1, or 6 if no argument is given) of tomcat
 # containers, then test them and stop them

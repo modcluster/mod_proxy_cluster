@@ -13,11 +13,11 @@ echotestlabel() {
 echotestlabel "Starting tests!!!"
 
 # remove possibly running containers
-httpd_all_clean
+httpd_remove
 tomcat_all_remove
 
 # run a fresh httpd
-httpd_run
+httpd_start
 
 tomcat_start_two || exit 1
 tomcat_wait_for_n_nodes 2 || exit 1
