@@ -1224,7 +1224,7 @@ static int check_context_alias_length(const char *str, int limit)
         if (str[i] == ',') {
             len = 0;
         }
-        if (len > limit) {
+        if (len >= limit) {
             return 1;
         }
         len++;
