@@ -2442,7 +2442,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
     int i = 0;
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "Processing PING");
-    nodeinfo.mess.id = -1;
+    nodeinfo.mess.id = -2;
     while (ptr[i] && ptr[i][0] != '\0') {
         if (strcasecmp(ptr[i], "JVMRoute") == 0) {
             if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.JVMRoute)) {
@@ -2450,7 +2450,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
                 return SROUBIG;
             }
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
-            nodeinfo.mess.id = 0;
+            nodeinfo.mess.id = -1;
         } else if (strcasecmp(ptr[i], "Scheme") == 0) {
             scheme = apr_pstrdup(r->pool, ptr[i + 1]);
         } else if (strcasecmp(ptr[i], "Host") == 0) {
@@ -2464,7 +2464,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
         i++;
         i++;
     }
-    if (nodeinfo.mess.id == -1) {
+    if (nodeinfo.mess.id == -2) {
         /* PING scheme, host, port or just httpd */
         if (scheme == NULL && host == NULL && port == NULL) {
             ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
