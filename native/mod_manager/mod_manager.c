@@ -2618,17 +2618,9 @@ static int is_our_method(const request_rec *r)
         ours = 1;
     } else if (strcasecmp(r->method, "DUMP") == 0) {
         ours = 1;
-    } else if (strcasecmp(r->method, "ERROR") == 0) {
-        ours = 1;
     } else if (strcasecmp(r->method, "INFO") == 0) {
         ours = 1;
     } else if (strcasecmp(r->method, "PING") == 0) {
-        ours = 1;
-    } else if (strcasecmp(r->method, "ADDID") == 0) {
-        ours = 1;
-    } else if (strcasecmp(r->method, "REMOVEID") == 0) {
-        ours = 1;
-    } else if (strcasecmp(r->method, "QUERY") == 0) {
         ours = 1;
     } else if (strcasecmp(r->method, "VERSION") == 0) {
         ours = 1;
