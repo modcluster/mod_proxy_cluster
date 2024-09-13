@@ -742,6 +742,7 @@ static char **process_buff(request_rec *r, char *buff)
 
 static apr_status_t insert_update_host_helper(server_rec *s, mem_t *mem, hostinfo_t *info, char *alias)
 {
+    (void)s;
     strncpy(info->host, alias, HOSTALIASZ);
     info->host[HOSTALIASZ] = '\0';
     return insert_update_host(mem, info);
@@ -797,6 +798,7 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
 static apr_status_t insert_update_context_helper(server_rec *s, mem_t *mem, contextinfo_t *info, char *context,
                                                  int status)
 {
+    (void)s;
     info->id = 0;
     strncpy(info->context, context, CONTEXTSZ);
     info->context[CONTEXTSZ] = '\0';
