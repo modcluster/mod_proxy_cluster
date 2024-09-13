@@ -1247,7 +1247,7 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
     if (strcasecmp(key, "Alias") == 0) {
         char *tmp;
 
-        if (phost->host && ((!phost->context && in_config) || !in_config)) {
+        if (phost->host && !in_config) {
             *errtype = TYPESYNTAX;
             return in_config ? SALIBAD : SMULALB;
         }
@@ -1272,9 +1272,9 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
     }
 
     if (strcasecmp(key, "Context") == 0) {
-        if (phost->context) {
+        if (phost->context && !in_config) {
             *errtype = TYPESYNTAX;
-            return in_config ? SCONBAD : SMULCTB;
+            return SMULCTB;
         }
         if (check_context_alias_length(val, CONTEXTSZ)) {
             *errtype = TYPESYNTAX;
