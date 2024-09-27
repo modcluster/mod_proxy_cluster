@@ -742,6 +742,7 @@ static char **process_buff(request_rec *r, char *buff)
 
 static apr_status_t insert_update_host_helper(server_rec *s, mem_t *mem, hostinfo_t *info, char *alias)
 {
+    (void)s;
     strncpy(info->host, alias, HOSTALIASZ);
     info->host[HOSTALIASZ] = '\0';
     return insert_update_host(mem, info);
@@ -797,6 +798,7 @@ static void read_remove_context(mem_t *mem, contextinfo_t *context)
 static apr_status_t insert_update_context_helper(server_rec *s, mem_t *mem, contextinfo_t *info, char *context,
                                                  int status)
 {
+    (void)s;
     info->id = 0;
     strncpy(info->context, context, CONTEXTSZ);
     info->context[CONTEXTSZ] = '\0';
@@ -1247,7 +1249,7 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
     if (strcasecmp(key, "Alias") == 0) {
         char *tmp;
 
-        if (phost->host && ((!phost->context && in_config) || !in_config)) {
+        if (phost->host && !in_config) {
             *errtype = TYPESYNTAX;
             return in_config ? SALIBAD : SMULALB;
         }
@@ -1272,9 +1274,9 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
     }
 
     if (strcasecmp(key, "Context") == 0) {
-        if (phost->context) {
+        if (phost->context && !in_config) {
             *errtype = TYPESYNTAX;
-            return in_config ? SCONBAD : SMULCTB;
+            return SMULCTB;
         }
         if (check_context_alias_length(val, CONTEXTSZ)) {
             *errtype = TYPESYNTAX;
