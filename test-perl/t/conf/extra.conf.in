@@ -1,0 +1,31 @@
+LoadModule proxy_module         modules/mod_proxy.so
+LoadModule proxy_http_module    modules/mod_proxy_http.so
+LoadModule proxy_hcheck_module  modules/mod_proxy_hcheck.so
+LoadModule slotmem_shm_module   modules/mod_slotmem_shm.so
+
+LoadModule manager_module       modules/mod_manager.so
+LoadModule proxy_cluster_module modules/mod_proxy_cluster.so
+
+ProxyPreserveHost On
+
+ManagerBalancerName mycluster
+WSUpgradeHeader websocket
+
+<IfModule !lbmethod_cluster_module>
+  CreateBalancers 0
+  EnableOptions On
+</IfModule>
+
+<VirtualHost mpc_test_host>
+  CheckNonce off
+  EnableMCMPReceive
+  <Directory />
+    Require all granted
+  </Directory>
+  <Location /mod_cluster_manager>
+    SetHandler mod_cluster-manager
+    Require all granted
+  </Location>
+</VirtualHost>
+
+
