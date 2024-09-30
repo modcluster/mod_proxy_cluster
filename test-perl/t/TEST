@@ -1,0 +1,25 @@
+#!/usr/bin/perl
+BEGIN { eval { require blib && blib->import; } }
+
+$Apache::TestConfig::Argv{'limitrequestline'} = q|128|;
+
+$Apache::TestConfig::Argv{'limitrequestlinex2'} = q|256|;
+
+use strict;
+use warnings FATAL => 'all';
+
+use lib qw(
+    /home/vchlup/repos/httpd-tests
+);
+
+
+# This is needed because mod_proxy_cluster cannot run with mod_proxy_balancer loaded
+# -> we need to unload it first
+use base 'Apache::TestRun';
+main::->new->run(@ARGV);
+
+sub pre_configure {
+    my $self = shift;
+    Apache::TestConfig::autoconfig_skip_module_add('mod_proxy_balancer.c');
+}
+

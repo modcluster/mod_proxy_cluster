@@ -1,0 +1,20 @@
+LoadModule cgid_module    modules/mod_cgid.so
+LoadModule actions_module modules/mod_actions.so
+LoadModule rewrite_module modules/mod_rewrite.so
+
+<Directory @SERVERROOT@/htdocs/cgi-bin/>
+    AllowOverride None
+    Options +ExecCGI
+    Require all granted
+    AddHandler cgi-script .pl
+</Directory>
+
+<VirtualHost fake_cgi_app>
+    <Location /news>
+	AllowOverride None
+        Require all granted
+        RewriteEngine On
+        RewriteRule ^(.*)$ /cgi-bin/test.pl?url=$1 [R]
+    </Location>
+</VirtualHost>
+
