@@ -8,14 +8,13 @@
 *.ipr
 *.iml
 
+# vim
+*.swp
+
 # Visual Studio Code IDE
 .vscode/
 
 # Native built files
-native/*/*.slo
-native/*/*.so
-native/*/*.lo
-native/*/*.o
 native/*/.libs/
 native/*/Makefile
 native/*/autom4te.cache/
@@ -37,6 +36,12 @@ test/httpd/mod_proxy_cluster
 # Log files
 **/*.log
 
+# build files
+*.slo
+*.so
+*.lo
+*.o
+
 # test files
 **/nohup.out
 test/MODCLUSTER-640/mod_proxy_cluster_new.conf
@@ -45,6 +50,15 @@ test/mod_proxy_cluster_new.conf
 test/new.xml
 test/server.xml
 test/includes/dependency-reduced-pom.xml
+
+# perl test files
+test-perl/MYMETA*
+test-perl/Makefile
+test-perl/blib/**
+test-perl/pm_to_blib
+test-perl/t/conf/*.conf
+test-perl/t/conf/apache_test_config.pm
+test-perl/t/logs/**
 
 # patch files
 **/*.patch
