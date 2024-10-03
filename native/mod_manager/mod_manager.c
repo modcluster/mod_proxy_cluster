@@ -998,6 +998,7 @@ static void process_config_balancer_defaults(request_rec *r, balancerinfo_t *bal
     }
     balancerinfo->StickySession = 1;
     balancerinfo->StickySessionForce = 1;
+    balancerinfo->StickySessionRemove = 0;
     strcpy(balancerinfo->StickySessionCookie, "JSESSIONID");
     strcpy(balancerinfo->StickySessionPath, "jsessionid");
     balancerinfo->Maxattempts = 1;
