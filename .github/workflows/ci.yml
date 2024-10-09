@@ -178,7 +178,7 @@ jobs:
             cd ..; \
           done;
       - name: Preserve built Apache for perl-test job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.4.2
         with:
           name: apache-trunk
           path: /usr/local/apache2
