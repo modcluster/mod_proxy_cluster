@@ -60,6 +60,7 @@
 #define SCONBIG                "SYNTAX: Context field too big"
 #define SALIBAD                "SYNTAX: Alias without Context"
 #define SCONBAD                "SYNTAX: Context without Alias"
+#define NOCONAL                "SYNTAX: No Context and Alias in APP command"
 #define SBADFLD                "SYNTAX: Invalid field \"%s\" in message"
 #define SMISFLD                "SYNTAX: Mandatory field(s) missing in message"
 #define SCMDUNS                "SYNTAX: Command is not supported"
@@ -2116,6 +2117,13 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         *errtype = TYPESYNTAX;
         return SROUBAD;
     }
+
+    /* Note: This applies only for non-wildcarded requests for which Alias and Context are required */
+    if (vhost->context == NULL && vhost->host == NULL && strcmp(r->uri, "/*") != 0) {
+        *errtype = TYPESYNTAX;
+        return NOCONAL;
+    }
+
     if (vhost->context == NULL && vhost->host != NULL) {
         *errtype = TYPESYNTAX;
         return SALIBAD;
