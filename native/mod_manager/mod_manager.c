@@ -986,6 +986,23 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
     return -1;
 }
 
+/*
+ * Parse boolean parameter where Yes/On are true and No/Off are false.
+ * @return true iff an input was recognized, false otherwise
+ */
+static int process_boolean_parameter(const char *val, int *parameter)
+{
+    if (strcasecmp(val, "yes") == 0 || strcasecmp(val, "on") == 0) {
+        *parameter = 1;
+        return 1;
+    } else if (strcasecmp(val, "no") == 0 || strcasecmp(val, "off") == 0) {
+        *parameter = 0;
+        return 1;
+    }
+
+    return 0;
+}
+
 static void process_config_balancer_defaults(request_rec *r, balancerinfo_t *balancerinfo, mod_manager_config *mconf)
 {
     memset(balancerinfo, '\0', sizeof(*balancerinfo));
@@ -1048,9 +1065,7 @@ static char *process_config_balancer(const request_rec *r, const char *key, char
         balancerinfo->balancer[sizeof(balancerinfo->balancer) - 1] = '\0';
     }
     if (strcasecmp(key, "StickySession") == 0) {
-        if (strcasecmp(val, "no") == 0) {
-            balancerinfo->StickySession = 0;
-        }
+        process_boolean_parameter(val, &balancerinfo->StickySession);
     }
     if (strcasecmp(key, "StickySessionCookie") == 0) {
         if (strlen(val) >= sizeof(balancerinfo->StickySessionCookie)) {
@@ -1067,15 +1082,11 @@ static char *process_config_balancer(const request_rec *r, const char *key, char
         strcpy(balancerinfo->StickySessionPath, val);
     }
     if (strcasecmp(key, "StickySessionRemove") == 0) {
-        if (strcasecmp(val, "yes") == 0) {
-            balancerinfo->StickySessionRemove = 1;
-        }
+        process_boolean_parameter(val, &balancerinfo->StickySessionRemove);
     }
     /* The java part assumes default = yes and sents only StickySessionForce=No */
     if (strcasecmp(key, "StickySessionForce") == 0) {
-        if (strcasecmp(val, "no") == 0) {
-            balancerinfo->StickySessionForce = 0;
-        }
+        process_boolean_parameter(val, &balancerinfo->StickySessionForce);
     }
     /* Note that it is workerTimeout (set/getWorkerTimeout in java code) */
     if (strcasecmp(key, "WaitWorker") == 0) {
@@ -1141,15 +1152,13 @@ static char *process_config_node(const char *key, char *val, nodeinfo_t *nodeinf
         strcpy(nodeinfo->mess.Type, val);
     }
     if (strcasecmp(key, "Reversed") == 0) {
-        if (strcasecmp(val, "yes") == 0) {
-            nodeinfo->mess.reversed = 1;
-        }
+        process_boolean_parameter(val, &nodeinfo->mess.reversed);
     }
     if (strcasecmp(key, "flushpackets") == 0) {
-        if (strcasecmp(val, "on") == 0) {
-            nodeinfo->mess.flushpackets = flush_on;
-        } else if (strcasecmp(val, "auto") == 0) {
-            nodeinfo->mess.flushpackets = flush_auto;
+        if (!process_boolean_parameter(val, (int *)&nodeinfo->mess.flushpackets)) {
+            if (strcasecmp(val, "auto") == 0) {
+                nodeinfo->mess.flushpackets = flush_auto;
+            }
         }
     }
     if (strcasecmp(key, "flushwait") == 0) {
@@ -3668,13 +3677,9 @@ static const char *cmd_manager_pers(cmd_parms *cmd, void *dummy, const char *arg
     if (err != NULL) {
         return err;
     }
-    if (strcasecmp(arg, "Off") == 0) {
-        mconf->persistent = 0;
-    } else if (strcasecmp(arg, "On") == 0) {
-        mconf->persistent = AP_SLOTMEM_TYPE_PERSIST;
-    } else {
-        return "PersistSlots must be one of: "
-               "off | on";
+
+    if (!process_boolean_parameter(arg, &mconf->persistent)) {
+        return "PersistSlots must be one of: off | on";
     }
 
     return NULL;
@@ -3685,13 +3690,8 @@ static const char *cmd_manager_nonce(cmd_parms *cmd, void *dummy, const char *ar
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     (void)dummy;
 
-    if (strcasecmp(arg, "Off") == 0) {
-        mconf->nonce = 0;
-    } else if (strcasecmp(arg, "On") == 0) {
-        mconf->nonce = -1;
-    } else {
-        return "CheckNonce must be one of: "
-               "off | on";
+    if (!process_boolean_parameter(arg, &mconf->nonce)) {
+        return "CheckNonce must be one of: off | on";
     }
 
     return NULL;
@@ -3702,13 +3702,8 @@ static const char *cmd_manager_allow_display(cmd_parms *cmd, void *dummy, const 
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     (void)dummy;
 
-    if (strcasecmp(arg, "Off") == 0) {
-        mconf->allow_display = 0;
-    } else if (strcasecmp(arg, "On") == 0) {
-        mconf->allow_display = -1;
-    } else {
-        return "AllowDisplay must be one of: "
-               "off | on";
+    if (!process_boolean_parameter(arg, &mconf->allow_display)) {
+        return "AllowDisplay must be one of: off | on";
     }
 
     return NULL;
@@ -3719,13 +3714,8 @@ static const char *cmd_manager_allow_cmd(cmd_parms *cmd, void *dummy, const char
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     (void)dummy;
 
-    if (strcasecmp(arg, "Off") == 0) {
-        mconf->allow_cmd = 0;
-    } else if (strcasecmp(arg, "On") == 0) {
-        mconf->allow_cmd = -1;
-    } else {
-        return "AllowCmd must be one of: "
-               "off | on";
+    if (!process_boolean_parameter(arg, &mconf->allow_cmd)) {
+        return "AllowCmd must be one of: off | on";
     }
 
     return NULL;
@@ -3736,13 +3726,8 @@ static const char *cmd_manager_reduce_display(cmd_parms *cmd, void *dummy, const
     mod_manager_config *mconf = ap_get_module_config(cmd->server->module_config, &manager_module);
     (void)dummy;
 
-    if (strcasecmp(arg, "Off") == 0) {
-        mconf->reduce_display = 0;
-    } else if (strcasecmp(arg, "On") == 0) {
-        mconf->reduce_display = 1;
-    } else {
-        return "ReduceDisplay must be one of: "
-               "off | on";
+    if (!process_boolean_parameter(arg, &mconf->reduce_display)) {
+        return "ReduceDisplay must be one of: off | on";
     }
 
     return NULL;
