@@ -13,7 +13,7 @@ use Apache::TestRequest 'GET';
 # use Test::More;
 use ModProxyCluster;
 
-plan tests => 205;
+plan tests => 210;
 
 Apache::TestRequest::module("mpc_test_host");
 my $hostport = Apache::TestRequest::hostport();
@@ -43,16 +43,18 @@ ok (index($resp->as_string, "Node spare") != -1);
 ##### STATUS #####
 ##################
 
-$resp = CMD 'STATUS', $url, ( JVMRoute => 'spare' );
+foreach my $jvmroute ('next', 'spare') {
+    $resp = CMD 'STATUS', $url, ( JVMRoute => $jvmroute );
 
-ok $resp->is_success;
+    ok $resp->is_success;
 
-my %p = parse_response 'CONFIG', $resp->content;
+    my %p = parse_response 'CONFIG', $resp->content;
 
-ok ($p{JVMRoute} eq 'spare');
-ok ($p{Type} eq 'STATUS-RSP');
-ok (exists $p{id});
-ok (exists $p{State});
+    ok ($p{JVMRoute} eq $jvmroute);
+    ok ($p{Type} eq 'STATUS-RSP');
+    ok (exists $p{id});
+    ok (exists $p{State});
+}
 
 
 ##################
@@ -62,13 +64,12 @@ ok (exists $p{State});
 $resp = CMD 'INFO', $url;
 
 ok $resp->is_success;
-%p = parse_response 'INFO', $resp->content;
+my %p = parse_response 'INFO', $resp->content;
 
 ok (@{$p{Nodes}} == 2);
 ok (@{$p{Contexts}} == 0);
 ok (@{$p{Hosts}} == 0);
 
-# There are two Nodes already, one `spare` added by us and `next` from the previous tests
 ## TODO: Make this implementation independent, i.e., we should not care whether indexing starts by 0 or 1...
 ok ($p{Nodes}->[0]{Name} eq 'next');
 ok ($p{Nodes}->[1]{Name} eq 'spare');
@@ -362,3 +363,11 @@ ok (@{$p{Balancers}} == 1);
 ok (@{$p{Nodes}} == 3);
 ok (@{$p{Contexts}} == 0);
 ok (@{$p{Hosts}} == 0);
+
+
+# Clean after yourself
+foreach my $jvmroute ('next', 'spare') {
+    CMD 'REMOVE-APP', "$url/*", ( JVMRoute => $jvmroute );
+}
+
+sleep 25;
