@@ -43,3 +43,9 @@ jobs:
     steps:
       - name: Skip
         run: echo "Skipping the job"
+
+  perl-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip
+        run: echo "Skipping the job"
