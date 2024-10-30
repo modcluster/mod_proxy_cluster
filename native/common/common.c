@@ -573,14 +573,13 @@ const char *get_route_balancer(request_rec *r, const proxy_server_conf *conf, co
             if (route && *route) {
                 /* Nice we have a route, but make sure we have to serve it */
                 int has_contexts = 0;
+                const char *domain = NULL;
                 node_context *nodes = find_node_context_host(r, balancer, route, use_alias, vhost_table, context_table,
                                                              node_table, &has_contexts);
                 if (nodes == NULL) {
                     continue; /* we can't serve context/host for the request with this balancer */
                 }
-            }
-            if (route && *route) {
-                const char *domain = NULL;
+
                 ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "cluster: Found route %s", route);
                 if (find_nodedomain(r, &domain, route, &balancer->s->name[BALANCER_PREFIX_LENGTH], node_table) ==
                     APR_SUCCESS) {
