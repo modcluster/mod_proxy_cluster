@@ -19,9 +19,9 @@ WSUpgradeHeader websocket
 <VirtualHost mpc_test_host>
   CheckNonce off
   EnableMCMPReceive
-  <Directory />
+  <Location />
     Require all granted
-  </Directory>
+  </Location>
   <Location /mod_cluster_manager>
     SetHandler mod_cluster-manager
     Require all granted
