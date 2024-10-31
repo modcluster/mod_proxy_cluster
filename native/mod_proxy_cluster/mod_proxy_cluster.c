@@ -3571,14 +3571,14 @@ static const char *cmd_proxy_cluster_lbstatus_recalc_time(cmd_parms *cmd, void *
     return NULL;
 }
 
-static const char *cmd_proxy_cluster_wait_for_remove(cmd_parms *cmd, void *dummy, const char *arg)
+static const char *cmd_proxy_cluster_wait_before_remove(cmd_parms *cmd, void *dummy, const char *arg)
 {
     int val = atoi(arg);
     (void)cmd;
     (void)dummy;
 
     if (val < 10) {
-        return "WaitForRemove must be greater than 10";
+        return "WaitBeforeRemove must be greater than 10";
     }
 
     wait_for_remove = apr_time_from_sec(val);
@@ -3711,7 +3711,7 @@ static const command_rec proxy_cluster_cmds[] = {
     AP_INIT_TAKE1("LBstatusRecalTime", cmd_proxy_cluster_lbstatus_recalc_time, NULL, OR_ALL,
                   "LBstatusRecalTime - Time interval in seconds for load balancing logic to recalculate the status of a "
                   "node: (Default: 5 seconds)"),
-    AP_INIT_TAKE1("WaitBeforeRemove", cmd_proxy_cluster_wait_for_remove, NULL, OR_ALL,
+    AP_INIT_TAKE1("WaitBeforeRemove", cmd_proxy_cluster_wait_before_remove, NULL, OR_ALL,
                   "WaitBeforeRemove - Time in seconds before a node removed is forgotten by httpd: (Default: 10 seconds)"),
     /* This is not the ideal type, but it either takes no parameters (for backwards compatibility) or 1 flag argument. */
     AP_INIT_RAW_ARGS("EnableOptions", cmd_proxy_cluster_enable_options, NULL, OR_ALL,
