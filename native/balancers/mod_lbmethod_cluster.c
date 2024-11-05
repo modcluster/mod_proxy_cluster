@@ -31,6 +31,7 @@ static struct balancer_storage_method *balancer_storage = NULL;
 static struct domain_storage_method *domain_storage = NULL;
 
 static int use_alias = 0; /* 1 : Compare Alias with server_name */
+static int use_nocanon = 0;
 static apr_time_t lbstatus_recalc_time =
     apr_time_from_sec(5); /* recalcul the lbstatus based on number of request in the time interval */
 static apr_time_t wait_for_remove = apr_time_from_sec(10); /* wait until that before removing a removed node */
@@ -142,16 +143,18 @@ static int lbmethod_cluster_trans(request_rec *r)
 {
     const char *balancer;
     void *sconf = r->server->module_config;
+    const char *use_uri = r->uri;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
+    proxy_dir_conf *dconf = ap_get_module_config(r->per_dir_config, &proxy_module);
     proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage, 0);
     proxy_context_table *context_table = read_context_table(r->pool, context_storage, 0);
     proxy_balancer_table *balancer_table = read_balancer_table(r->pool, balancer_storage, 0);
     proxy_node_table *node_table = read_node_table(r->pool, node_storage, 0);
 
     ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
-                 "lbmethod_cluster_trans for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
+                 "lbmethod_cluster_trans: for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
                  r->handler, r->uri, r->args, r->unparsed_uri);
-    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "lbmethod_cluster_trans for %d", conf->balancers->nelts);
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "lbmethod_cluster_trans: for %d", conf->balancers->nelts);
 
     apr_table_setn(r->notes, "vhost-table", (char *)vhost_table);
     apr_table_setn(r->notes, "context-table", (char *)context_table);
@@ -163,29 +166,66 @@ static int lbmethod_cluster_trans(request_rec *r)
         balancer = get_context_host_balancer(r, vhost_table, context_table, node_table, use_alias);
     }
 
+    if (balancer) {
+        int i;
+        int rv = HTTP_CONTINUE;
+        struct proxy_alias *ent;
+        /* short way - this location is reverse proxied? */
+        if (dconf->alias) {
+            if ((dconf->alias->flags & PROXYPASS_MAP_ENCODED) == 0) {
+                rv = ap_proxy_trans_match(r, dconf->alias, dconf);
+                if (rv != HTTP_CONTINUE) {
+                    ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
+                                  "lbmethod_cluster_trans: ap_proxy_trans_match(dconf) matches or reject %s  to %s %d",
+                                  r->uri, r->filename, rv);
+                    return rv; /* Done */
+                }
+            }
+        }
+
+        /* long way - walk the list of aliases, find a match */
+        for (i = 0; i < conf->aliases->nelts; i++) {
+            ent = &((struct proxy_alias *)conf->aliases->elts)[i];
+            if ((ent->flags & PROXYPASS_MAP_ENCODED) == 0) {
+                rv = ap_proxy_trans_match(r, ent, dconf);
+                if (rv != HTTP_CONTINUE) {
+                    ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
+                                  "lbmethod_cluster_trans: ap_proxy_trans_match(conf) matches or reject %s  to %s %d",
+                                  r->uri, r->filename, rv);
+                    return rv; /* Done */
+                }
+            }
+        }
+    }
+
+    /* Use proxy-nocanon if needed */
+    if (use_nocanon) {
+        apr_table_setn(r->notes, "proxy-nocanon", "1");
+        use_uri = r->unparsed_uri;
+    }
 
     if (balancer) {
-
         /* It is safer to use r->uri */
-        if (strncmp(r->uri, BALANCER_PREFIX, BALANCER_PREFIX_LENGTH)) {
-            r->filename = apr_pstrcat(r->pool, ("proxy:" BALANCER_PREFIX), balancer, r->uri, NULL);
+        if (strncmp(use_uri, BALANCER_PREFIX, BALANCER_PREFIX_LENGTH)) {
+            r->filename = apr_pstrcat(r->pool, ("proxy:" BALANCER_PREFIX), balancer, use_uri, NULL);
         } else {
-            r->filename = apr_pstrcat(r->pool, "proxy:", r->uri, NULL);
+            r->filename = apr_pstrcat(r->pool, "proxy:", use_uri, NULL);
         }
         r->handler = "proxy-server";
         r->proxyreq = PROXYREQ_REVERSE;
-        ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "proxy_cluster_trans using %s uri: %s", balancer,
+        ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "lbmethod_cluster_trans: using %s uri: %s", balancer,
                      r->filename);
         return OK; /* Mod_proxy will process it */
     }
 
     ap_log_error(APLOG_MARK, APLOG_TRACE3, 0, r->server,
-                 "proxy_cluster_trans DECLINED (no balancer) uri: %s unparsed_uri: %s", r->filename, r->unparsed_uri);
+                 "lbmethod_cluster_trans: DECLINED (no balancer) uri: %s unparsed_uri: %s", r->filename,
+                 r->unparsed_uri);
     return DECLINED;
 }
 
 /*
- * Remove node that have beeen marked removed for more than 10 seconds.
+ * Remove node that have been marked removed for more than 10 seconds.
  */
 static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now, proxy_node_table *node_table)
 {
@@ -370,6 +410,20 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
     return OK;
 }
 
+static const char *cmd_nocanon(cmd_parms *parms, void *mconfig, int on)
+{
+    (void)parms;
+    (void)mconfig;
+    use_nocanon = on;
+
+    return NULL;
+}
+
+static const command_rec lbmethod_cmds[] = {
+    AP_INIT_FLAG("UseNocanon", cmd_nocanon, NULL, OR_ALL,
+                 "UseNocanon - When no ProxyPass or ProxyMatch for the URL, passes the URL path \"raw\" to the backend "
+                 "(Default: Off)")};
+
 static void register_hooks(apr_pool_t *p)
 {
     static const char *const aszPre[] = {"mod_manager.c", "mod_rewrite.c", NULL};
@@ -388,7 +442,7 @@ AP_DECLARE_MODULE(lbmethod_cluster) = {
     NULL,               /* merge per-directory config structures */
     NULL,               /* create per-server config structure */
     NULL,               /* merge per-server config structures */
-    NULL,               /* command apr_table_t */
+    lbmethod_cmds,      /* command apr_table_t */
     register_hooks,     /* register hooks */
     AP_MODULE_FLAG_NONE /* flags */
 };
