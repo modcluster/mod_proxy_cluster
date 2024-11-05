@@ -13,10 +13,7 @@ use Apache::TestRequest 'GET_BODY';
 # use Test::More;
 use ModProxyCluster;
 
-
-plan tests => 5;
-
-ok 1; # simple load test
+plan tests => 4;
 
 Apache::TestRequest::module("mpc_test_host");
 my $hostport = Apache::TestRequest::hostport();
@@ -35,3 +32,7 @@ ok $data->is_success;
 $data = GET_BODY $url;
 
 ok (index($data, "Node next") != -1);
+
+# Clean after yourself
+CMD 'REMOVE-APP', "$url/*", ( JVMRoute => 'next' );
+sleep 25; # just to make sure we'll have enough time to get it removed
