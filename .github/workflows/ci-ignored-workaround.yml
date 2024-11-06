@@ -1,15 +1,11 @@
 name: Skip CI on ignored paths
 on:
   push:
-    branches:
-      - '*'
     paths:
       - '.gitignore'
       - '**.md'
       - 'LICENSE'
   pull_request:
-    branches:
-      - '*'
     paths:
       - '.gitignore'
       - '**.md'
