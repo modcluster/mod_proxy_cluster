@@ -8,7 +8,9 @@ httpd_remove
 
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
-MPC_CONF=MODCLUSTER-640/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-640 httpd_start
+
+MPC_CONF=${MPC_CONF:-MODCLUSTER-640/mod_proxy_cluster.conf}
+MPC_NAME=MODCLUSTER-640 httpd_start
 
 # wait until httpd is started
 httpd_wait_until_ready  || exit 1
@@ -39,7 +41,8 @@ if [ $? -eq 0 ]; then
 fi
 
 # Test without UseNocanon On
-docker exec MODCLUSTER-640 sh -c "sed -i 's:UseNocanon On::' /usr/local/apache2/conf/mod_proxy_cluster.conf"
+docker exec MODCLUSTER-640 sh -c "sed -i 's:UseNocanon On::' /usr/local/apache2/conf/$(filename $MPC_CONF)"
+
 docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables
@@ -58,7 +61,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # Test for just a proxypass / nocanon
-docker exec MODCLUSTER-640 sh -c "echo 'ProxyPass / balancer://mycluster/ nocanon' >> /usr/local/apache2/conf/mod_proxy_cluster.conf"
+docker exec MODCLUSTER-640 sh -c "echo 'ProxyPass / balancer://mycluster/ nocanon' >> /usr/local/apache2/conf/$(filename $MPC_CONF)"
 docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 
 # wait until the tomcats are back in mod_proxy_cluster tables

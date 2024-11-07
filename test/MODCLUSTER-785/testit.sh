@@ -9,7 +9,9 @@ httpd_remove
 
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
-MPC_CONF=MODCLUSTER-785/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-785 httpd_start
+
+MPC_CONF=${MPC_CONF:-MODCLUSTER-785/mod_proxy_cluster.conf}
+MPC_NAME=MODCLUSTER-785 httpd_start
 
 
 # start tomcat1 on 8080

@@ -11,7 +11,8 @@
 httpd_remove
 tomcat_all_remove
 
-MPC_CONF=MODCLUSTER-755/mod_proxy_cluster.conf MPC_NAME=MODCLUSTER-755 httpd_start
+MPC_CONF=${MPC_CONF:-MODCLUSTER-755/mod_proxy_cluster.conf}
+MPC_NAME=MODCLUSTER-755 httpd_start
 
 httpd_wait_until_ready
 
