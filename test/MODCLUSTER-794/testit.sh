@@ -6,7 +6,8 @@
 tomcat_all_remove
 httpd_remove
 
-MPC_NAME=MODCLUSTER-794 MPC_CONF=MODCLUSTER-794/mod_proxy_cluster.conf httpd_start
+MPC_CONF=${MPC_CONF:-MODCLUSTER-794/mod_proxy_cluster.conf}
+MPC_NAME=MODCLUSTER-794 httpd_start
 
 for i in {1..20}; do
     tomcat_start $i
