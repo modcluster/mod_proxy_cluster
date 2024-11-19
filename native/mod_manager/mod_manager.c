@@ -107,6 +107,13 @@ static mem_t *hoststatsmem = NULL;
 static mem_t *balancerstatsmem = NULL;
 static mem_t *sessionidstatsmem = NULL;
 static mem_t *domainstatsmem = NULL;
+/* Used for HCExpr templates with lbmethod_cluster */
+static kv_list_t *proxyhctemplate = NULL;
+
+static void set_proxyhctemplate(kv_list_t *target)
+{
+    proxyhctemplate = target;
+}
 
 static slotmem_storage_method *storage = NULL;
 static balancer_method *balancerhandler = NULL;
@@ -910,6 +917,7 @@ static int is_same_worker_existing(const request_rec *r, const nodeinfo_t *node)
 static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *node, const balancerinfo_t *bal)
 {
     apr_table_t *params;
+    kv_list_t *curr = proxyhctemplate;
     params = apr_table_make(r->pool, 10);
     /* balancer */
     apr_table_set(params, "b", node->mess.balancer);
@@ -938,6 +946,15 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
 
     /* Use 10 sec for the moment, the idea is to adjust it with the STATUS frequency */
     apr_table_set(params, "w_hi", "10000");
+
+    while (curr != NULL) {
+        const char *key = translate_balancer_params(curr->key);
+        if (key != NULL) {
+            apr_table_set(params, key, curr->val);
+        }
+        curr = curr->next;
+    }
+
     return balancer_manage(r, params);
 }
 
@@ -3926,6 +3943,7 @@ static void manager_hooks(apr_pool_t *p)
     ap_register_provider(p, "manager", "shared", "3", &balancer_storage);
     ap_register_provider(p, "manager", "shared", "4", &sessionid_storage);
     ap_register_provider(p, "manager", "shared", "5", &domain_storage);
+    ap_register_provider(p, "manager", "shared", "6", &set_proxyhctemplate);
 }
 
 /*
