@@ -2157,7 +2157,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     if (vhost->host != NULL) {
         int start = 0;
         i = 0;
-        while (host == NULL && i + start < strlen(vhost->host)) {
+        while (host == NULL && (unsigned)(i + start) < strlen(vhost->host)) {
             while (vhost->host[start + i] != ',' && vhost->host[start + i] != '\0') {
                 i++;
             }
