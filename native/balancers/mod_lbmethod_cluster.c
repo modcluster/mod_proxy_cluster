@@ -6,7 +6,6 @@
 #include "mod_watchdog.h"
 #include "common.h"
 
-
 #define LB_CLUSTER_WATHCHDOG_NAME ("_lb_cluster_")
 static ap_watchdog_t *watchdog;
 
@@ -15,6 +14,9 @@ static struct host_storage_method *host_storage = NULL;
 static struct context_storage_method *context_storage = NULL;
 static struct balancer_storage_method *balancer_storage = NULL;
 static struct domain_storage_method *domain_storage = NULL;
+
+static apr_table_t *proxyhctemplate;
+static void (*set_proxyhctemplate_f)(apr_pool_t *, apr_table_t *) = NULL;
 
 static int use_alias = 0; /* 1 : Compare Alias with server_name */
 static int use_nocanon = 0;
@@ -362,6 +364,13 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for domains");
         return !OK;
     }
+    set_proxyhctemplate_f = ap_lookup_provider("manager", "shared", "6");
+    if (set_proxyhctemplate_f == NULL) {
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
+                     "lbmethod_cluster_post_config: Can't find mod_manager for set_proxyhctemplate function");
+    } else if (!apr_is_empty_table(proxyhctemplate)) {
+        set_proxyhctemplate_f(p, proxyhctemplate);
+    }
 
     /* Add version information */
     ap_add_version_component(p, MOD_CLUSTER_EXPOSED_VERSION);
@@ -405,10 +414,30 @@ static const char *cmd_nocanon(cmd_parms *parms, void *mconfig, int on)
     return NULL;
 }
 
+static const char *cmd_proxyhctemplate(cmd_parms *cmd, void *dummy, const char *arg)
+{
+    const char *err = NULL;
+    (void)dummy;
+
+    if (!proxyhctemplate) {
+        proxyhctemplate = apr_table_make(cmd->pool, 8);
+    }
+
+    err = parse_proxyhctemplate_params(cmd->pool, arg, proxyhctemplate);
+    if (err != NULL) {
+        return err;
+    }
+    return NULL;
+}
+
 static const command_rec lbmethod_cmds[] = {
     AP_INIT_FLAG("UseNocanon", cmd_nocanon, NULL, OR_ALL,
                  "UseNocanon - When no ProxyPass or ProxyMatch for the URL, passes the URL path \"raw\" to the backend "
-                 "(Default: Off)")};
+                 "(Default: Off)"),
+    AP_INIT_RAW_ARGS(
+        "ModProxyClusterHCTemplate", cmd_proxyhctemplate, NULL, OR_ALL,
+        "ModProxyClusterHCTemplate - Set of health check parameters to use with mod_lbmethod_cluster workers."),
+    {NULL}};
 
 static void register_hooks(apr_pool_t *p)
 {

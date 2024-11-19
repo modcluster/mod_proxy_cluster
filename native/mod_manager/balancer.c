@@ -174,3 +174,27 @@ mem_t *create_mem_balancer(char *string, unsigned *num, int persist, apr_pool_t 
 {
     return create_attach_mem_balancer(string, num, persist, 1, p, storage);
 }
+
+const char *translate_balancer_params(const char *param)
+{
+    if (strcasecmp(param, "hcinterval") == 0) {
+        return "w_hi";
+    }
+    if (strcasecmp(param, "hcpasses") == 0) {
+        return "w_hp";
+    }
+    if (strcasecmp(param, "hcfails") == 0) {
+        return "w_hf";
+    }
+    if (strcasecmp(param, "hcmethod") == 0) {
+        return "w_hm";
+    }
+    if (strcasecmp(param, "hcuri") == 0) {
+        return "w_hu";
+    }
+    if (strcasecmp(param, "hcexpr") == 0) {
+        return "w_he";
+    }
+
+    return NULL;
+}
