@@ -129,7 +129,7 @@ static proxy_balancer_table *cached_balancer_table = NULL;
 static proxy_node_table *cached_node_table = NULL;
 
 /* for the hctemplate stuff */
-static char *proxyhctemplate = NULL;
+static kv_list_t *proxyhctemplate = NULL;
 static APR_OPTIONAL_FN_TYPE(set_worker_hc_param) *set_worker_hc_param_f = NULL;
 
 /* To stop the watchdog loop */
@@ -186,31 +186,20 @@ static char *normalize_workername(apr_pool_t *pool, const char *url)
 static void add_hcheck(server_rec *s, const proxy_server_conf *conf, proxy_worker *worker)
 {
     if (set_worker_hc_param_f) {
-        const char *arg = apr_pstrdup(conf->pool, proxyhctemplate);
-        while (*arg) {
-            char *key, *val;
-            const char *err;
-            key = ap_getword_conf(conf->pool, &arg);
-            val = strchr(key, '=');
-            if (!val) {
-                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
-                             "Invalid ProxyHCTemplate parameter. Parameter must be "
-                             "in the form 'key=value'");
-                return;
-            }
-
-            *val++ = '\0';
-            err = set_worker_hc_param_f(conf->pool, s, worker, key, val, NULL);
+        kv_list_t *curr = proxyhctemplate;
+        while (curr != NULL) {
+            const char *err = set_worker_hc_param_f(conf->pool, s, worker, curr->key, curr->val, NULL);
             if (err != NULL) {
-                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "error %s for key: %s=%s", err, key, val);
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "error %s for key: %s=%s", err, curr->key, curr->val);
             } else {
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "hcheck %s=%s add to worker %s", key, val,
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "hcheck %s=%s add to worker %s", curr->key, curr->val,
 #ifdef PROXY_WORKER_EXT_NAME_SIZE
                              worker->s->name_ex);
 #else
                              worker->s->name);
 #endif
             }
+            curr = curr->next;
         }
     }
 }
@@ -3632,32 +3621,30 @@ static const char *cmd_proxy_cluster_proxyhctemplate(cmd_parms *cmd, void *dummy
     proxy_worker_shared shared;
     const char *err;
     apr_pool_t *pool;
-    server_rec *s = cmd->server;
+    kv_list_t *curr = apr_pcalloc(cmd->pool, sizeof(kv_list_t));
     (void)dummy;
 
-    proxyhctemplate = apr_pstrdup(cmd->pool, arg);
-    while (*arg) {
-        char *key, *val;
-        key = ap_getword_conf(cmd->pool, &arg);
-        val = strchr(key, '=');
-        if (!val) {
-            return "Invalid ProxyHCTemplate parameter. Parameter must be in the form 'key=value'";
-        }
-
-        *val++ = '\0';
-        /* are we able to check more stuff? err= test() */
-        if (set_worker_hc_param_f == NULL) {
-            return "Can't check ProxyHCTemplate parameter, is proxy_hcheck_module loaded?";
-        }
-
-        worker.s = &shared;
-        apr_pool_create(&pool, cmd->pool);
-        err = set_worker_hc_param_f(pool, s, &worker, key, val, NULL);
-        apr_pool_destroy(pool);
-        if (err != NULL) {
-            return apr_psprintf(cmd->pool, "%s key: %s=%s", err, key, val);
-        }
+    proxyhctemplate = curr;
+    err = parse_proxyhctemplate_params(cmd->pool, arg, proxyhctemplate);
+    if (err != NULL) {
+        return err;
     }
+
+    if (set_worker_hc_param_f == NULL) {
+        return "Can't check ProxyHCTemplate parameter, is proxy_hcheck_module loaded?";
+    }
+
+    apr_pool_create(&pool, cmd->pool);
+    while (curr != NULL) {
+        worker.s = &shared;
+        err = set_worker_hc_param_f(pool, cmd->server, &worker, curr->key, curr->val, NULL);
+        if (err != NULL) {
+            return apr_psprintf(cmd->pool, "%s key: %s=%s", err, curr->key, curr->val);
+        }
+        curr = curr->next;
+    }
+    apr_pool_destroy(pool);
+
     return NULL;
 }
 
