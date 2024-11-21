@@ -93,7 +93,9 @@ static proxy_worker *find_best(proxy_balancer *balancer, request_rec *r)
         node_table = read_node_table(r->pool, node_storage, 0);
     }
 
+    node_storage->lock_nodes();
     mycandidate = internal_find_best_byrequests(r, balancer, vhost_table, context_table, node_table);
+    node_storage->unlock_nodes();
 
     return mycandidate;
 }
@@ -321,7 +323,9 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
             }
 
             /* cleanup removed node in shared memory */
+            node_storage->lock_nodes();
             remove_removed_node(s, pool, now, node_table);
+            node_storage->unlock_nodes();
         }
         break;
 
