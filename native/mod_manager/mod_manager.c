@@ -917,6 +917,7 @@ static int is_same_worker_existing(const request_rec *r, const nodeinfo_t *node)
 static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *node, const balancerinfo_t *bal)
 {
     apr_table_t *params;
+    apr_status_t rv;
     kv_list_t *curr = proxyhctemplate;
     params = apr_table_make(r->pool, 10);
     /* balancer */
@@ -930,7 +931,10 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
     apr_table_set(params, "b_wyes", "1");
     apr_table_set(params, "b_nwrkr",
                   apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
-    balancer_manage(r, params);
+    rv = balancer_manage(r, params);
+    if (rv != APR_SUCCESS) {
+        return rv;
+    }
     apr_table_clear(params);
 
     /* now process the worker */
@@ -1565,7 +1569,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     /* Insert the Alias and corresponding Context */
     phost = vhost;
     if (phost->host == NULL && phost->context == NULL) {
-        loc_unlock_nodes();
         /* if using mod_balancer create or update the worker */
         if (balancer_manage) {
             apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
@@ -1573,6 +1576,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
         }
+        loc_unlock_nodes();
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
@@ -1587,7 +1591,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         phost = phost->next;
         vid++;
     }
-    loc_unlock_nodes();
 
     /* if using mod_balancer create or update the worker */
     if (balancer_manage) {
@@ -1596,6 +1599,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
     }
+    loc_unlock_nodes();
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: Done");
 
