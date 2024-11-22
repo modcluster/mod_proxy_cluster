@@ -13,6 +13,8 @@
  * @{
  */
 
+#include "common.h"
+
 struct mem
 {
     ap_slotmem_instance_t *slotmem;

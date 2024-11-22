@@ -13,21 +13,9 @@
  * @{
  */
 
-#include "apr.h"
-#include "apr_strings.h"
-#include "apr_pools.h"
-#include "apr_time.h"
-
-/* for debug */
-#include "httpd.h"
-#include "http_main.h"
-
-#include "ap_slotmem.h"
+#include "mod_manager.h"
 #include "node.h"
 
-#include "mod_manager.h"
-
-#include "common.h"
 
 static mem_t *create_attach_mem_node(char *string, unsigned *num, int type, int create, apr_pool_t *p,
                                      slotmem_storage_method *storage)

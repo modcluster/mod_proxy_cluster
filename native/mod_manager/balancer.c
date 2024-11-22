@@ -13,15 +13,6 @@
  * @{
  */
 
-#include "apr.h"
-#include "apr_strings.h"
-#include "apr_pools.h"
-#include "apr_time.h"
-
-#include "ap_slotmem.h"
-#include "balancer.h"
-
-#include "common.h"
 
 #include "mod_manager.h"
 

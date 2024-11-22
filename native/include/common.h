@@ -7,15 +7,7 @@
  * Common routines
  */
 
-#include "mod_proxy.h"
 
-#include "ap_slotmem.h"
-
-#include "domain.h"
-#include "node.h"
-#include "host.h"
-#include "node.h"
-#include "context.h"
 #include "mod_proxy_cluster.h"
 
 

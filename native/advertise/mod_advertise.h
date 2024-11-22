@@ -18,38 +18,17 @@
 
 #define CORE_PRIVATE
 
-#include "apr_hooks.h"
-#include "apr.h"
-#include "apr_lib.h"
-#include "apr_strings.h"
-#include "apr_buckets.h"
 #include "apr_md5.h"
-#include "apr_network_io.h"
-#include "apr_pools.h"
 #include "apr_strings.h"
-#include "apr_uri.h"
-#include "apr_date.h"
 #include "apr_uuid.h"
-#include "apr_version.h"
-#include "apr_atomic.h"
 
 #define APR_WANT_STRFUNC
 #include "apr_want.h"
 
-#include "httpd.h"
-#include "http_config.h"
-#include "http_core.h"
 #include "http_protocol.h"
-#include "http_request.h"
-#include "http_vhost.h"
-#include "http_main.h"
 #include "http_log.h"
-#include "http_connection.h"
-#include "util_filter.h"
-#include "util_ebcdic.h"
 #include "util_time.h"
 #include "ap_provider.h"
-#include "ap_mpm.h"
 
 #if APR_HAVE_NETINET_IN_H
 #include <netinet/in.h>
