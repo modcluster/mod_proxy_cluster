@@ -24,10 +24,6 @@
             advertise="true" stickySession="true" stickySessionForce="false" stickySessionRemove="true" /> -->
   <Listener className="org.jboss.modcluster.container.catalina.standalone.ModClusterListener"
             connectorPort="8080"
-            advertise="false"
-            stickySession="true"
-            stickySessionForce="false"
-            stickySessionRemove="true"
             proxyList="proxy_address:proxy_port" />
   <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
   <!-- Security listener. Documentation at /docs/config/listeners.html
