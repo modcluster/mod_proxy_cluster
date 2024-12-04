@@ -20,9 +20,7 @@
      Documentation at /docs/config/server.html
  -->
 <Server port="8005" shutdown="SHUTDOWN" address="tomcat_address" portOffset="port_offset">
-  <!-- <Listener className="org.jboss.modcluster.container.tomcat.ModClusterListener"
-            advertise="true" stickySession="true" stickySessionForce="false" stickySessionRemove="true" /> -->
-  <Listener className="org.jboss.modcluster.container.catalina.standalone.ModClusterListener"
+  <Listener className="org.jboss.modcluster.container.tomcat.ModClusterListener"
             connectorPort="8080"
             proxyList="proxy_address:proxy_port" />
   <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
