@@ -26,6 +26,13 @@ struct counter
 };
 
 
+typedef struct kv_list
+{
+    char *key;
+    char *val;
+    struct kv_list *next;
+} kv_list_t;
+
 /**
  * Read the virtual host table from shared memory
  * @param pool pool to use for memory allocation
@@ -230,3 +237,9 @@ apr_status_t loc_get_id(void *mem, void *data, apr_pool_t *pool);
 const node_context *context_host_ok(request_rec *r, const proxy_balancer *balancer, int node, int use_alias,
                                     const proxy_vhost_table *vhost_table, const proxy_context_table *context_table,
                                     const proxy_node_table *node_table);
+
+/**
+ * Parse ProxyHCTemplate parameters from @param arg into @param params using @param pool for allocations
+ * @return error message or NULL if everything went well
+ */
+const char *parse_proxyhctemplate_params(apr_pool_t *pool, const char *arg, kv_list_t *params);

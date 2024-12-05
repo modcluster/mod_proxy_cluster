@@ -143,4 +143,10 @@ struct balancer_storage_method
      */
     int (*get_max_size_balancer)(void);
 };
+
+/**
+ * Helper function for translating hcheck template parameters to corresponding balancer parameters
+ */
+const char *translate_balancer_params(const char *param);
+
 #endif /*BALANCER_H*/
