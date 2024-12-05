@@ -23,10 +23,10 @@ LoadModule lbmethod_cluster_module modules/mod_lbmethod_cluster.so
   EnableWsTunnel
   WSUpgradeHeader "websocket"
   <VirtualHost *:6666>
-   <Directory />
+   <Location />
        Require ip 127.0.0.1
        Require ip ::1
-    </Directory>
+    </Location>
 
     KeepAliveTimeout 300
     MaxKeepAliveRequests 0
