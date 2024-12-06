@@ -25,8 +25,6 @@ typedef struct mem mem_t;
 
 #include "mod_clustersize.h"
 
-#include "ap_mmn.h"
-
 /**
  * Configuration of the node received from jboss cluster
  */

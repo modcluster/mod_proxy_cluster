@@ -13,17 +13,7 @@
  * @{
  */
 
-#include "apr.h"
-#include "apr_strings.h"
-#include "apr_pools.h"
-#include "apr_time.h"
-
-#include "ap_slotmem.h"
-#include "context.h"
-
 #include "mod_manager.h"
-
-#include "common.h"
 
 
 static mem_t *create_attach_mem_context(char *string, unsigned *num, int type, int create, apr_pool_t *p,

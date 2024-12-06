@@ -5,24 +5,6 @@
 
 #include "common.h"
 
-#include "httpd.h"
-#include "http_config.h"
-#include "http_log.h"
-#include "http_main.h"
-#include "http_request.h"
-#include "mod_proxy.h"
-
-#include "ap_slotmem.h"
-
-#include "domain.h"
-#include "node.h"
-#include "host.h"
-#include "context.h"
-#include "balancer.h"
-
-#include "mod_proxy_cluster.h"
-
-
 proxy_vhost_table *read_vhost_table(apr_pool_t *pool, struct host_storage_method *host_storage, int for_cache)
 {
     proxy_vhost_table *vhost_table = apr_palloc(pool, sizeof(proxy_vhost_table));

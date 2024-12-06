@@ -7,31 +7,15 @@
  * @author Jean-Frederic Clere
  */
 
-#include "httpd.h"
-#include "http_config.h"
-#include "http_log.h"
-#include "http_main.h"
-#include "http_request.h"
-#include "http_protocol.h"
-#include "http_core.h"
-#include "scoreboard.h"
-#include "ap_mpm.h"
+#include "mod_proxy_cluster.h"
+
 #include "mpm_common.h"
-#include "mod_proxy.h"
 #include "mod_watchdog.h"
 
-#include "ap_slotmem.h"
-
-#include "node.h"
-#include "host.h"
-#include "context.h"
-#include "balancer.h"
 #include "sessionid.h"
 #include "domain.h"
-
 #include "common.h"
 
-#include "mod_proxy_cluster.h"
 
 #if APR_HAVE_UNISTD_H
 /* for getpid() */

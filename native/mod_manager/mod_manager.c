@@ -7,34 +7,17 @@
  * @author Jean-Frederic Clere
  */
 
-#include "apr_strings.h"
+#include "domain.h"
+#include "common.h"
+
 #include "apr_lib.h"
 #include "apr_uuid.h"
 
 #define CORE_PRIVATE
 #include "httpd.h"
-#include "http_config.h"
-#include "http_log.h"
-#include "http_main.h"
-#include "http_request.h"
-#include "http_protocol.h"
-#include "http_core.h"
 #include "scoreboard.h"
-#include "mod_proxy.h"
-#include "ap_mpm.h"
-
-#include "ap_slotmem.h"
-
-#include "node.h"
-#include "host.h"
-#include "context.h"
-#include "balancer.h"
 #include "sessionid.h"
-#include "domain.h"
 
-#include "common.h"
-
-#include "mod_proxy_cluster.h"
 
 #define DEFMAXCONTEXT          100
 #define DEFMAXNODE             20

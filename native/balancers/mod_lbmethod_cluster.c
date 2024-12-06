@@ -3,23 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "mod_proxy.h"
 #include "mod_watchdog.h"
-#include "scoreboard.h"
-#include "ap_mpm.h"
-#include "apr_version.h"
-#include "ap_hooks.h"
-
-#include "ap_slotmem.h"
-
-#include "node.h"
-#include "host.h"
-#include "context.h"
-#include "balancer.h"
-
 #include "common.h"
 
-#include "mod_proxy_cluster.h"
 
 #define LB_CLUSTER_WATHCHDOG_NAME ("_lb_cluster_")
 static ap_watchdog_t *watchdog;

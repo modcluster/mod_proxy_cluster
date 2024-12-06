@@ -17,6 +17,9 @@
  */
 
 #include "balancer.h"
+#include "node.h"
+#include "context.h"
+#include "host.h"
 
 #define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"
 
