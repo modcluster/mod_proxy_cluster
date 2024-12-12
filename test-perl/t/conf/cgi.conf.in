@@ -11,7 +11,7 @@ LoadModule rewrite_module modules/mod_rewrite.so
 
 <VirtualHost fake_cgi_app>
     <Location /news>
-	AllowOverride None
+        AllowOverride None
         Require all granted
         RewriteEngine On
         RewriteRule ^(.*)$ /cgi-bin/test.pl?url=$1 [R]
