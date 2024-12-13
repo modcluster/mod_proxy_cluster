@@ -6,7 +6,6 @@
 #include "mod_watchdog.h"
 #include "common.h"
 
-
 #define LB_CLUSTER_WATHCHDOG_NAME ("_lb_cluster_")
 static ap_watchdog_t *watchdog;
 
@@ -15,6 +14,9 @@ static struct host_storage_method *host_storage = NULL;
 static struct context_storage_method *context_storage = NULL;
 static struct balancer_storage_method *balancer_storage = NULL;
 static struct domain_storage_method *domain_storage = NULL;
+
+static apr_table_t *proxyhctemplate;
+static void (*set_proxyhctemplate_f)(apr_pool_t *, apr_table_t *) = NULL;
 
 static int use_alias = 0; /* 1 : Compare Alias with server_name */
 static int use_nocanon = 0;
@@ -91,7 +93,9 @@ static proxy_worker *find_best(proxy_balancer *balancer, request_rec *r)
         node_table = read_node_table(r->pool, node_storage, 0);
     }
 
+    node_storage->lock_nodes();
     mycandidate = internal_find_best_byrequests(r, balancer, vhost_table, context_table, node_table);
+    node_storage->unlock_nodes();
 
     return mycandidate;
 }
@@ -319,7 +323,9 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
             }
 
             /* cleanup removed node in shared memory */
+            node_storage->lock_nodes();
             remove_removed_node(s, pool, now, node_table);
+            node_storage->unlock_nodes();
         }
         break;
 
@@ -339,28 +345,37 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
 
     node_storage = ap_lookup_provider("manager", "shared", "0");
     if (node_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for nodes");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "lbmethod_cluster_post_config: Can't find mod_manager for nodes");
         return !OK;
     }
     host_storage = ap_lookup_provider("manager", "shared", "1");
     if (host_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for hosts");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "lbmethod_cluster_post_config: Can't find mod_manager for hosts");
         return !OK;
     }
     context_storage = ap_lookup_provider("manager", "shared", "2");
     if (context_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for contexts");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                     "lbmethod_cluster_post_config: Can't find mod_manager for contexts");
         return !OK;
     }
     balancer_storage = ap_lookup_provider("manager", "shared", "3");
     if (balancer_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for balancers");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
+                     "lbmethod_cluster_post_config: Can't find mod_manager for balancers");
         return !OK;
     }
     domain_storage = ap_lookup_provider("manager", "shared", "5");
     if (domain_storage == NULL) {
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "proxy_cluster_post_config: Can't find mod_manager for domains");
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "lbmethod_cluster_post_config: Can't find mod_manager for domains");
         return !OK;
+    }
+    set_proxyhctemplate_f = ap_lookup_provider("manager", "shared", "6");
+    if (set_proxyhctemplate_f == NULL) {
+        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, s,
+                     "lbmethod_cluster_post_config: Can't find mod_manager for set_proxyhctemplate function");
+    } else if (!apr_is_empty_table(proxyhctemplate)) {
+        set_proxyhctemplate_f(p, proxyhctemplate);
     }
 
     /* Add version information */
@@ -375,19 +390,19 @@ static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_poo
     mc_watchdog_register_callback = APR_RETRIEVE_OPTIONAL_FN(ap_watchdog_register_callback);
     if (!mc_watchdog_get_instance || !mc_watchdog_register_callback) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
-                     APLOGNO(03262) "proxy_cluster_post_config: mod_watchdog is required");
+                     APLOGNO(03262) "lbmethod_cluster_post_config: mod_watchdog is required");
         return !OK;
     }
     if (mc_watchdog_get_instance(&watchdog, LB_CLUSTER_WATHCHDOG_NAME, 0, 1, p)) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
-                     APLOGNO(03263) "proxy_cluster_post_config: Failed to create watchdog instance (%s)",
+                     APLOGNO(03263) "lbmethod_cluster_post_config: Failed to create watchdog instance (%s)",
                      LB_CLUSTER_WATHCHDOG_NAME);
         return !OK;
     }
     while (s) {
         if (mc_watchdog_register_callback(watchdog, AP_WD_TM_SLICE, s, mc_watchdog_callback)) {
             ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
-                         APLOGNO(03264) "proxy_cluster_post_config: Failed to register watchdog callback (%s)",
+                         APLOGNO(03264) "lbmethod_cluster_post_config: Failed to register watchdog callback (%s)",
                          LB_CLUSTER_WATHCHDOG_NAME);
             return !OK;
         }
@@ -405,10 +420,30 @@ static const char *cmd_nocanon(cmd_parms *parms, void *mconfig, int on)
     return NULL;
 }
 
+static const char *cmd_proxyhctemplate(cmd_parms *cmd, void *dummy, const char *arg)
+{
+    const char *err = NULL;
+    (void)dummy;
+
+    if (!proxyhctemplate) {
+        proxyhctemplate = apr_table_make(cmd->pool, 8);
+    }
+
+    err = parse_proxyhctemplate_params(cmd->pool, arg, proxyhctemplate);
+    if (err != NULL) {
+        return err;
+    }
+    return NULL;
+}
+
 static const command_rec lbmethod_cmds[] = {
     AP_INIT_FLAG("UseNocanon", cmd_nocanon, NULL, OR_ALL,
                  "UseNocanon - When no ProxyPass or ProxyMatch for the URL, passes the URL path \"raw\" to the backend "
-                 "(Default: Off)")};
+                 "(Default: Off)"),
+    AP_INIT_RAW_ARGS(
+        "ModProxyClusterHCTemplate", cmd_proxyhctemplate, NULL, OR_ALL,
+        "ModProxyClusterHCTemplate - Set of health check parameters to use with mod_lbmethod_cluster workers."),
+    {NULL}};
 
 static void register_hooks(apr_pool_t *p)
 {

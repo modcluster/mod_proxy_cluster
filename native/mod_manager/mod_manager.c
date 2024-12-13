@@ -107,6 +107,13 @@ static mem_t *hoststatsmem = NULL;
 static mem_t *balancerstatsmem = NULL;
 static mem_t *sessionidstatsmem = NULL;
 static mem_t *domainstatsmem = NULL;
+/* Used for HCExpr templates with lbmethod_cluster */
+static apr_table_t *proxyhctemplate = NULL;
+
+static void set_proxyhctemplate(apr_pool_t *p, apr_table_t *t)
+{
+    proxyhctemplate = apr_table_overlay(p, t, proxyhctemplate);
+}
 
 static slotmem_storage_method *storage = NULL;
 static balancer_method *balancerhandler = NULL;
@@ -540,6 +547,7 @@ static int manager_pre_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *p
     (void)ptemp;
     ap_mutex_register(pconf, node_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
     ap_mutex_register(pconf, context_mutex_type, NULL, APR_LOCK_DEFAULT, 0);
+    proxyhctemplate = apr_table_make(plog, 1);
     return OK;
 }
 
@@ -910,6 +918,11 @@ static int is_same_worker_existing(const request_rec *r, const nodeinfo_t *node)
 static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *node, const balancerinfo_t *bal)
 {
     apr_table_t *params;
+    apr_status_t rv;
+    int i;
+    const apr_array_header_t *h;
+    const apr_table_entry_t *entries;
+
     params = apr_table_make(r->pool, 10);
     /* balancer */
     apr_table_set(params, "b", node->mess.balancer);
@@ -922,7 +935,10 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
     apr_table_set(params, "b_wyes", "1");
     apr_table_set(params, "b_nwrkr",
                   apr_pstrcat(r->pool, node->mess.Type, "://", node->mess.Host, ":", node->mess.Port, NULL));
-    balancer_manage(r, params);
+    rv = balancer_manage(r, params);
+    if (rv != APR_SUCCESS) {
+        return rv;
+    }
     apr_table_clear(params);
 
     /* now process the worker */
@@ -938,6 +954,17 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
 
     /* Use 10 sec for the moment, the idea is to adjust it with the STATUS frequency */
     apr_table_set(params, "w_hi", "10000");
+
+    h = apr_table_elts(proxyhctemplate);
+    entries = (const apr_table_entry_t *)h->elts;
+
+    for (i = 0; i < h->nelts; i++) {
+        const char *key = translate_balancer_params(entries[i].key);
+        if (key != NULL) {
+            apr_table_set(params, key, entries[i].val);
+        }
+    }
+
     return balancer_manage(r, params);
 }
 
@@ -1548,7 +1575,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     /* Insert the Alias and corresponding Context */
     phost = vhost;
     if (phost->host == NULL && phost->context == NULL) {
-        loc_unlock_nodes();
         /* if using mod_balancer create or update the worker */
         if (balancer_manage) {
             apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
@@ -1556,6 +1582,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         } else {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
         }
+        loc_unlock_nodes();
         return NULL; /* Alias and Context missing */
     }
     while (phost) {
@@ -1570,7 +1597,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         phost = phost->next;
         vid++;
     }
-    loc_unlock_nodes();
 
     /* if using mod_balancer create or update the worker */
     if (balancer_manage) {
@@ -1579,6 +1605,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     } else {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NO balancer-manager");
     }
+    loc_unlock_nodes();
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: Done");
 
@@ -2157,7 +2184,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     if (vhost->host != NULL) {
         int start = 0;
         i = 0;
-        while (host == NULL && i + start < strlen(vhost->host)) {
+        while (host == NULL && (unsigned)(i + start) < strlen(vhost->host)) {
             while (vhost->host[start + i] != ',' && vhost->host[start + i] != '\0') {
                 i++;
             }
@@ -3935,6 +3962,7 @@ static void manager_hooks(apr_pool_t *p)
     ap_register_provider(p, "manager", "shared", "3", &balancer_storage);
     ap_register_provider(p, "manager", "shared", "4", &sessionid_storage);
     ap_register_provider(p, "manager", "shared", "5", &domain_storage);
+    ap_register_provider(p, "manager", "shared", "6", &set_proxyhctemplate);
 }
 
 /*

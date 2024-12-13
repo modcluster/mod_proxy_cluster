@@ -670,3 +670,19 @@ const node_context *context_host_ok(request_rec *r, const proxy_balancer *balanc
 
     return best->node != -1 ? best : NULL;
 }
+
+const char *parse_proxyhctemplate_params(apr_pool_t *pool, const char *arg, apr_table_t *params)
+{
+    while (*arg) {
+        char *key, *val;
+        key = ap_getword_conf(pool, &arg);
+        val = strchr(key, '=');
+        if (!val) {
+            return "Invalid ProxyHCTemplate parameter. Parameter must be in the form 'key=value'";
+        }
+        *val++ = '\0';
+
+        apr_table_add(params, key, val);
+    }
+    return NULL;
+}

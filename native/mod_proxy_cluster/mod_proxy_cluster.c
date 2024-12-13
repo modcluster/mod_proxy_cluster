@@ -113,7 +113,7 @@ static proxy_balancer_table *cached_balancer_table = NULL;
 static proxy_node_table *cached_node_table = NULL;
 
 /* for the hctemplate stuff */
-static char *proxyhctemplate = NULL;
+static apr_table_t *proxyhctemplate = NULL;
 static APR_OPTIONAL_FN_TYPE(set_worker_hc_param) *set_worker_hc_param_f = NULL;
 
 /* To stop the watchdog loop */
@@ -170,25 +170,18 @@ static char *normalize_workername(apr_pool_t *pool, const char *url)
 static void add_hcheck(server_rec *s, const proxy_server_conf *conf, proxy_worker *worker)
 {
     if (set_worker_hc_param_f) {
-        const char *arg = apr_pstrdup(conf->pool, proxyhctemplate);
-        while (*arg) {
-            char *key, *val;
-            const char *err;
-            key = ap_getword_conf(conf->pool, &arg);
-            val = strchr(key, '=');
-            if (!val) {
-                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s,
-                             "Invalid ProxyHCTemplate parameter. Parameter must be "
-                             "in the form 'key=value'");
-                return;
-            }
+        int i;
+        const apr_array_header_t *h = apr_table_elts(proxyhctemplate);
+        const apr_table_entry_t *entries = (const apr_table_entry_t *)h->elts;
 
-            *val++ = '\0';
-            err = set_worker_hc_param_f(conf->pool, s, worker, key, val, NULL);
+        for (i = 0; i < h->nelts; i++) {
+            const char *err = set_worker_hc_param_f(conf->pool, s, worker, entries[i].key, entries[i].val, NULL);
             if (err != NULL) {
-                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "error %s for key: %s=%s", err, key, val);
+                ap_log_error(APLOG_MARK, APLOG_ERR, 0, s, "error %s for key: %s=%s", err, entries[i].key,
+                             entries[i].val);
             } else {
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "hcheck %s=%s add to worker %s", key, val,
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "hcheck %s=%s add to worker %s", entries[i].key,
+                             entries[i].val,
 #ifdef PROXY_WORKER_EXT_NAME_SIZE
                              worker->s->name_ex);
 #else
@@ -244,7 +237,7 @@ static void check_workers(const proxy_server_conf *conf, const server_rec *s)
                 worker->s = helper->shared;
                 helper->isinnodes = 0;
                 /* If we use hcheck, we need to stop it for the worker */
-                if (proxyhctemplate != NULL) {
+                if (!apr_is_empty_table(proxyhctemplate)) {
                     worker->s->method = NONE;
                     worker->s->updated = 0;
                     worker->s->status |= PROXY_WORKER_STOPPED;
@@ -328,7 +321,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
 
             /* add health check */
             worker->s->updated = apr_time_now();
-            if (proxyhctemplate != NULL) {
+            if (!apr_is_empty_table(proxyhctemplate)) {
                 add_hcheck(server, conf, worker);
             }
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
@@ -370,7 +363,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
 
     /* add health check */
     worker->s->updated = apr_time_now();
-    if (proxyhctemplate != NULL) {
+    if (!apr_is_empty_table(proxyhctemplate)) {
         add_hcheck(server, conf, worker);
     }
     return APR_SUCCESS;
@@ -462,7 +455,7 @@ static void create_worker_arrange_shared_mem(proxy_server_conf *conf, proxy_work
 
     /* check add health check */
     worker->s->updated = apr_time_now();
-    if (proxyhctemplate != NULL) {
+    if (!apr_is_empty_table(proxyhctemplate)) {
         add_hcheck(server, conf, worker);
     }
 }
@@ -818,7 +811,7 @@ static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int 
 /* Stop hcheck if in use. Worker must not be NULL */
 static void worker_stop_hcheck(proxy_worker *worker)
 {
-    if (proxyhctemplate != NULL) {
+    if (!apr_is_empty_table(proxyhctemplate)) {
         worker->s->method = NONE;
         worker->s->updated = 0;
         worker->s->status |= PROXY_WORKER_STOPPED;
@@ -1362,7 +1355,7 @@ static int update_lbstatus_hcheck(proxy_server_conf *conf, server_rec *server, a
         return 1;
     }
 
-    if (proxyhctemplate) {
+    if (!apr_is_empty_table(proxyhctemplate)) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "update_workers_lbstatus: Using hcheck!");
         update_lbstatus_failure_idle(ou, worker, now);
         return 1;
@@ -1875,7 +1868,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     /* Try a  ping/pong to check the node */
     if (load >= 0 || load == -2) {
         /* Only try usuable nodes */
-        if (proxyhctemplate != NULL) {
+        if (!apr_is_empty_table(proxyhctemplate)) {
             /* Don't ping the hcheck is doing it for us */
             /* TODO : worker->s->error_time = 0; Force retry now do we need something? */
             if (worker->s->status & PROXY_WORKER_NOT_USABLE_BITMAP) {
@@ -2109,7 +2102,7 @@ static void init_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_worker
 
     /* add health check */
     worker->s->updated = apr_time_now();
-    if (proxyhctemplate != NULL) {
+    if (!apr_is_empty_table(proxyhctemplate)) {
         add_hcheck(server, the_conf, worker);
     }
 }
@@ -2478,7 +2471,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     }
 
     /* if we have a proxyhctemplate check for the template or failed */
-    if (proxyhctemplate != NULL) {
+    if (!apr_is_empty_table(proxyhctemplate)) {
         if (ap_find_linked_module("mod_proxy_hcheck.c") == NULL) {
             ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, "UseProxyHCTemplate requires mod_proxy_hcheck");
             return HTTP_INTERNAL_SERVER_ERROR;
@@ -3514,6 +3507,8 @@ static void *create_proxy_cluster_server_config(apr_pool_t *p, server_rec *s)
 {
     (void)p;
     (void)s;
+
+    proxyhctemplate = apr_table_make(p, 8);
     return NULL;
 }
 
@@ -3624,32 +3619,34 @@ static const char *cmd_proxy_cluster_proxyhctemplate(cmd_parms *cmd, void *dummy
     proxy_worker_shared shared;
     const char *err;
     apr_pool_t *pool;
-    server_rec *s = cmd->server;
+    int i;
+    const apr_array_header_t *h;
+    const apr_table_entry_t *entries;
     (void)dummy;
 
-    proxyhctemplate = apr_pstrdup(cmd->pool, arg);
-    while (*arg) {
-        char *key, *val;
-        key = ap_getword_conf(cmd->pool, &arg);
-        val = strchr(key, '=');
-        if (!val) {
-            return "Invalid ProxyHCTemplate parameter. Parameter must be in the form 'key=value'";
-        }
+    err = parse_proxyhctemplate_params(cmd->pool, arg, proxyhctemplate);
+    if (err != NULL) {
+        return err;
+    }
 
-        *val++ = '\0';
-        /* are we able to check more stuff? err= test() */
-        if (set_worker_hc_param_f == NULL) {
-            return "Can't check ProxyHCTemplate parameter, is proxy_hcheck_module loaded?";
-        }
+    if (set_worker_hc_param_f == NULL) {
+        return "Can't check ProxyHCTemplate parameter, is proxy_hcheck_module loaded?";
+    }
 
+    h = apr_table_elts(proxyhctemplate);
+    entries = (const apr_table_entry_t *)h->elts;
+    apr_pool_create(&pool, cmd->pool);
+
+    for (i = 0; i < h->nelts; i++) {
         worker.s = &shared;
-        apr_pool_create(&pool, cmd->pool);
-        err = set_worker_hc_param_f(pool, s, &worker, key, val, NULL);
-        apr_pool_destroy(pool);
+        err = set_worker_hc_param_f(pool, cmd->server, &worker, entries[i].key, entries[i].val, NULL);
         if (err != NULL) {
-            return apr_psprintf(cmd->pool, "%s key: %s=%s", err, key, val);
+            return apr_psprintf(cmd->pool, "%s key: %s=%s", err, entries[i].key, entries[i].val);
         }
     }
+
+    apr_pool_destroy(pool);
+
     return NULL;
 }
 
