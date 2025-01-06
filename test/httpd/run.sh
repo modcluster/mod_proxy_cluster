@@ -23,6 +23,7 @@ fi
 if [ ! -z "$MPC_NAME" ]; then
     sed -i "s/ServerName httpd-mod_proxy_cluster/ServerName ${MPC_NAME}/g" /usr/local/apache2/conf/$FILECONF
 fi
+mkdir /coverage
 
 # start apache httpd server in foreground
 echo "Starting httpd..."
