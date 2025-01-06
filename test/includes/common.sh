@@ -29,6 +29,7 @@ run_test() {
         docker logs  $httpd_cont > "logs/${2:-$1}-httpd.log" 2>&1
         docker cp ${httpd_cont}:/usr/local/apache2/logs/access_log "logs/${2:-$1}-httpd_access.log" 2> /dev/null || true
     fi
+
     # Clean all after run
     httpd_remove > /dev/null 2>&1
     tomcat_all_remove > /dev/null 2>&1
@@ -54,7 +55,11 @@ httpd_create() {
     done
     cp -r ../native ../test /tmp/mod_proxy_cluster/
     mv /tmp/mod_proxy_cluster httpd/
-    docker build -t $HTTPD_IMG -f httpd/Containerfile httpd/
+
+    docker build -t $HTTPD_IMG --build-arg CFLAGS="$MPC_CFLAGS" \
+                               --build-arg LDFLAGS="$MPC_LDFLAGS" \
+                               --build-arg HTTPD_EXTRA_FLAGS="$HTTPD_EXTRA_FLAGS" \
+                 -f httpd/Containerfile httpd/
 }
 
 # Build and run httpd container
