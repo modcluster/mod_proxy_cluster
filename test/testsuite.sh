@@ -36,6 +36,14 @@ if [ ! -d logs ]; then
     mkdir logs
 fi
 
+if [ $CODE_COVERAGE ]; then
+    if [ ! -d coverage ]; then
+        mkdir coverage
+    fi
+
+    rm coverage/*
+fi
+
 . includes/common.sh
 
 if [ ! -d tomcat/target ]; then
@@ -112,6 +120,20 @@ if [ $res -eq 0 ]; then
 else
     echo "Tests finished, but some failed."
     res=1
+fi
+
+# if we're interessed in code coverage, run an httpd container with the already obtained
+# coverage files and generate the report from within the container with all the sources
+if [ $CODE_COVERAGE ]; then
+    echo "Generating test coverage..."
+    httpd_start > /dev/null 2>&1
+    docker exec $MPC_NAME /usr/local/apache2/bin/apachectl stop
+    for f in $(ls coverage/*.json); do
+        docker cp -q $f $MPC_NAME:/coverage/
+    done
+    docker exec $MPC_NAME sh -c 'cd /native; gcovr --add-tracefile "/coverage/coverage-*.json" --html-details /coverage/test-coverage.html'
+    docker cp $MPC_NAME:/coverage/ .
+    httpd_remove
 fi
 
 exit $res
