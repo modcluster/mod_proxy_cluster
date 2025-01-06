@@ -11,6 +11,8 @@ else
   exit 1
 fi
 
+mkdir /coverage
+
 # start apache httpd server in foreground
 echo "Starting httpd..."
 /usr/local/apache2/bin/apachectl start

@@ -4,6 +4,12 @@ IMG=${IMG:-mod_proxy_cluster-testsuite-tomcat}
 HTTPD_IMG=${HTTPD_IMG:-mod_proxy_cluster-testsuite-httpd}
 MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster}
 
+if [ $CODE_COVERAGE ]; then
+    MPC_CFLAGS="$MPC_CFLAGS --coverage -fprofile-arcs -ftest-coverage -g -O0"
+    MPC_LDFLAGS="$MPC_LDFLAGS -lgcov"
+    HTTPD_EXTRA_FLAGS="$HTTPD_EXTRA_FLAGS --enable-debugger-mode"
+fi
+
 # Runs a test file ($1) under given name ($2, if given)
 run_test() {
     local ret=0
@@ -23,11 +29,24 @@ run_test() {
         echo " NOK"
         ret=1
     fi
+
+    local httpd_cont=$(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ')
     # preserve httpd's logs too if DEBUG
     if [ $DEBUG ]; then
-        local httpd_cont=$(docker ps -a | grep $HTTPD_IMG | cut -f 1 -d' ')
-        docker logs  $httpd_cont > "logs/${2:-$1}-httpd.log" 2>&1
+        docker logs ${httpd_cont} > "logs/${2:-$1}-httpd.log" 2>&1
         docker cp ${httpd_cont}:/usr/local/apache2/logs/access_log "logs/${2:-$1}-httpd_access.log" 2> /dev/null || true
+    fi
+
+    if [ $CODE_COVERAGE ]; then
+        docker exec ${httpd_cont} /usr/local/apache2/bin/apachectl stop
+        # preserve the coverage files
+        # docker has problems with names containing spaces
+        f=$(echo ${2:-1} | sed 's/ /-/g')
+        docker exec ${httpd_cont} sh -c "cd /native; gcovr --gcov-ignore-errors=no_working_dir_found --json /coverage/coverage-$f.json"
+
+        for f in $(docker exec ${httpd_cont} ls /coverage/); do
+            docker cp -q ${httpd_cont}:/coverage/$f $PWD/coverage/$f
+        done
     fi
 
     # Clean all after run
