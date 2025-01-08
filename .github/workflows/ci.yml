@@ -236,7 +236,8 @@ jobs:
       - name: Setup dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y docker maven git curl iproute2 wcstools
+          sudo apt-get install -y podman-docker maven git curl iproute2 wcstools
+          sudo touch /etc/containers/nodocker
           cd test
           sh setup-dependencies.sh
       - name: Print network environment
