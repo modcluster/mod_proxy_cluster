@@ -228,13 +228,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Stop Mono and XSP
-        # These occupy port 8084 unnecessarily
-        run: |
-          sudo systemctl stop mono-xsp4.service || true
-          sudo systemctl disable mono-xsp4.service || true
-          sudo killall mono || true
-          sudo killall xsp4 || true
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
