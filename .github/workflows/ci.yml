@@ -77,8 +77,7 @@ jobs:
           podman build -f ./podmanfile
 
   clang-format-style-check:
-    # The ubuntu-latest has an old version of clang-format, let's use ubuntu-24.04 which is in Beta
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -229,13 +228,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Stop Mono and XSP
-        # These occupy port 8084 unnecessarily
-        run: |
-          sudo systemctl stop mono-xsp4.service || true
-          sudo systemctl disable mono-xsp4.service || true
-          sudo killall mono || true
-          sudo killall xsp4 || true
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -244,7 +236,8 @@ jobs:
       - name: Setup dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y docker maven git curl iproute2 wcstools
+          sudo apt-get install -y podman-docker maven git curl iproute2 wcstools
+          sudo touch /etc/containers/nodocker
           cd test
           sh setup-dependencies.sh
       - name: Print network environment
