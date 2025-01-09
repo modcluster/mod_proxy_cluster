@@ -38,9 +38,8 @@ jobs:
               echo 'WORKDIR /mod_proxy_cluster/native'
               echo 'RUN cmake . -DCMAKE_C_COMPILER=${{ matrix.compiler }}'
               echo 'RUN make'
-          } > podmanfile
-          podman build -f ./podmanfile
-    name: cmake-fedora-latest
+          } > Containerfile
+          podman build .
 
   make-fedora-latest:
     runs-on: ubuntu-latest
@@ -73,8 +72,8 @@ jobs:
               echo '  make || exit 1; \'
               echo '  cd ..; \'
               echo 'done;'
-          } > podmanfile
-          podman build -f ./podmanfile
+          } > Containerfile
+          podman build .
 
   clang-format-style-check:
     runs-on: ubuntu-latest
