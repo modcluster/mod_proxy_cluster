@@ -1,4 +1,4 @@
-mod_cluster
+mod_cluster [![Fedora package](https://img.shields.io/fedora/v/mod_proxy_cluster)](https://packages.fedoraproject.org/pkgs/mod_proxy_cluster/mod_proxy_cluster/)
 ===========
 
 Project mod_cluster is a httpd-based load-balancer. It uses a communication channel to forward
