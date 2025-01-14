@@ -128,11 +128,14 @@ if [ $CODE_COVERAGE ]; then
     echo "Generating test coverage..."
     httpd_start > /dev/null 2>&1
     docker exec $MPC_NAME /usr/local/apache2/bin/apachectl stop
+
     for f in $(ls coverage/*.json); do
         docker cp -q $f $MPC_NAME:/coverage/
     done
+
     docker exec $MPC_NAME sh -c 'cd /native; gcovr --add-tracefile "/coverage/coverage-*.json" --html-details /coverage/test-coverage.html'
     docker cp $MPC_NAME:/coverage/ .
+
     httpd_remove
 fi
 
