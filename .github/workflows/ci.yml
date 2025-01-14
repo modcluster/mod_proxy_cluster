@@ -109,6 +109,8 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+        CFLAGS: "-Wall -Werror"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,7 +120,7 @@ jobs:
           for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager/; do \
             cd $module; \
             sh buildconf; \
-            ./configure CFLAGS="-Wall -Werror" --with-apxs=/usr/local/apache2/bin/apxs; \
+            ./configure --with-apxs=/usr/local/apache2/bin/apxs; \
             make clean; \
             make || exit 1; \
             cd ..; \
@@ -158,13 +160,15 @@ jobs:
           sudo make
           sudo make install
       - name: Build mod_proxy_cluster and add it to httpd
+        env:
+            CFLAGS: "-Wall -Werror"
         run: |
           ls
           cd mod_proxy_cluster/native
           for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager/; do \
             cd $module; \
             sh buildconf; \
-            ./configure CFLAGS="-Wall -Werror" --with-apxs=/usr/local/apache2/bin/apxs; \
+            ./configure --with-apxs=/usr/local/apache2/bin/apxs; \
             make clean; \
             make || exit 1; \
             sudo cp *.so /usr/local/apache2/modules; \
