@@ -14,7 +14,7 @@ builddir = @CLUSTER_BASE@
 top_srcdir = @APACHE_BASE@
 
 include $(top_builddir)/build/rules.mk
-SH_COMPILE = $(LIBTOOL) --mode=compile $(BASE_CC) -I../include -prefer-pic -c $< && touch $@
+SHLTCFLAGS += -I$(builddir)/../include
 
 all: mod_manager.so
 
