@@ -34,6 +34,7 @@ fi
 
 if [ ! -d logs ]; then
     mkdir logs
+    rm logs/*
 fi
 
 if [ $CODE_COVERAGE ]; then
@@ -53,11 +54,11 @@ fi
 
 echo -n "Creating docker containers..."
 if [ ! -z ${DEBUG+x} ]; then
-     httpd_create  || exit 2
-     tomcat_create || exit 3
+    httpd_create  || exit 2
+    tomcat_create || exit 3
 else
-     httpd_create  > /dev/null 2>&1 || exit 2
-     tomcat_create > /dev/null 2>&1 || exit 3
+    httpd_create  > /dev/null 2>&1 || exit 2
+    tomcat_create > /dev/null 2>&1 || exit 3
 fi
 echo " Done"
 
