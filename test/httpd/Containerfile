@@ -6,7 +6,7 @@ ARG LFLAGS=""
 ARG HTTPD_DEFAULT_FLAGS="--enable-proxy --enable-proxy-http --enable-proxy-ajp --enable-proxy-wstunnel --enable-proxy-hcheck --with-port=8000"
 ARG HTTPD_EXTRA_FLAGS=""
 
-RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr -y
+RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr lcov -y
 
 ENV CONF=httpd/mod_proxy_cluster.conf
 ENV HTTPD=${HTTPD_SOURCES}
