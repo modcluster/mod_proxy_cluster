@@ -6,7 +6,7 @@ ARG HTTPD_EXTRA_FLAGS=""
 
 FROM fedora:40
 
-RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr -y
+RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr lcov -y
 
 ARG HTTPD_SOURCES
 ARG CFLAGS
