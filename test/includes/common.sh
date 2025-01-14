@@ -42,10 +42,10 @@ run_test() {
         # preserve the coverage files
         # docker has problems with names containing spaces
         f=$(echo ${2:-1} | sed 's/ /-/g')
-        docker exec ${httpd_cont} sh -c "cd /native; gcovr --gcov-ignore-errors=no_working_dir_found --json /coverage/coverage-$f.json"
+        docker exec ${httpd_cont} sh -c "cd /native; gcovr --gcov-ignore-errors=no_working_dir_found --json /coverage/coverage-$f.json > /coverage/coverage-$f.log 2>&1"
 
         for f in $(docker exec ${httpd_cont} ls /coverage/); do
-            docker cp -q ${httpd_cont}:/coverage/$f $PWD/coverage/$f
+            docker cp ${httpd_cont}:/coverage/$f $PWD/coverage/$f > /dev/null
         done
     fi
 
