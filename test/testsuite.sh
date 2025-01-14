@@ -131,11 +131,11 @@ if [ $CODE_COVERAGE ]; then
     docker exec $MPC_NAME /usr/local/apache2/bin/apachectl stop
 
     for f in $(ls coverage/*.json); do
-        docker cp -q $f $MPC_NAME:/coverage/
+        docker cp $f $MPC_NAME:/coverage/ > /dev/null
     done
 
-    docker exec $MPC_NAME sh -c 'cd /native; gcovr --add-tracefile "/coverage/coverage-*.json" --html-details /coverage/test-coverage.html'
-    docker cp $MPC_NAME:/coverage/ .
+    docker exec $MPC_NAME sh -c 'cd /native; gcovr --add-tracefile "/coverage/coverage-*.json" --html-details /coverage/test-coverage.html > /coverage/test-coverage.log 2>&1'
+    docker cp $MPC_NAME:/coverage/ .  > /dev/null
 
     httpd_remove
 fi
