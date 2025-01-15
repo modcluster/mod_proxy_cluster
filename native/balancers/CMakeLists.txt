@@ -6,7 +6,7 @@
 # balancers CMake file
 # @author Jean-Frederic Clere
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 PROJECT(mod_lbmethod_cluster LANGUAGES C)
 
 SET(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)

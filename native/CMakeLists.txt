@@ -6,7 +6,7 @@
 # mod_cluster native parent project
 # @author Michal Karm Babacek
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 PROJECT(mod_cluster LANGUAGES C)
 
 IF(WIN32)
