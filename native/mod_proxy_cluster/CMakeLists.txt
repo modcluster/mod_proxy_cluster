@@ -7,7 +7,7 @@
 # @author Michal Karm Babacek
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
-PROJECT(mod_proxy_cluster)
+PROJECT(mod_proxy_cluster LANGUAGES C)
 
 SET(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 SET(PROJECT_COMMON_SRC ${PROJECT_SOURCE_DIR}/../common/common.c)
