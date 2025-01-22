@@ -34,6 +34,15 @@ fi
 
 if [ ! -d logs ]; then
     mkdir logs
+    rm logs/*
+fi
+
+if [ $CODE_COVERAGE ]; then
+    if [ ! -d coverage ]; then
+        mkdir coverage
+    fi
+
+    rm coverage/*
 fi
 
 . includes/common.sh
@@ -45,11 +54,11 @@ fi
 
 echo -n "Creating docker containers..."
 if [ ! -z ${DEBUG+x} ]; then
-     httpd_create  || exit 2
-     tomcat_create || exit 3
+    httpd_create  || exit 2
+    tomcat_create || exit 3
 else
-     httpd_create  > /dev/null 2>&1 || exit 2
-     tomcat_create > /dev/null 2>&1 || exit 3
+    httpd_create  > /dev/null 2>&1 || exit 2
+    tomcat_create > /dev/null 2>&1 || exit 3
 fi
 echo " Done"
 
@@ -112,6 +121,24 @@ if [ $res -eq 0 ]; then
 else
     echo "Tests finished, but some failed."
     res=1
+fi
+
+# if we're interessed in code coverage, run an httpd container with the already obtained
+# coverage files and generate the report from within the container with all the sources
+if [ $CODE_COVERAGE ]; then
+    echo "Generating test coverage..."
+    httpd_start > /dev/null 2>&1
+    docker exec $MPC_NAME /usr/local/apache2/bin/apachectl stop
+
+    for f in $(ls coverage/*.json coverage/*.info); do
+        docker cp $f $MPC_NAME:/coverage/ > /dev/null
+    done
+
+    docker exec $MPC_NAME sh -c 'cd /native; gcovr --add-tracefile "/coverage/coverage-*.json" --html-details /coverage/test-coverage.html > /coverage/test-coverage.log 2>&1'
+    docker exec $MPC_NAME sh -c 'cd /coverage; mkdir lcov; genhtml *.info --output-directory lcov  > /coverage/lcov/test-coverage-lcov.log 2>&1'
+    docker cp $MPC_NAME:/coverage/ .  > /dev/null
+
+    httpd_remove
 fi
 
 exit $res

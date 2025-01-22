@@ -1,8 +1,5 @@
 #!/bin/sh
 
-pwd
-ls -lt
-
 # wget and copy the prepared conf file and include it
 cd /test/
 if [ -f $CONF ]; then
@@ -13,6 +10,8 @@ else
   echo "The given CONF file: $CONF does not exist"
   exit 1
 fi
+
+mkdir /coverage
 
 # start apache httpd server in foreground
 echo "Starting httpd..."
