@@ -1,6 +1,6 @@
 ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.62.tar.gz"
 ARG CFLAGS=""
-ARG LFLAGS=""
+ARG LDFLAGS=""
 ARG HTTPD_DEFAULT_FLAGS="--enable-proxy --enable-proxy-http --enable-proxy-ajp --enable-proxy-wstunnel --enable-proxy-hcheck --with-port=8000"
 ARG HTTPD_EXTRA_FLAGS=""
 
@@ -10,7 +10,7 @@ RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redha
 
 ARG HTTPD_SOURCES
 ARG CFLAGS
-ARG LFLAGS
+ARG LDFLAGS
 ARG HTTPD_DEFAULT_FLAGS
 ARG HTTPD_EXTRA_FLAGS
 
