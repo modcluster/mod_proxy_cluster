@@ -43,7 +43,7 @@ run_test() {
         # docker has problems with names containing spaces
         f=$(echo ${2:-1} | sed 's/ /-/g')
         docker exec ${httpd_cont} sh -c "cd /native; gcovr --gcov-ignore-errors=no_working_dir_found --json /coverage/coverage-$f.json > /coverage/coverage-$f.log 2>&1"
-        docker exec ${httpd_cont} sh -c "cd /native; lcov --capture --directory . --output-file /coverage/coverage-$f.info"
+        docker exec ${httpd_cont} sh -c "cd /native; lcov --capture --directory . --output-file /coverage/coverage-$f.info  > /coverage/coverage-lcov-$f.log 2>&1"
 
         for f in $(docker exec ${httpd_cont} ls /coverage/); do
             docker cp ${httpd_cont}:/coverage/$f $PWD/coverage/$f > /dev/null

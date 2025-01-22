@@ -135,7 +135,7 @@ if [ $CODE_COVERAGE ]; then
     done
 
     docker exec $MPC_NAME sh -c 'cd /native; gcovr --add-tracefile "/coverage/coverage-*.json" --html-details /coverage/test-coverage.html > /coverage/test-coverage.log 2>&1'
-    docker exec $MPC_NAME sh -c 'cd /coverage; mkdir lcov; genhtml *.info --output-directory lcov'
+    docker exec $MPC_NAME sh -c 'cd /coverage; mkdir lcov; genhtml *.info --output-directory lcov  > /coverage/lcov/test-coverage-lcov.log 2>&1'
     docker cp $MPC_NAME:/coverage/ .  > /dev/null
 
     httpd_remove
