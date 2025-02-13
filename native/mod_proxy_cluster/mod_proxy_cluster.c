@@ -450,6 +450,11 @@ static void create_worker_arrange_shared_mem(proxy_server_conf *conf, proxy_work
     worker->s->keepalive = 1;
     worker->s->keepalive_set = 1;
     worker->s->is_address_reusable = 1;
+#if AP_MODULE_MAGIC_AT_LEAST(20120211, 130)
+    worker->s->address_ttl = 60; /* DNS will reload after 60 sec */
+    worker->s->address_ttl_set = 1;
+    worker->s->disablereuse = 0;
+#endif
     worker->s->acquire = apr_time_make(0, 2 * 1000); /* 2 ms */
     worker->s->retry = apr_time_from_sec(PROXY_WORKER_DEFAULT_RETRY);
 
