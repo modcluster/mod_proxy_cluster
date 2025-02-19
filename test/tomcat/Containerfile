@@ -6,7 +6,7 @@ ARG TESTSUITE_TOMCAT_CONFIG=server.xml
 ARG TESTSUITE_TOMCAT_CONTEXT=context.xml
 
 # install ss
-RUN apt update && apt install -y iproute2
+RUN apt-get update && apt-get install -y iproute2
 
 WORKDIR /usr/local/tomcat
 
