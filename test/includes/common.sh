@@ -54,7 +54,7 @@ httpd_create() {
     done
     cp -r ../native ../test /tmp/mod_proxy_cluster/
     mv /tmp/mod_proxy_cluster httpd/
-    docker build -t $HTTPD_IMG httpd/
+    docker build -t $HTTPD_IMG -f httpd/Containerfile httpd/
 }
 
 # Build and run httpd container
@@ -113,10 +113,12 @@ clean_and_exit() {
 #       $3 tomcat context file (default is context.xml)
 tomcat_create() {
     if [ -z "$1" ]; then
-        docker build -t $IMG tomcat/ --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
+        docker build -t $IMG -f tomcat/Containerfile tomcat/ \
+                                     --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
                                      --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
     else
-        docker build -t $IMG tomcat/ --build-arg TESTSUITE_TOMCAT_VERSION=$1 \
+        docker build -t $IMG -f tomcat/Containerfile tomcat/ \
+                                     --build-arg TESTSUITE_TOMCAT_VERSION=$1 \
                                      --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
                                      --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
     fi
