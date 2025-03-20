@@ -5,7 +5,7 @@ HTTPD_IMG=${HTTPD_IMG:-mod_proxy_cluster-testsuite-httpd}
 MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster}
 
 if [ $CODE_COVERAGE ]; then
-    MPC_CFLAGS="$MPC_CFLAGS --coverage -fprofile-arcs -ftest-coverage -g -O0"
+    MPC_CFLAGS="$MPC_CFLAGS --coverage -fprofile-arcs -ftest-coverage -fPIC -g -O0"
     MPC_LDFLAGS="$MPC_LDFLAGS -lgcov"
     HTTPD_EXTRA_FLAGS="$HTTPD_EXTRA_FLAGS --enable-debugger-mode"
 fi
