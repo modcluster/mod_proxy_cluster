@@ -104,8 +104,12 @@ jobs:
 
   make-httpd-maintainer-mode:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image-tag: [ "latest", "oldest-supported" ]
     container:
-      image: quay.io/mod_cluster/ci-httpd-dev
+      image: quay.io/mod_cluster/ci-httpd-dev:${{ matrix.image-tag }}
     defaults:
       run:
         shell: bash
@@ -114,6 +118,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Print httpd version
+        run: echo $HTTPD_VERSION
       - name: Build
         run: |
           cd native
