@@ -11,7 +11,7 @@ done
 while true
 do
   found=0
-  http_code=`curl -s -m10 -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp`
+  http_code=$(curl -s -m 10 -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp)
   for var in "$@"
   do 
     if [ "${http_code}" -eq "${var}" ]; then
@@ -20,7 +20,7 @@ do
     fi
   done
   if [ ${found} -eq 0 ]; then
-    echo "ERROR got: ${http_code} expects one of ${codes} `date`"
+    echo "ERROR got: ${http_code} expects one of ${codes} $(date)"
     exit 1
   fi
 

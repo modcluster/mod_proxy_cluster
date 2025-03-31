@@ -20,12 +20,12 @@ sleep 12
 
 # Basic 200 and 404 tests.
 echo "basic 200 and 404 tests"
-CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp)
+CODE=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp)
 if [ ${CODE} != "200" ]; then
   echo "Failed can't reach webapp: ${CODE}"
   exit 1
 fi
-CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/toto.jsp)
+CODE=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/toto.jsp)
 if [ ${CODE} != "404" ]; then
   echo "Failed should get 404"
   exit 1
