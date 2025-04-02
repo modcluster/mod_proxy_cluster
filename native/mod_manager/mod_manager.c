@@ -1224,6 +1224,9 @@ static const proxy_worker_shared *read_shared_by_node(request_rec *r, nodeinfo_t
         if (strcmp(balancer->s->name, name)) {
             continue;
         }
+        /* Sync the shared memory for balancer */
+        ap_proxy_sync_balancer(balancer, r->server, conf);
+
         workers = (proxy_worker **)balancer->workers->elts;
         for (j = 0; j < balancer->workers->nelts; j++, workers++) {
             proxy_worker *worker = *workers;
