@@ -36,11 +36,10 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, const proxy_b
     proxy_worker *mycandidate = NULL;
     int i;
 
-    for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
+    for (i = 0; i < balancer->workers->nelts; i++) {
         const nodeinfo_t *node;
         int id;
-        proxy_worker **run = (proxy_worker **)ptr;
-        proxy_worker *worker = *run;
+        proxy_worker *worker = *((proxy_worker **)(ptr + i * sizew));
 
         if (!PROXY_WORKER_IS_USABLE(worker)) {
             continue;
@@ -250,7 +249,6 @@ static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now,
 
 static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool)
 {
-    apr_status_t rv = APR_SUCCESS;
     server_rec *s = (server_rec *)data;
     proxy_node_table *node_table;
     apr_time_t now;
@@ -343,7 +341,8 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "lbmethod_cluster_watchdog_callback STOPPING");
         break;
     }
-    return rv;
+
+    return APR_SUCCESS;
 }
 
 static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
