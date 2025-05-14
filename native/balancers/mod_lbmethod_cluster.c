@@ -36,11 +36,10 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, const proxy_b
     proxy_worker *mycandidate = NULL;
     int i;
 
-    for (i = 0; i < balancer->workers->nelts; i++, ptr = ptr + sizew) {
+    for (i = 0; i < balancer->workers->nelts; i++) {
         const nodeinfo_t *node;
         int id;
-        proxy_worker **run = (proxy_worker **)ptr;
-        proxy_worker *worker = *run;
+        proxy_worker *worker = *((proxy_worker **)(ptr + i * sizew));
 
         if (!PROXY_WORKER_IS_USABLE(worker)) {
             continue;
@@ -90,7 +89,9 @@ static proxy_worker *find_best(proxy_balancer *balancer, request_rec *r)
     }
 
     if (!node_table) {
+        ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
         node_table = read_node_table(r->pool, node_storage, 0);
+        node_storage->unlock_nodes();
     }
 
     node_storage->lock_nodes();
@@ -131,15 +132,25 @@ static const proxy_balancer_method cluster = {"cluster", &find_best, NULL, &rese
  */
 static int lbmethod_cluster_trans(request_rec *r)
 {
+    proxy_vhost_table *vhost_table;
+    proxy_context_table *context_table;
+    proxy_balancer_table *balancer_table;
+    proxy_node_table *node_table;
+
     const char *balancer;
     void *sconf = r->server->module_config;
     const char *use_uri = r->uri;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
     proxy_dir_conf *dconf = ap_get_module_config(r->per_dir_config, &proxy_module);
-    proxy_vhost_table *vhost_table = read_vhost_table(r->pool, host_storage, 0);
-    proxy_context_table *context_table = read_context_table(r->pool, context_storage, 0);
-    proxy_balancer_table *balancer_table = read_balancer_table(r->pool, balancer_storage, 0);
-    proxy_node_table *node_table = read_node_table(r->pool, node_storage, 0);
+
+    ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
+
+    vhost_table = read_vhost_table(r->pool, host_storage, 0);
+    context_table = read_context_table(r->pool, context_storage, 0);
+    balancer_table = read_balancer_table(r->pool, balancer_storage, 0);
+    node_table = read_node_table(r->pool, node_storage, 0);
+
+    node_storage->unlock_nodes();
 
     ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
                  "lbmethod_cluster_trans: for %d %s %s uri: %s args: %s unparsed_uri: %s", r->proxyreq, r->filename,
@@ -238,7 +249,6 @@ static void remove_removed_node(server_rec *s, apr_pool_t *pool, apr_time_t now,
 
 static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool)
 {
-    apr_status_t rv = APR_SUCCESS;
     server_rec *s = (server_rec *)data;
     proxy_node_table *node_table;
     apr_time_t now;
@@ -249,7 +259,9 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
 
     case AP_WATCHDOG_STATE_RUNNING:
         /* loop thru all workers */
+        ap_assert(node_storage->lock_nodes() == APR_SUCCESS);
         node_table = read_node_table(pool, node_storage, 0);
+        node_storage->unlock_nodes();
         now = apr_time_now();
         if (s) {
             int i;
@@ -267,12 +279,11 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
                 for (n = 0; n < balancer->workers->nelts; n++) {
                     nodeinfo_t *node;
                     int id;
-                    worker = *workers;
+                    worker = *(workers + n);
                     node = table_get_node_route(node_table, worker->s->route, &id);
                     if (node != NULL) {
                         if (node->mess.remove) {
                             /* Already marked for removal */
-                            workers++;
                             continue;
                         }
                         if (node->mess.updatetimelb < (now - lbstatus_recalc_time)) {
@@ -284,13 +295,11 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
                             node_storage->lock_nodes();
                             if (node_storage->read_node(id, &ou) != APR_SUCCESS) {
                                 node_storage->unlock_nodes();
-                                workers++;
                                 continue;
                             }
                             if (ou->mess.remove) {
                                 /* the stored node is already marked for removal */
                                 node_storage->unlock_nodes();
-                                workers++;
                                 continue;
                             }
                             ou->mess.updatetimelb = now;
@@ -318,7 +327,6 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
                             node_storage->unlock_nodes();
                         }
                     }
-                    workers++;
                 }
             }
 
@@ -333,7 +341,8 @@ static apr_status_t mc_watchdog_callback(int state, void *data, apr_pool_t *pool
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, "lbmethod_cluster_watchdog_callback STOPPING");
         break;
     }
-    return rv;
+
+    return APR_SUCCESS;
 }
 
 static int lbmethod_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *s)
