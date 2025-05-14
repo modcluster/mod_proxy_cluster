@@ -16,5 +16,6 @@ mkdir /coverage
 # start apache httpd server in foreground
 echo "Starting httpd..."
 /usr/local/apache2/bin/httpd -X &
+sleep 1
 tail -f /usr/local/apache2/logs/error_log
 
