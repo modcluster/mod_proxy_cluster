@@ -1,3 +1,4 @@
+set +x
 #!/usr/bin/sh
 # exits with 0 if everything went well
 # exits with 1 if some test failed
@@ -127,7 +128,7 @@ fi
 # coverage files and generate the report from within the container with all the sources
 if [ $CODE_COVERAGE ]; then
     echo "Generating test coverage..."
-    httpd_start > /dev/null 2>&1
+    MPC_CONF=httpd/mod_lbmethod_cluster.conf httpd_start > /dev/null 2>&1
     docker exec $MPC_NAME /usr/local/apache2/bin/apachectl stop
 
     for f in $(ls coverage/*.json coverage/*.info); do
