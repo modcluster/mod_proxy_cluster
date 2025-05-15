@@ -1,8 +1,5 @@
 #!/bin/sh
 
-pwd
-ls -lt
-
 # wget and copy the prepared conf file and include it
 cd /test/
 if [ -f $CONF ]; then
@@ -14,8 +11,11 @@ else
   exit 1
 fi
 
+mkdir /coverage
+
 # start apache httpd server in foreground
 echo "Starting httpd..."
-/usr/local/apache2/bin/apachectl start
+/usr/local/apache2/bin/httpd -X &
+sleep 1
 tail -f /usr/local/apache2/logs/error_log
 
