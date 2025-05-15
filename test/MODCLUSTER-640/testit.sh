@@ -29,12 +29,12 @@ docker cp MODCLUSTER-640/webapp1 tomcat2:/usr/local/tomcat/webapps/webapp1
 sleep 12
 
 # test the URL
-code=$(/usr/bin/curl -o /dev/null --silent --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
+code=$(/usr/bin/curl -o /dev/null -s -m 20 --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
 if [ "${code}" != "200" ]; then
     echo "nocanon test failed, we get ${code} on http://localhost:8000/webapp1/index.html"
     exit 1
 fi
-curl -v "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
+curl -v -m 20 "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
 if [ $? -eq 0 ]; then
     echo "nocanon test failed, we get \"jsr:root\"!!!"
     exit 1
@@ -49,12 +49,12 @@ docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 tomcat_wait_for_n_nodes 2
 
 # test the URL
-code=$(/usr/bin/curl -o /dev/null --silent --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
+code=$(/usr/bin/curl -o /dev/null -s -m 20 --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
 if [ "${code}" != "200" ]; then
     echo "nocanon test failed, we get ${code} on http://localhost:8000/webapp1/index.html"
     exit 1
 fi
-curl -v "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
+curl -v -m 20 "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
 if [ $? -ne 0 ]; then
     echo "NO nocanon test failed, we don't get \"jsr:root\"!!!"
     exit 1
@@ -68,12 +68,12 @@ docker exec MODCLUSTER-640 /usr/local/apache2/bin/apachectl restart
 tomcat_wait_for_n_nodes 2
 
 # test the URL
-code=$(/usr/bin/curl -o /dev/null --silent --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
+code=$(/usr/bin/curl -o /dev/null -s -m 20 --write-out '%{http_code}' http://localhost:8000/webapp1/index.html)
 if [ "${code}" != "200" ]; then
     echo "nocanon test failed, we get ${code} on http://localhost:8000/webapp1/index.html"
     exit 1
 fi
-curl -v "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
+curl -v -m 20 "http://localhost:8000/webapp1/jsr%3aroot/toto" | grep "jsr:root"
 if [ $? -eq 0 ]; then
     echo "nocanon test failed, we get \"jsr:root\"!!!"
     tomcat_all_remove

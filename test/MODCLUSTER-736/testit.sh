@@ -89,7 +89,7 @@ singlecycle() {
     i=0
     while true
     do
-        curl -s http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
+        curl -s -m 20 http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
         if [ $? -eq 0 ]; then
             break
         fi
@@ -106,7 +106,7 @@ singlecycle() {
     i=0
     while true
     do
-        curl -s http://localhost:6666/mod_cluster_manager | grep /tomcat$1 > /dev/null
+        curl -s -m 20 http://localhost:6666/mod_cluster_manager | grep /tomcat$1 > /dev/null
         if [ $? -eq 0 ]; then
             break
         fi
@@ -126,7 +126,7 @@ singlecycle() {
     tomcat_shutdown $1 127.0.0.$R || exit 1
     while true
     do
-        curl -s http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
+        curl -s -m 20 http://localhost:6666/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
         if [ $? -ne 0 ]; then
             break
         fi

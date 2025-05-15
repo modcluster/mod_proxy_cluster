@@ -25,7 +25,7 @@ docker cp MODCLUSTER-785/app tomcat1:/usr/local/tomcat/webapps/app
 
 # check that the app is answering
 sleep 15
-curl -s http://localhost:8000/app/status.jsp | grep "785"
+curl -s -m 20 http://localhost:8000/app/status.jsp | grep "785"
 if [ $? -ne 0 ]; then
   echo "MODCLUSTER-785 Failed!"
   exit 1
@@ -37,7 +37,7 @@ tomcat_remove 1
 # it return 503
 # make sure we use enough workers
 ab -c 10 -n100 http://localhost:8000/app/
-http_code=`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/app/`
+http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8000/app/)
 if [ ${http_code} != 503 ]; then
   echo "MODCLUSTER-785 Failed! not 503 but ${http_code}"
   exit 1
@@ -57,16 +57,16 @@ sleep 15
 
 # check that the app is answering
 # does it return 503
-http_code=`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/app/status.jsp`
+http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8000/app/status.jsp)
 i=0
 while true
 do
   sleep 1
-  http_code=`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/app/status.jsp`
+  http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8000/app/status.jsp)
   if [ ${http_code} == 200 ]; then
     break
   fi
-  i=`expr $i + 1`
+  i=$(expr $i + 1)
   if [ $i -gt 60 ]; then
     break
   fi
@@ -86,12 +86,12 @@ i=0
 while true
 do
   sleep 1
-  http_code=`curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/app/status.jsp`
+  http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8000/app/status.jsp)
   if [ ${http_code} == 503 ]; then
     echo "MODCLUSTER-785 Failed! return 503"
     exit 1
   fi
-  i=`expr $i + 1`
+  i=$(expr $i + 1)
   if [ $i -gt 60 ]; then
     break
   fi
