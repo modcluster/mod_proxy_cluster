@@ -7,7 +7,7 @@ MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster}
 if [ $CODE_COVERAGE ]; then
     MPC_CFLAGS="$MPC_CFLAGS --coverage -fprofile-arcs -ftest-coverage -fPIC -g -O0"
     MPC_LDFLAGS="$MPC_LDFLAGS -lgcov -fprofile-arcs -ftest-coverage"
-    HTTPD_EXTRA_FLAGS="$HTTPD_EXTRA_FLAGS --enable-debugger-mode --enable-so"
+    HTTPD_EXTRA_FLAGS="$HTTPD_EXTRA_FLAGS --enable-debugger-mode --enable-maintainer-mode --enable-modules=all --enable-so"
 fi
 
 # Runs a test file ($1) under given name ($2, if given)
