@@ -13,6 +13,7 @@ ENV HTTPD=${HTTPD_SOURCES}
 ENV CFLAGS="${CFLAGS}"
 ENV LDFLAGS="${LDFLAGS}"
 ENV HTTPD_FLAGS="${HTTPD_DEFAULT_FLAGS} ${HTTPD_EXTRA_FLAGS}"
+ENV CXXFLAGS="-fprofile-arcs -ftest-coverage"
 
 # make sure you have copy of the local repository at place
 # (our function "httpd_create" takes care of that)
