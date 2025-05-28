@@ -1,11 +1,19 @@
 FROM fedora:41
 
 ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.63.tar.gz"
+ARG CFLAGS=""
+ARG LDFLAGS=""
+ARG HTTPD_DEFAULT_FLAGS="--enable-proxy --enable-proxy-http --enable-proxy-ajp --enable-proxy-wstunnel --enable-proxy-hcheck --with-port=8000"
+ARG HTTPD_EXTRA_FLAGS=""
 
-RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf -y
+RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr lcov -y
 
 ENV CONF=httpd/mod_proxy_cluster.conf
 ENV HTTPD=${HTTPD_SOURCES}
+ENV CFLAGS="${CFLAGS}"
+ENV LDFLAGS="${LDFLAGS}"
+ENV HTTPD_FLAGS="${HTTPD_DEFAULT_FLAGS} ${HTTPD_EXTRA_FLAGS}"
+ENV CXXFLAGS="-fprofile-arcs -ftest-coverage"
 
 # make sure you have copy of the local repository at place
 # (our function "httpd_create" takes care of that)
@@ -17,12 +25,7 @@ RUN mkdir httpd
 RUN tar xvf $(filename $HTTPD) --strip 1 -C httpd
 RUN ls
 WORKDIR /httpd
-RUN ./configure --enable-proxy \
-                --enable-proxy-http \
-                --enable-proxy-ajp \
-                --enable-proxy-wstunnel \
-                --enable-proxy-hcheck \
-                --with-port=8000
+RUN ./configure ${HTTPD_FLAGS}
 RUN make
 RUN make install
 
@@ -37,7 +40,7 @@ RUN for m in advertise mod_proxy_cluster balancers mod_manager; \
         ./configure --with-apxs=/usr/local/apache2/bin/apxs; \
         make clean; \
         make || exit 1; \
-        cp *.so /usr/local/apache2/modules; \
+        for f in *.so; do ln -s "$PWD/$f" /usr/local/apache2/modules/$f; done; \
         cd $OLDPWD; \
     done;
 
