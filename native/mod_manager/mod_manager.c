@@ -1276,19 +1276,18 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
             return SALIBIG;
         }
 
-        if (phost->host) {
-            phost->next = apr_palloc(p, sizeof(struct cluster_host));
-            phost = phost->next;
-            phost->next = NULL;
-            phost->context = NULL;
-        }
         /* Aliases to lower case for further case-insensitive treatment, IETF RFC 1035 Section 2.3.3. */
         tmp = val;
         while (*tmp) {
             *tmp = apr_tolower(*tmp);
             tmp++;
         }
-        phost->host = val;
+
+        if (phost->host) {
+            phost->host = apr_pstrcat(p, phost->host, ",", val, NULL);
+        } else {
+            phost->host = val;
+        }
     }
 
     if (strcasecmp(key, "Context") == 0) {
@@ -1300,7 +1299,12 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
             *errtype = TYPESYNTAX;
             return SCONBIG;
         }
-        phost->context = val;
+
+        if (phost->context) {
+            phost->context = apr_pstrcat(p, phost->context, ",", val, NULL);
+        } else {
+            phost->context = val;
+        }
     }
 
     return NULL;
