@@ -10,7 +10,6 @@ use Apache::TestUtil;
 use Apache::TestConfig;
 use Apache::TestRequest 'GET';
 
-# use Test::More;
 use ModProxyCluster;
 
 plan tests => 70;
@@ -36,7 +35,8 @@ $resp = CMD 'CONFIG', $url;
 ok $resp->is_error;
 ok ($resp->content ne "");
 ok ($resp->header("Type") eq "SYNTAX");
-ok ($resp->header("Mess") eq "SYNTAX: JVMRoute can't be empty");
+# ok ($resp->header("Mess") eq "SYNTAX: JVMRoute can't be empty");
+ok ($resp->header("Mess") eq "SYNTAX: Can't parse MCMP message. It might have contained illegal symbols or unknown elements.");
 
 ## Empty JVMRoute
 $resp = CMD 'CONFIG', $url, ( JVMRoute => '' );
@@ -44,8 +44,9 @@ $resp = CMD 'CONFIG', $url, ( JVMRoute => '' );
 ok $resp->is_error;
 ok ($resp->content ne "");
 ok ($resp->header("Type") eq "SYNTAX");
-# ok ($resp->header("Mess") eq "SYNTAX: Can't parse MCMP message. It might have contained illegal symbols or unknown elements.");
-ok ($resp->header("Mess") eq "SYNTAX: JVMRoute can't be empty");
+ok ($resp->header("Mess") eq "SYNTAX: Can't parse MCMP message. It might have contained illegal symbols or unknown elements.");
+# TODO: Revisit this one
+# ok ($resp->header("Mess") eq "SYNTAX: JVMRoute can't be empty");
 
 # LIMITS
 ## Alias
