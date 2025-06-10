@@ -1,9 +1,6 @@
 #!/bin/sh
 
-pwd
-ls -lt
-
-# wget and copy the prepared conf file and include it
+# copy the prepared conf file and include it
 cd /test/
 if [ -f $CONF ]; then
   FILECONF=$(filename $CONF)
