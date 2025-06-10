@@ -1,22 +1,22 @@
-FROM fedora:41
+FROM fedora:41 AS builder
 
 ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.63.tar.gz"
 
-RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf -y
+RUN dnf install gcc apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config autoconf wcstools -y
 
 ENV CONF=httpd/mod_proxy_cluster.conf
 ENV HTTPD=${HTTPD_SOURCES}
 
 # make sure you have copy of the local repository at place
 # (our function "httpd_create" takes care of that)
-ADD mod_proxy_cluster /
-ADD run.sh /tmp
+COPY mod_proxy_cluster /
 
-RUN wget $HTTPD
-RUN mkdir httpd
-RUN tar xvf $(filename $HTTPD) --strip 1 -C httpd
-RUN ls
+ADD ${HTTPD} .
+
+RUN mkdir /httpd && tar xvf $(filename $HTTPD) --strip 1 -C /httpd
+
 WORKDIR /httpd
+
 RUN ./configure --enable-proxy \
                 --enable-proxy-http \
                 --enable-proxy-ajp \
@@ -40,6 +40,18 @@ RUN for m in advertise mod_proxy_cluster balancers mod_manager; \
         cp *.so /usr/local/apache2/modules; \
         cd $OLDPWD; \
     done;
+
+RUN rm -rf /test/httpd/mod_proxy_cluster
+
+FROM fedora:41
+
+RUN dnf install pcre apr-util wcstools -y
+
+COPY --from=builder /usr/local/apache2 /usr/local/apache2
+
+COPY --from=builder /test /test
+
+COPY run.sh /tmp
 
 WORKDIR /usr/local/apache2
 
