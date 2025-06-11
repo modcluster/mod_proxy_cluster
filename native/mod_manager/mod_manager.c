@@ -51,10 +51,6 @@
 #define SMULCTB                "SYNTAX: Only one Context in APP command"
 #define SREADER                "SYNTAX: %s can't read POST data"
 
-#define SJIDBIG                "SYNTAX: JGroupUuid field too big"
-#define SJDDBIG                "SYNTAX: JGroupData field too big"
-#define SJIDBAD                "SYNTAX: JGroupUuid can't be empty"
-
 #define TYPEMEM                2
 #define MNODEUI                "MEM: Can't update or insert node with \"%s\" JVMRoute"
 #define MNODERM                "MEM: Old node with \"%s\" JVMRoute still exists"
@@ -63,8 +59,6 @@
 #define MHOSTRD                "MEM: Can't read host alias for node with \"%s\" JVMRoute"
 #define MHOSTUI                "MEM: Can't update or insert host alias for node with \"%s\" JVMRoute"
 #define MCONTUI                "MEM: Can't update or insert context for node with \"%s\" JVMRoute"
-#define MJBIDRD                "MEM: Can't read JGroupId"
-#define MJBIDUI                "MEM: Can't update or insert JGroupId"
 #define MNODEET                "MEM: Another for the same worker already exist"
 
 /* Protocol version supported */
