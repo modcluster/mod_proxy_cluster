@@ -484,14 +484,6 @@ static const struct domain_storage_method domain_storage = {
 };
 /* clang-format on */
 
-/* helper for the handling of the Alias: host1,... Context: context1,... */
-struct cluster_host
-{
-    char *host;
-    char *context;
-    struct cluster_host *next;
-};
-
 /*
  * cleanup logic
  */
@@ -1261,13 +1253,13 @@ static int check_context_alias_length(const char *str, int limit)
  *     2) during APP command
  * to differenciate between the two use the last argument (true -> CONFIG, false -> APP)
  */
-static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct cluster_host *phost, int *errtype,
+static char *process_context_alias(char *key, char *val, apr_pool_t *p, char **contexts, char **aliases, int *errtype,
                                    int in_config)
 {
     if (strcasecmp(key, "Alias") == 0) {
         char *tmp;
 
-        if (phost->host && !in_config) {
+        if (*aliases && !in_config) {
             *errtype = TYPESYNTAX;
             return in_config ? SALIBAD : SMULALB;
         }
@@ -1276,23 +1268,22 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
             return SALIBIG;
         }
 
-        if (phost->host) {
-            phost->next = apr_palloc(p, sizeof(struct cluster_host));
-            phost = phost->next;
-            phost->next = NULL;
-            phost->context = NULL;
-        }
         /* Aliases to lower case for further case-insensitive treatment, IETF RFC 1035 Section 2.3.3. */
         tmp = val;
         while (*tmp) {
             *tmp = apr_tolower(*tmp);
             tmp++;
         }
-        phost->host = val;
+
+        if (*aliases) {
+            *aliases = apr_pstrcat(p, *aliases, ",", val, NULL);
+        } else {
+            *aliases = val;
+        }
     }
 
     if (strcasecmp(key, "Context") == 0) {
-        if (phost->context && !in_config) {
+        if (*contexts && !in_config) {
             *errtype = TYPESYNTAX;
             return SMULCTB;
         }
@@ -1300,7 +1291,12 @@ static char *process_context_alias(char *key, char *val, apr_pool_t *p, struct c
             *errtype = TYPESYNTAX;
             return SCONBIG;
         }
-        phost->context = val;
+
+        if (*contexts) {
+            *contexts = apr_pstrcat(p, *contexts, ",", val, NULL);
+        } else {
+            *contexts = val;
+        }
     }
 
     return NULL;
@@ -1332,8 +1328,8 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     nodeinfo_t *node;
     balancerinfo_t balancerinfo;
 
-    struct cluster_host *vhost;
-    struct cluster_host *phost;
+    char *contexts = NULL;
+    char *aliases = NULL;
 
     int i = 0;
     int id = -1;
@@ -1346,14 +1342,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     const proxy_server_conf *the_conf = NULL;
     apr_status_t rv;
 
-    vhost = apr_palloc(r->pool, sizeof(struct cluster_host));
-
-    /* Map nothing by default */
-    vhost->host = NULL;
-    vhost->context = NULL;
-    vhost->next = NULL;
-    phost = vhost;
-
     /* Fill default node values */
     process_config_node_defaults(r, &nodeinfo, mconf);
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: Start");
@@ -1363,7 +1351,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
 
     while (ptr[i]) {
         char *err_msg = NULL;
-        if (ptr[i + 1] && *ptr[i + 1] == '\0') {
+        if (!ptr[i + 1] || *ptr[i + 1] == '\0') {
             *errtype = TYPESYNTAX;
             return SMESPAR;
         }
@@ -1379,7 +1367,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             return err_msg;
         }
         /* Optional parameters */
-        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, phost, errtype, 1);
+        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, &contexts, &aliases, errtype, 1);
         if (err_msg != NULL) {
             return err_msg;
         }
@@ -1570,8 +1558,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     inc_version_node();
 
     /* Insert the Alias and corresponding Context */
-    phost = vhost;
-    if (phost->host == NULL && phost->context == NULL) {
+    if (aliases == NULL && contexts == NULL) {
         /* if using mod_balancer create or update the worker */
         if (balancer_manage) {
             apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
@@ -1582,18 +1569,19 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         loc_unlock_nodes();
         return NULL; /* Alias and Context missing */
     }
-    while (phost) {
-        if (insert_update_hosts(r->server, hoststatsmem, phost->host, id, vid) != APR_SUCCESS) {
-            loc_unlock_nodes();
-            return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
-        }
-        if (insert_update_contexts(r->server, contextstatsmem, phost->context, id, vid, STOPPED) != APR_SUCCESS) {
-            loc_unlock_nodes();
-            return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
-        }
-        phost = phost->next;
-        vid++;
+
+
+    if (insert_update_hosts(r->server, hoststatsmem, aliases, id, vid) != APR_SUCCESS) {
+        loc_unlock_nodes();
+        return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
     }
+
+    if (insert_update_contexts(r->server, contextstatsmem, contexts, id, vid, STOPPED) != APR_SUCCESS) {
+        loc_unlock_nodes();
+        return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
+    }
+
+    vid++;
 
     /* if using mod_balancer create or update the worker */
     if (balancer_manage) {
@@ -2088,7 +2076,9 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
 {
     nodeinfo_t nodeinfo;
     nodeinfo_t *node;
-    struct cluster_host *vhost;
+
+    char *contexts = NULL;
+    char *aliases = NULL;
 
     int i = 0;
     hostinfo_t hostinfo;
@@ -2096,11 +2086,6 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     char *err_msg;
 
     memset(&nodeinfo.mess, '\0', sizeof(nodeinfo.mess));
-    /* Map nothing by default */
-    vhost = apr_palloc(r->pool, sizeof(struct cluster_host));
-    vhost->host = NULL;
-    vhost->context = NULL;
-    vhost->next = NULL;
 
     while (ptr[i]) {
         if (strcasecmp(ptr[i], "JVMRoute") == 0) {
@@ -2111,7 +2096,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = -1;
         }
-        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, vhost, errtype, 0);
+        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, &contexts, &aliases, errtype, 0);
         if (err_msg) {
             return err_msg;
         }
@@ -2126,16 +2111,16 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     }
 
     /* Note: This applies only for non-wildcarded requests for which Alias and Context are required */
-    if (vhost->context == NULL && vhost->host == NULL && strcmp(r->uri, "/*") != 0) {
+    if (contexts == NULL && aliases == NULL && strcmp(r->uri, "/*") != 0) {
         *errtype = TYPESYNTAX;
         return NOCONAL;
     }
 
-    if (vhost->context == NULL && vhost->host != NULL) {
+    if (contexts == NULL && aliases != NULL) {
         *errtype = TYPESYNTAX;
         return SALIBAD;
     }
-    if (vhost->host == NULL && vhost->context != NULL) {
+    if (aliases == NULL && contexts != NULL) {
         *errtype = TYPESYNTAX;
         return SCONBAD;
     }
@@ -2178,15 +2163,15 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
      */
     hostinfo.node = node->mess.id;
     hostinfo.id = 0;
-    if (vhost->host != NULL) {
+    if (aliases != NULL) {
         int start = 0;
         i = 0;
-        while (host == NULL && (unsigned)(i + start) < strlen(vhost->host)) {
-            while (vhost->host[start + i] != ',' && vhost->host[start + i] != '\0') {
+        while (host == NULL && (unsigned)(i + start) < strlen(aliases)) {
+            while (aliases[start + i] != ',' && aliases[start + i] != '\0') {
                 i++;
             }
 
-            strncpy(hostinfo.host, vhost->host + start, i);
+            strncpy(hostinfo.host, aliases + start, i);
             hostinfo.host[i] = '\0';
             host = read_host(hoststatsmem, &hostinfo);
             start = start + i + 1;
@@ -2223,7 +2208,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: adding vhost: %d node: %d route: %s",
                      vid, node->mess.id, nodeinfo.mess.JVMRoute);
         /* If the Host doesn't exist yet create it */
-        if (insert_update_hosts(r->server, hoststatsmem, vhost->host, node->mess.id, vid) != APR_SUCCESS) {
+        if (insert_update_hosts(r->server, hoststatsmem, aliases, node->mess.id, vid) != APR_SUCCESS) {
             loc_unlock_nodes();
             *errtype = TYPEMEM;
             return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
@@ -2231,8 +2216,8 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         hostinfo.id = 0;
         hostinfo.node = node->mess.id;
         hostinfo.host[0] = '\0';
-        if (vhost->host != NULL) {
-            strncpy(hostinfo.host, vhost->host, sizeof(hostinfo.host));
+        if (aliases != NULL) {
+            strncpy(hostinfo.host, aliases, sizeof(hostinfo.host));
             hostinfo.host[sizeof(hostinfo.host) - 1] = '\0';
         }
 
@@ -2254,7 +2239,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS) {
                 continue;
             }
-            if (strcmp(ou->context, vhost->context) == 0) {
+            if (strcmp(ou->context, contexts) == 0) {
                 /* There is the same context somewhere else */
                 nodeinfo_t *hisnode;
                 if (get_node(nodestatsmem, &hisnode, ou->node) != APR_SUCCESS) {
@@ -2263,7 +2248,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
                 if (strcmp(hisnode->mess.balancer, node->mess.balancer)) {
                     /* the same context would be on 2 different balancer */
                     ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
-                                 "process_appl_cmd: ENABLE: context %s is in balancer %s and %s", vhost->context,
+                                 "process_appl_cmd: ENABLE: context %s is in balancer %s and %s", contexts,
                                  node->mess.balancer, hisnode->mess.balancer);
                 }
             }
@@ -2271,14 +2256,14 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     }
 
     /* Now update each context from Context: part */
-    if (insert_update_contexts(r->server, contextstatsmem, vhost->context, node->mess.id, host->vhost, status) !=
+    if (insert_update_contexts(r->server, contextstatsmem, contexts, node->mess.id, host->vhost, status) !=
         APR_SUCCESS) {
         loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MCONTUI, node->mess.JVMRoute);
     }
 
-    if (insert_update_hosts(r->server, hoststatsmem, vhost->host, node->mess.id, host->vhost) != APR_SUCCESS) {
+    if (insert_update_hosts(r->server, hoststatsmem, aliases, node->mess.id, host->vhost) != APR_SUCCESS) {
         loc_unlock_nodes();
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MHOSTUI, node->mess.JVMRoute);
@@ -2314,11 +2299,11 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             }
         }
     } else if (status == STOPPED) {
-        /* insert_update_contexts in fact makes that vhost->context corresponds only to the first context... */
+        /* insert_update_contexts in fact makes that contexts corresponds only to the first context... */
         contextinfo_t in;
         contextinfo_t *ou;
         in.id = 0;
-        strncpy(in.context, vhost->context, CONTEXTSZ);
+        strncpy(in.context, contexts, CONTEXTSZ);
         in.context[CONTEXTSZ] = '\0';
         in.vhost = host->vhost;
         in.node = node->mess.id;
@@ -2329,8 +2314,8 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             if (fromnode) {
                 ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
                 ap_rprintf(r, "Type=STOP-APP-RSP&JvmRoute=%.*s&Alias=%.*s&Context=%.*s&Requests=%d",
-                           (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute, (int)sizeof(vhost->host),
-                           vhost->host, (int)sizeof(vhost->context), vhost->context, ou->nbrequests);
+                           (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute, (int)sizeof(aliases), aliases,
+                           (int)sizeof(contexts), contexts, ou->nbrequests);
                 ap_rprintf(r, "\n");
             }
         } else {
