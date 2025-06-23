@@ -19,11 +19,11 @@ class WebHTTPTest {
     Collection<String> confirms = []
     WebClient webClient = new WebClient()
     webClient.getOptions().setThrowExceptionOnFailingStatusCode(false)
-    WebRequest request1 = new WebRequest(new URL('http://localhost:8000/testapp1/test.jsp'))
+    WebRequest request1 = new WebRequest(new URL('http://localhost:8090/testapp1/test.jsp'))
     // request1.setCharset(StandardCharsets.UTF_8)
     WebResponse response1 = webClient.loadWebResponse(request1)
     assertTrue("Can't find test1!", response1.getStatusCode() == 200)
-    WebRequest request2 = new WebRequest(new URL('http://localhost:8000/testapp2/test.jsp'))
+    WebRequest request2 = new WebRequest(new URL('http://localhost:8090/testapp2/test.jsp'))
     // request2.setCharset(StandardCharsets.UTF_8)
     WebResponse response2 = webClient.loadWebResponse(request2)
     assertTrue("Can't find test2!", response2.getStatusCode() == 200)
