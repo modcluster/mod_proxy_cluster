@@ -16,7 +16,7 @@ COPY $TESTSUITE_TOMCAT_CONFIG  ./conf/server.xml
 COPY $TESTSUITE_TOMCAT_CONTEXT ./conf/context.xml
 COPY --chmod=755 start.sh ./
 
-ENV cluster_port=6666
+ENV cluster_port=8000
 ENV cluster_address=127.0.0.1
 ENV jvm_route=
 ENV tomcat_address=

@@ -59,7 +59,7 @@ class MiniServer():
   def sendmess(self, s , method, mess):
     met = method + " / HTTP/1.1\r\n"
     s.send(bytes(met, 'utf-8'))
-    s.send(b"Host: localhost:6666\r\n")
+    s.send(b"Host: localhost:8000\r\n")
     contentlength = "Content-Length: " + str(len(mess))
     s.send(bytes(contentlength, 'utf-8'))
     s.send(b"\r\n")
@@ -114,7 +114,7 @@ def main():
   s = server.listen()
 
   # connect MCMP client part.
-  ai = socket.getaddrinfo("127.0.0.1", 6666)
+  ai = socket.getaddrinfo("127.0.0.1", 8000)
   addr = ai[0][-1]
   client = socket.socket()
   client.connect(addr)

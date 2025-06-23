@@ -21,10 +21,11 @@ RUN ./configure --enable-proxy \
                 --enable-proxy-http \
                 --enable-proxy-ajp \
                 --enable-proxy-wstunnel \
-                --enable-proxy-hcheck \
-                --with-port=8000
+                --enable-proxy-hcheck
 RUN make
 RUN make install
+# we don't need any other listeners except the ones we define in our config files
+RUN sed -i 's/\(Listen 80\)/#\1/' /usr/local/apache2/conf/httpd.conf
 
 # httpd is installed in /usr/local/apache2/bin/
 # build and install mod_proxy_cluster *.so files.

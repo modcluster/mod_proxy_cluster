@@ -16,7 +16,7 @@ done
 sleep 20
 
 for i in $(seq 1 10); do
-    curl -m 10 localhost:6666
+    curl -m 10 localhost:8000
 
     if [ $? -ne 0 ]; then
         echo "curl to server failed"
