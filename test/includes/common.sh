@@ -274,7 +274,7 @@ tomcat_remove() {
 #
 # Run a load test for the given tomcat$1 using ab
 tomcat_run_ab() {
-    ab -c10 -n10 http://localhost:8000/tomcat$1/test.jsp > /dev/null
+    ab -c10 -n10 http://localhost:6666/tomcat$1/test.jsp > /dev/null
     if [ $? -ne 0 ]; then
         echo "abtomcat: Loading tomcat$1 failed"
         exit 1
@@ -298,7 +298,7 @@ tomcat_all_run_ab() {
 
 # Test whether the webapp is working (responding)
 tomcat_test_app() {
-    CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" http://localhost:8000/tomcat$1/test.jsp)
+    CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" http://localhost:6666/tomcat$1/test.jsp)
     if [ ${CODE} != "200" ]; then
         echo "Failed can't reach tomcat$1: ${CODE}"
         exit 1
