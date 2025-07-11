@@ -2430,7 +2430,6 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     APR_OPTIONAL_FN_TYPE(ap_watchdog_register_callback) *mc_watchdog_register_callback;
     server_rec *s = main_s;
     void *sconf = s->module_config;
-    int idx;
     int has_static_workers = 0;
     proxy_server_conf *conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
     apr_time_t watchdog_interval = cache_share_for ? cache_share_for : apr_time_from_sec(1);
@@ -2489,7 +2488,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     }
 
     /* check for static workers and warn if that is the case */
-    for (idx = 0; s; ++idx) {
+    while (s) {
         int i;
         proxy_balancer *balancer;
         void *sconf = s->module_config;
