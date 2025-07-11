@@ -41,11 +41,6 @@ struct domaininfo
 typedef struct domaininfo domaininfo_t;
 
 /**
- * Use apache httpd structure
- */
-typedef struct ap_slotmem_provider_t slotmem_storage_method;
-
-/**
  * Insert(alloc) and update a domain record in the shared table
  * @param s pointer to the shared table
  * @param domain domain to store in the shared table
