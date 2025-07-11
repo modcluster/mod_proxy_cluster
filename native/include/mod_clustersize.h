@@ -15,6 +15,11 @@
 #error "PROXY_WORKER_MAX_ROUTE_SIZE is not defined"
 #endif
 
+/**
+ * Use apache httpd structure
+ */
+typedef struct ap_slotmem_provider_t slotmem_storage_method;
+
 /* For host.h */
 #define HOSTALIASZ  255
 
