@@ -13,7 +13,7 @@ IF(WIN32)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /O2 /Wall /Z7")
     SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Wall /Zi")
 ELSE()
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -std=gnu99 -fPIC -Wall -Wextra")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -std=gnu99 -fPIC -Wall -Wextra -Werror")
     SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -p -O1 -std=gnu99 -fPIC -Wall -Wextra")
 ENDIF()
 
