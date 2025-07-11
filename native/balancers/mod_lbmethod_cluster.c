@@ -445,6 +445,7 @@ static const char *cmd_proxyhctemplate(cmd_parms *cmd, void *dummy, const char *
     return NULL;
 }
 
+/* clang-format off */
 static const command_rec lbmethod_cmds[] = {
     AP_INIT_FLAG("UseNocanon", cmd_nocanon, NULL, OR_ALL,
                  "UseNocanon - When no ProxyPass or ProxyMatch for the URL, passes the URL path \"raw\" to the backend "
@@ -452,7 +453,9 @@ static const command_rec lbmethod_cmds[] = {
     AP_INIT_RAW_ARGS(
         "ModProxyClusterHCTemplate", cmd_proxyhctemplate, NULL, OR_ALL,
         "ModProxyClusterHCTemplate - Set of health check parameters to use with mod_lbmethod_cluster workers."),
-    {NULL}};
+    {.name = NULL}
+};
+/* clang-format on */
 
 static void register_hooks(apr_pool_t *p)
 {

@@ -3731,7 +3731,7 @@ static const command_rec proxy_cluster_cmds[] = {
     AP_INIT_TAKE1("ModProxyClusterThreadCount", cmd_mc_thread_count, NULL, OR_ALL,
                   "ModProxyClusterThreadCount - Set custom size for the watchdog thread pool (Default: 16)"),
 #endif
-    {NULL}
+    {.name = NULL}
 };
 /* clang-format on */
 
