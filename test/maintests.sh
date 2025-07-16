@@ -88,7 +88,7 @@ fi
 echotestlabel "sticky: stopping one node and doing requests..."
 NODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo $NODE
-PORT=$(curl http://localhost:6666/mod_cluster_manager -m 20 | grep Node | grep $NODE | sed 's:)::' | awk -F : '{ print $3 } ')
+PORT=$(curl http://localhost:8000/mod_cluster_manager -m 20 | grep Node | grep $NODE | sed 's:)::' | awk -F : '{ print $3 } ')
 NAME=$(expr ${PORT} - 8080 + 1)
 echo "Will stop tomcat$NAME corresponding to ${NODE} and cookie: ${NEWCO}"
 CODE="200"

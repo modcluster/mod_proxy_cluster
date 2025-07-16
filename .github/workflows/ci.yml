@@ -217,12 +217,12 @@ jobs:
           cp test\httpd\mod_proxy_cluster.conf ${{ env.HTTPD_DEV_HOME }}\conf\mod_proxy_cluster.conf
           echo "LogLevel debug"                      >> ${{ env.HTTPD_DEV_HOME }}\conf\mod_proxy_cluster.conf
           echo "Include conf/mod_proxy_cluster.conf" >> ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
-          (Get-Content ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf) | %{$_ -replace "Listen 80","Listen 8000"} | Set-Content -Path ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
+          (Get-Content ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf) | %{$_ -replace "Listen 80","#Listen 80"} | Set-Content -Path ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
       - name: Run
         run: |
           Start-Process -FilePath ${{ env.HTTPD_DEV_HOME }}\bin\httpd.exe
           curl --fail --max-time 10 http://localhost:8000
-          curl --fail --max-time 10 http://localhost:6666/mod_cluster_manager
+          curl --fail --max-time 10 http://localhost:8000/mod_cluster_manager
       - name: Preserve logs
         uses: actions/upload-artifact@v4
         if: always()
