@@ -197,7 +197,7 @@ jobs:
         matrix:
             os: [ windows-latest, windows-11-arm ]
     env:
-      APACHE_LOUNGE_DISTRO_VERSION: 2.4.64-250710
+      APACHE_LOUNGE_DISTRO_VERSION: 2.4.65-250724
       HTTPD_DEV_HOME: 'C:\Apache24'
     steps:
       - name: Checkout
