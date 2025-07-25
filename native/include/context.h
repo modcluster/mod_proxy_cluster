@@ -51,11 +51,6 @@ struct contextinfo
 typedef struct contextinfo contextinfo_t;
 
 /**
- * Use apache httpd structure
- */
-typedef struct ap_slotmem_provider_t slotmem_storage_method;
-
-/**
  * Insert(alloc) and update a context record in the shared table
  * @param s pointer to the shared table
  * @param context context to store in the shared table

@@ -82,11 +82,6 @@ struct nodeinfo
 typedef struct nodeinfo nodeinfo_t;
 
 /**
- * Use apache httpd structure
- */
-typedef struct ap_slotmem_provider_t slotmem_storage_method;
-
-/**
  * Return the last stored in the mem structure
  * @param pointer to the shared table
  * @return APR_SUCCESS if all went well

@@ -706,6 +706,7 @@ static void advertise_info(request_rec *r)
 /* List of directives specific to our module.                               */
 /*                                                                          */
 /*--------------------------------------------------------------------------*/
+/* clang-format off */
 static const command_rec cmd_table[] = {
     AP_INIT_TAKE12("ServerAdvertise", /* directive name               */
                    cmd_advertise_m,   /* config action routine        */
@@ -737,9 +738,9 @@ static const command_rec cmd_table[] = {
                   NULL,                   /* argument to include in call  */
                   RSRC_CONF,              /* where available              */
                   "Local adress to bind to for Multicast logic"),
-    {NULL},
-
+    {.name = NULL},
 };
+/* clang-format on */
 
 /*--------------------------------------------------------------------------*/
 /*                                                                          */

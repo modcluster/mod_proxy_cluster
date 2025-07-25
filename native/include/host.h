@@ -41,11 +41,6 @@ struct hostinfo
 typedef struct hostinfo hostinfo_t;
 
 /**
- * Use apache httpd structure
- */
-typedef struct ap_slotmem_provider_t slotmem_storage_method;
-
-/**
  * Insert(alloc) and update a host record in the shared table
  * @param s pointer to the shared table
  * @param host host to store in the shared table

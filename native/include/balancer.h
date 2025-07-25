@@ -46,11 +46,6 @@ struct balancerinfo
 typedef struct balancerinfo balancerinfo_t;
 
 /**
- * Use apache httpd structure
- */
-typedef struct ap_slotmem_provider_t slotmem_storage_method;
-
-/**
  * Insert(alloc) and update a balancer record in the shared table
  * @param s pointer to the shared table
  * @param balancer balancer to store in the shared table

@@ -3866,7 +3866,7 @@ static const char *cmd_manager_responsefieldsize(cmd_parms *cmd, void *mconfig, 
     return "ResponseFieldSize requires mod_proxy_http.c";
 }
 
-
+/* clang-format off */
 static const command_rec manager_cmds[] = {
     AP_INIT_TAKE1("Maxcontext", cmd_manager_maxcontext, NULL, OR_ALL,
                   "Maxcontext - number max context supported by mod_cluster"),
@@ -3910,8 +3910,9 @@ static const command_rec manager_cmds[] = {
                   "AJPSecret - secret for all mod_cluster node, not configued no secret."),
     AP_INIT_TAKE1("ResponseFieldSize", cmd_manager_responsefieldsize, NULL, OR_ALL,
                   "ResponseFieldSize - Adjust the size of the proxy response field buffer."),
-    {NULL},
+    {.name = NULL}
 };
+/* clang-format on */
 
 /* hooks declaration */
 

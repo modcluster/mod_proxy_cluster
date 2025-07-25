@@ -40,11 +40,6 @@ struct sessionidinfo
 typedef struct sessionidinfo sessionidinfo_t;
 
 /**
- * Use apache httpd structure
- */
-typedef struct ap_slotmem_provider_t slotmem_storage_method;
-
-/**
  * Insert(alloc) and update a sessionid record in the shared table
  * @param s pointer to the shared table
  * @param sessionid sessionid to store in the shared table
