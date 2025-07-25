@@ -1,6 +1,6 @@
 FROM fedora:41 AS builder
 
-ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.64.tar.gz"
+ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.65.tar.gz"
 
 RUN dnf install gcc apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config autoconf wcstools -y
 
