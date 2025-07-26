@@ -76,7 +76,7 @@ httpd_start() {
 
 httpd_wait_until_ready() {
     local i=0
-    curl -m 20 localhost:6666 > /dev/null 2>&1
+    curl -m 20 localhost:8090 > /dev/null 2>&1
     while [ $? != 0 ];
     do
         i=$(expr $i + 1)
@@ -85,7 +85,7 @@ httpd_wait_until_ready() {
             exit 1;
         fi
         sleep 10;
-        curl -m 20 localhost:6666 > /dev/null 2>&1
+        curl -m 20 localhost:8090 > /dev/null 2>&1
     done
     echo "httpd ready after $i attempts"
 }
@@ -131,7 +131,7 @@ tomcat_create() {
 #     * tomcat shutdown port  8005 + $1 - 1
 # $1 has to be in range [1, 75].
 # Proxy's IP can be specified by $3 (default: 127.0.0.1) and its
-# port with $4 (default: 6666).
+# port with $4 (default: 8090).
 tomcat_start() {
     if [ -z "$1" ]; then
         echo "tomcat_start called without arguments"
@@ -153,7 +153,7 @@ tomcat_start() {
                                     -e tomcat_port_offset=$OFFSET \
                                     -e jvm_route=tomcat$1 \
                                     -e cluster_address=${3:-127.0.0.1} \
-                                    -e cluster_port=${4:-6666} \
+                                    -e cluster_port=${4:-8090} \
                                 --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
     if [ $? -ne 0 ]; then
@@ -166,7 +166,7 @@ tomcat_start() {
 # Wait until there are $1 nodes in OK state (i.e., some will start or go away if the count is different)
 tomcat_wait_for_n_nodes() {
     nodes=${1:-0}
-    curl -s http://localhost:6666/mod_cluster_manager -m 20 -o /dev/null
+    curl -s http://localhost:8090/mod_cluster_manager -m 20 -o /dev/null
     if [ $? -ne 0 ]; then
         echo "httpd isn't running or something is VERY wrong"
         exit 1
@@ -175,7 +175,7 @@ tomcat_wait_for_n_nodes() {
     i=0
     while [ ${NBNODES} != ${nodes} ]
     do
-        NBNODES=$(curl -s http://localhost:6666/mod_cluster_manager -m 20 | grep "Status: OK" | awk ' { print $3} ' | wc -l)
+        NBNODES=$(curl -s http://localhost:8090/mod_cluster_manager -m 20 | grep "Status: OK" | awk ' { print $3} ' | wc -l)
         sleep 10
         echo "Waiting for ${nodes} node to be ready: $(date)"
         i=$(expr $i + 1)
@@ -184,7 +184,7 @@ tomcat_wait_for_n_nodes() {
             exit 1
         fi
     done
-    curl -s http://localhost:6666/mod_cluster_manager -m 20 -o /dev/null
+    curl -s http://localhost:8090/mod_cluster_manager -m 20 -o /dev/null
     if [ $? -ne 0 ]; then
         echo "httpd isn't running or something VERY wrong"
         exit 1
@@ -274,7 +274,7 @@ tomcat_remove() {
 #
 # Run a load test for the given tomcat$1 using ab
 tomcat_run_ab() {
-    ab -c10 -n10 http://localhost:8000/tomcat$1/test.jsp > /dev/null
+    ab -c10 -n10 http://localhost:8090/tomcat$1/test.jsp > /dev/null
     if [ $? -ne 0 ]; then
         echo "abtomcat: Loading tomcat$1 failed"
         exit 1
@@ -298,7 +298,7 @@ tomcat_all_run_ab() {
 
 # Test whether the webapp is working (responding)
 tomcat_test_app() {
-    CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" http://localhost:8000/tomcat$1/test.jsp)
+    CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" http://localhost:8090/tomcat$1/test.jsp)
     if [ ${CODE} != "200" ]; then
         echo "Failed can't reach tomcat$1: ${CODE}"
         exit 1

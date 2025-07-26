@@ -11,7 +11,7 @@ done
 while true
 do
   found=0
-  http_code=$(curl -s -m 10 -o /dev/null -w "%{http_code}" http://localhost:8000/testapp/test.jsp)
+  http_code=$(curl -s -m 10 -o /dev/null -w "%{http_code}" http://localhost:8090/testapp/test.jsp)
   for var in "$@"
   do 
     if [ "${http_code}" -eq "${var}" ]; then

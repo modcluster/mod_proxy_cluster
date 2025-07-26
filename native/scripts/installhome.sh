@@ -67,7 +67,7 @@ do
   echo "$file"
   cp -p $file $file.new
   echo "s:${BASEHTTPD}:${RPM_BUILD_ROOT}:" > sed.cmd
-  echo "s/Listen 80.*/Listen 8000/" >> sed.cmd
+  echo "s/Listen 80.*/Listen 8090/" >> sed.cmd
   sed -f sed.cmd $file > $file.new
   mv $file.new $file
   rm -f sed.cmd

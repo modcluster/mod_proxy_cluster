@@ -23,7 +23,7 @@ set to `context.xml` by default.
 * tomcat_port: port on which tomcat will listen (default: 8080)
 * tomcat_shutdown_port: port on which tomcat will listen to SHUTDOWN command (default 8005)
 * tomcat_ajp_port: port on which AJP will be listener (default: 8009)
-* cluster_port: port on which the httpd counterpart listens (default: 6666)
+* cluster_port: port on which the httpd counterpart listens (default: 8090)
 * jvm_route: route name of the tomcat
 * tomcat_address: ip address of the tomcat
 

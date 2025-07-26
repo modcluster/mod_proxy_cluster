@@ -31,7 +31,7 @@ docker cp MODCLUSTER-734/ROOT_OK tomcat2:/usr/local/tomcat/webapps/ROOT
 # and mark the node not OK.
 sleep 15
 
-curl -s -m 20 http://localhost:6666/mod_cluster_manager | grep "Status: NOTOK"
+curl -s -m 20 http://localhost:8090/mod_cluster_manager | grep "Status: NOTOK"
 if [ $? -eq 0 ]; then
     echo "MODCLUSTER-734 Done!"
 else

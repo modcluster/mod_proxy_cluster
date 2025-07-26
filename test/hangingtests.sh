@@ -43,7 +43,7 @@ echo "hanging a tomcat checking it is removed after a while no requests"
 tomcat_start_two
 sleep 10
 tomcat_wait_for_n_nodes 2 || exit 1
-# curlloop.sh checks for http://localhost:8000/testapp/test.jsp
+# curlloop.sh checks for http://localhost:8090/testapp/test.jsp
 docker cp testapp tomcat1:/usr/local/tomcat/webapps
 docker cp testapp tomcat2:/usr/local/tomcat/webapps
 
