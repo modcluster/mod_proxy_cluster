@@ -1,10 +1,9 @@
-FROM fedora:41 AS builder
+FROM fedora:42 AS builder
 
 ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.65.tar.gz"
 
 RUN dnf install gcc apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config autoconf wcstools -y
 
-ENV CONF=httpd/mod_proxy_cluster.conf
 ENV HTTPD=${HTTPD_SOURCES}
 
 # make sure you have copy of the local repository at place
@@ -44,7 +43,9 @@ RUN for m in advertise mod_proxy_cluster balancers mod_manager; \
 
 RUN rm -rf /test/httpd/mod_proxy_cluster
 
-FROM fedora:41
+FROM fedora:42
+
+ENV CONF=httpd/mod_proxy_cluster.conf
 
 RUN dnf install pcre apr-util wcstools -y
 
