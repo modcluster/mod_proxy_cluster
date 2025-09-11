@@ -2560,7 +2560,6 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     ap_add_version_component(p, MOD_CLUSTER_EXPOSED_VERSION);
 
     if (ap_state_query(AP_SQ_MAIN_STATE) == AP_SQ_MS_CREATE_PRE_CONFIG) {
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s, "No watchdog for %d", getpid());
         return OK;
     }
     ap_log_error(APLOG_MARK, APLOG_INFO, 0, s, "watchdog for %d", getpid());
