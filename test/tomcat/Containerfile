@@ -2,15 +2,16 @@ ARG TESTSUITE_TOMCAT_VERSION=10.1
 
 FROM tomcat:${TESTSUITE_TOMCAT_VERSION}
 
+ARG TESTSUITE_TOMCAT_VERSION
 ARG TESTSUITE_TOMCAT_CONFIG=server.xml
 ARG TESTSUITE_TOMCAT_CONTEXT=context.xml
 
 # install ss
-RUN apt-get update && apt-get install -y iproute2
+RUN apt-get update && apt-get install -y iproute2 unzip
 
-WORKDIR /usr/local/tomcat
-
-COPY target/*.jar ./lib/
+COPY target/mod_cluster-distribution-*-tomcat-${TESTSUITE_TOMCAT_VERSION}.zip /tmp/
+RUN unzip /tmp/mod_cluster-distribution-*-tomcat-${TESTSUITE_TOMCAT_VERSION}.zip && \
+    cp mod_cluster-distribution-*/lib/*.jar /usr/local/tomcat/lib/
 
 COPY $TESTSUITE_TOMCAT_CONFIG  ./conf/server.xml
 COPY $TESTSUITE_TOMCAT_CONTEXT ./conf/context.xml

@@ -45,11 +45,12 @@ if [ ! -d mod_cluster-testsuite ]; then
 fi
 cd mod_cluster-testsuite
 git pull --rebase
-mvn --batch-mode --no-transfer-progress install || exit 2
+mvn --batch-mode --no-transfer-progress clean install || exit 2
+cp dist/target/*.zip $TEST_DIR/tomcat/target/
 cd $TEST_DIR
 
 # prepare jars
-mvn --batch-mode --no-transfer-progress install
+mvn --batch-mode --no-transfer-progress clean install || exit 3
 
 # prepare tomcat test apps
-mvn --batch-mode --no-transfer-progress -f includes/pom-groovy.xml install
+mvn --batch-mode --no-transfer-progress -f includes/pom-groovy.xml clean install || exit 4
