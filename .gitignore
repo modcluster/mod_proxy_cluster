@@ -50,6 +50,8 @@ test/mod_proxy_cluster_new.conf
 test/new.xml
 test/server.xml
 test/includes/dependency-reduced-pom.xml
+## test dependencies
+test/dependencies/**
 
 # perl test files
 test-perl/MYMETA*
