@@ -23,10 +23,12 @@ done
 
 # Run this from the same directory
 TEST_DIR=$(pwd)
-cd ../..
+mkdir -p dependencies/ && cd dependencies/
 
 if [ -d $TEST_DIR/tomcat/target ]; then
     rm $TEST_DIR/tomcat/target/*
+else
+    mkdir $TEST_DIR/tomcat/target/
 fi
 
 # get websocket demo repository
@@ -45,11 +47,10 @@ if [ ! -d mod_cluster-testsuite ]; then
 fi
 cd mod_cluster-testsuite
 git pull --rebase
-mvn --batch-mode --no-transfer-progress install || exit 2
-cd $TEST_DIR
-
-# prepare jars
-mvn --batch-mode --no-transfer-progress install
+mvn --batch-mode --no-transfer-progress clean install || exit 2
+cp dist/target/*.zip $TEST_DIR/tomcat/target/
+cd ..
 
 # prepare tomcat test apps
-mvn --batch-mode --no-transfer-progress -f includes/pom-groovy.xml install
+cd $TEST_DIR
+mvn --batch-mode --no-transfer-progress -f includes/pom-groovy.xml clean install || exit 4
