@@ -51,7 +51,6 @@ docker cp setenv.sh tomcat1:/usr/local/tomcat/bin
 docker commit tomcat1 ${IMG}-debug
 tomcat_remove 1
 tomcat_wait_for_n_nodes 1
-docker container rm tomcat${PORT}
 # Start the node.
 IMG=${IMG}-debug tomcat_start 1
 sleep 10
