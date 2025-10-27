@@ -393,9 +393,8 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
             continue;
         }
         context = &context_table->context_info[j];
-        ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server,
-                     "find_node_context_host: %s node: %d vhost: %d context: %s", uri, context->node, context->vhost,
-                     context->context);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "find_node_context_host: %s node: %d vhost: %d context: %s",
+                     uri, context->node, context->vhost, context->context);
     }
 #endif
 
