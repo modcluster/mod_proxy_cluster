@@ -187,7 +187,7 @@ jobs:
             cd ..; \
           done;
       - name: Preserve built Apache for perl-test job
-        uses: actions/upload-artifact@v4.4.2
+        uses: actions/upload-artifact@v5
         with:
           name: apache-trunk
           path: /usr/local/apache2
@@ -226,7 +226,7 @@ jobs:
           curl --fail --max-time 10 http://localhost:8090
           curl --fail --max-time 10 http://localhost:8090/mod_cluster_manager
       - name: Preserve logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: Windows logs for ${{ matrix.os }}
@@ -264,7 +264,7 @@ jobs:
           cd test
           sh testsuite.sh
       - name: Preserve test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: Test logs
@@ -307,7 +307,7 @@ jobs:
           grep "Result: PASS" -q t/logs/test-perl.log
           exit $?
       - name: Preserve test logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always()
         with:
           name: Perl tests logs
@@ -327,7 +327,7 @@ jobs:
       - name: Build doxygen docs
         run: doxygen
       - name: Preserve doxygen docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: Doxygen docs
           path: doxygen-out/html/*
