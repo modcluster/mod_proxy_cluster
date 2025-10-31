@@ -2067,7 +2067,7 @@ static int proxy_node_get_free_id(request_rec *r, int node_table_size)
                 }
                 helper = (proxy_cluster_helper *)worker->context;
                 if (helper && helper->index != -1) {
-                    ids[worker->s->index] = 1;
+                    ids[helper->index] = 1;
                 }
             }
         }
