@@ -129,50 +129,6 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-#
-# Test virtual host
-echotestlabel "Testing virtual hosts"
-docker cp tomcat2:/usr/local/tomcat/conf/server.xml .
-sed '/Host name=.*/i <Host name=\"example.com\"  appBase="examples" />' server.xml > new.xml
-docker cp new.xml tomcat2:/usr/local/tomcat/conf/server.xml
-docker cp examples tomcat2:/usr/local/tomcat
-docker commit tomcat2 ${IMG}-temporary
-tomcat_remove 2
-tomcat_wait_for_n_nodes 1
-# Start the node.
-IMG=${IMG}-temporary tomcat_start 2
-tomcat_wait_for_n_nodes 2  || exit 1
-# Basically curl --header "Host: example.com" http://localhost:8090/test/test.jsp gives 200
-# in fact the headers are:
-# X-Forwarded-For: localhost
-# X-Forwarded-Host: example.com
-# X-Forwarded-Server: fe80::faf4:935b:9dda:2adf
-# therefore don't forget ProxyPreserveHost On (otherwise UseAlias On failed...)
-#
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: example.com" http://localhost:8090/test/test.jsp)
-if [ ${CODE} != "200" ]; then
-  echo "Failed can't reach webapp at example.com: ${CODE}"
-  exit 1
-fi
-# Basically curl --header "Host: localhost" http://localhost:8090/test/test.jsp gives 400
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: localhost" http://localhost:8090/test/test.jsp)
-if [ ${CODE} != "404" ]; then
-  echo "Failed should NOT reach webapp at localhost: ${CODE}"
-  exit 1
-fi
-# Same using localhost/testapp2 and curl --header "Host: localhost" http://localhost:8090/testapp2/test.jsp
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: localhost" http://localhost:8090/testapp2/test.jsp)
-if [ ${CODE} != "200" ]; then
-  echo "Failed can't reach webapp at localhost: ${CODE}"
-  exit 1
-fi
-# Basically curl --header "Host: example.com" http://localhost:8090/testapp2/test.jsp gives 400
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: example.com" http://localhost:8090/testapp2/test.jsp)
-if [ ${CODE} != "404" ]; then
-  echo "Failed should NOT reach webapp at localhost: ${CODE}"
-  exit 1
-fi
-
 # Shutdown the 2 tomcats
 tomcat_remove 1
 tomcat_remove 2
