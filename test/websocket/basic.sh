@@ -7,10 +7,7 @@ httpd_remove
 tomcat_all_remove
 
 # run a fresh httpd
-httpd_start
-
-docker cp websocket/mod_proxy_cluster.conf $MPC_NAME:/usr/local/apache2/conf/mod_proxy_cluster.conf
-docker exec $MPC_NAME /usr/local/apache2/bin/apachectl restart
+MPC_CONF=websocket/mod_proxy_cluster.conf httpd_start
 
 tomcat_start_two || exit 1
 tomcat_wait_for_n_nodes 2 || exit 1
@@ -19,8 +16,8 @@ tomcat_wait_for_n_nodes 2 || exit 1
 # Now try to test the websocket
 echo "Testing websocket"
 # The websocket-hello app is at: https://github.com/jfclere/httpd_websocket
-# we must check whether webapps-javaee exists, if yes, we mut use it becuase the app is javax
-docker exec tomcat2 sh -c 'ls webapps-javaee'
+# we must check whether webapps-javaee exists, if yes, we mut use it because the app is javax
+docker exec tomcat2 sh -c 'ls webapps-javaee > /dev/null 2>&1'
 if [ $? = 0 ]; then
   docker cp websocket/websocket-hello-0.0.1.war tomcat1:/usr/local/tomcat/webapps-javaee
   docker cp websocket/websocket-hello-0.0.1.war tomcat2:/usr/local/tomcat/webapps-javaee

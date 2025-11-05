@@ -89,8 +89,7 @@ echotestlabel "sticky: stopping one node and doing requests..."
 NODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo $NODE
 PORT=$(curl http://localhost:8090/mod_cluster_manager -m 20 | grep Node | grep $NODE | sed 's:)::' | awk -F : '{ print $3 } ')
-NAME=$(expr ${PORT} - 8080 + 1)
-echo "Will stop tomcat$NAME corresponding to ${NODE} and cookie: ${NEWCO}"
+NUMBER=$(expr ${PORT} - 8080 + 1)
 CODE="200"
 i=0
 while [ "$CODE" == "200" ]
@@ -102,8 +101,9 @@ do
   CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --cookie "${NEWCO}" http://localhost:8090/testapp/test.jsp)
   if [ $i -eq 0 ]; then
     # stop the tomcat
-    echo "tomcat${NAME} being stopped"
-    tomcat_remove $NAME
+    echo "tomcat${NUMBER} being stopped"
+    # We're going to kill instead of removal because kill only tomcat proc (keeps the container in DNS)
+    tomcat_kill $NUMBER
   fi
   i=$(expr $i + 1)
 done
@@ -114,7 +114,8 @@ if [ ${CODE} != "200" ]; then
 fi
 
 # Restart the tomcat
-tomcat_start ${NAME}
+tomcat_remove ${NUMBER}
+tomcat_start ${NUMBER}
 tomcat_wait_for_n_nodes 2
 
 # Test a keepalived connection finds the 2 webapps on each tomcat
@@ -139,36 +140,36 @@ docker commit tomcat2 ${IMG}-temporary
 tomcat_remove 2
 tomcat_wait_for_n_nodes 1
 # Start the node.
-IMG=${IMG}-temporary tomcat_start 2 &
+IMG=${IMG}-temporary tomcat_start 2
 tomcat_wait_for_n_nodes 2  || exit 1
-# Basically curl --header "Host: example.com" http://127.0.0.1:8090/test/test.jsp gives 200
+# Basically curl --header "Host: example.com" http://localhost:8090/test/test.jsp gives 200
 # in fact the headers are:
-# X-Forwarded-For: 127.0.0.1
+# X-Forwarded-For: localhost
 # X-Forwarded-Host: example.com
 # X-Forwarded-Server: fe80::faf4:935b:9dda:2adf
 # therefore don't forget ProxyPreserveHost On (otherwise UseAlias On failed...)
 #
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8090/test/test.jsp)
+CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: example.com" http://localhost:8090/test/test.jsp)
 if [ ${CODE} != "200" ]; then
-  echo "Failed can't rearch webapp at example.com: ${CODE}"
+  echo "Failed can't reach webapp at example.com: ${CODE}"
   exit 1
 fi
-# Basically curl --header "Host: localhost" http://127.0.0.1:8090/test/test.jsp gives 400
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8090/test/test.jsp)
+# Basically curl --header "Host: localhost" http://localhost:8090/test/test.jsp gives 400
+CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: localhost" http://localhost:8090/test/test.jsp)
 if [ ${CODE} != "404" ]; then
-  echo "Failed should NOT rearch webapp at localhost: ${CODE}"
+  echo "Failed should NOT reach webapp at localhost: ${CODE}"
   exit 1
 fi
-# Same using localhost/testapp2 and curl --header "Host: localhost" http://127.0.0.1:8090/testapp2/test.jsp
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: localhost" http://127.0.0.1:8090/testapp2/test.jsp)
+# Same using localhost/testapp2 and curl --header "Host: localhost" http://localhost:8090/testapp2/test.jsp
+CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: localhost" http://localhost:8090/testapp2/test.jsp)
 if [ ${CODE} != "200" ]; then
-  echo "Failed can't rearch webapp at localhost: ${CODE}"
+  echo "Failed can't reach webapp at localhost: ${CODE}"
   exit 1
 fi
-# Basically curl --header "Host: example.com" http://127.0.0.1:8090/testapp2/test.jsp gives 400
-CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: example.com" http://127.0.0.1:8090/testapp2/test.jsp)
+# Basically curl --header "Host: example.com" http://localhost:8090/testapp2/test.jsp gives 400
+CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" --header "Host: example.com" http://localhost:8090/testapp2/test.jsp)
 if [ ${CODE} != "404" ]; then
-  echo "Failed should NOT rearch webapp at localhost: ${CODE}"
+  echo "Failed should NOT reach webapp at localhost: ${CODE}"
   exit 1
 fi
 

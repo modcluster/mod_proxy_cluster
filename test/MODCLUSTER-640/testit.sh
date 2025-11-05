@@ -10,7 +10,9 @@ httpd_remove
 rm -f nohup.out
 
 MPC_CONF=${MPC_CONF:-MODCLUSTER-640/mod_proxy_cluster.conf}
-MPC_NAME=MODCLUSTER-640 httpd_start
+MPC_NAME=MODCLUSTER-640
+
+httpd_start
 
 # wait until httpd is started
 httpd_wait_until_ready  || exit 1

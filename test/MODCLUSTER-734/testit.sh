@@ -10,7 +10,9 @@ httpd_remove
 rm -f nohup.out
 
 MPC_CONF=${MPC_CONF:-MODCLUSTER-734/mod_proxy_cluster.conf}
-MPC_NAME=MODCLUSTER-734 httpd_start
+MPC_NAME=MODCLUSTER-734
+
+httpd_start
 
 # wait until httpd is started
 httpd_wait_until_ready || exit 1
@@ -29,7 +31,7 @@ docker cp MODCLUSTER-734/ROOT_OK tomcat2:/usr/local/tomcat/webapps/ROOT
 
 # after a while the health check will get the Under maintenance status.jsp
 # and mark the node not OK.
-sleep 15
+sleep 20
 
 curl -s -m 20 http://localhost:8090/mod_cluster_manager | grep "Status: NOTOK"
 if [ $? -eq 0 ]; then

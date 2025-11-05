@@ -11,8 +11,10 @@ httpd_remove
 rm -f nohup.out
 
 MPC_CONF=${MPC_CONF:-MODCLUSTER-785/mod_proxy_cluster.conf}
-MPC_NAME=MODCLUSTER-785 httpd_start
+MPC_NAME=MODCLUSTER-785
+PORT=9000
 
+httpd_start
 
 # start tomcat1 on 8080
 tomcat_start 1
@@ -32,12 +34,12 @@ if [ $? -ne 0 ]; then
 fi
 
 # Stop abruptly
-tomcat_remove 1
+tomcat_kill 1
 
 # it return 503
 # make sure we use enough workers
-ab -c 10 -n100 http://localhost:8090/app/
-http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8090/app/)
+ab -c 10 -n 100 http://localhost:8090/app/status.jsp
+http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8090/app/status.jsp)
 if [ ${http_code} != 503 ]; then
   echo "MODCLUSTER-785 Failed! not 503 but ${http_code}"
   exit 1
@@ -46,7 +48,8 @@ fi
 sleep 15
 
 # start tomcat1 on 8080
-tomcat_start 1
+tomcat_remove 1
+tomcat_start  1
 
 # wait until tomcat1 is in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 1
