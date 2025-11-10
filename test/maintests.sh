@@ -30,7 +30,7 @@ sleep 12
 # Sticky (yes, there is only one app!!!)
 echotestlabel "sticky one app"
 SESSIONCO=$(curl -v http://localhost:8090/testapp/test.jsp -m 20 -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
-if [ "${SESSIONCO}" == "" ];then
+if [ "${SESSIONCO}" = "" ];then
   echo "Failed no sessionid in curl output..."
   curl -v http://localhost:8090/testapp/test.jsp
 fi
@@ -55,7 +55,7 @@ NEWNODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo "second: ${NEWCO} node: ${NEWNODE}"
 echo "Checking we can reach the 2 nodes"
 i=0
-while [ "${NODE}" == "${NEWNODE}" ]
+while [ "${NODE}" = "${NEWNODE}" ]
 do
   NEWCO=$(curl -v http://localhost:8090/testapp/test.jsp -m 20 -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
   NEWNODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
@@ -64,7 +64,7 @@ do
     echo "Can't find the 2 webapps"
     exit 1
   fi
-  if [ "${NEWNODE}" == "" ]; then
+  if [ "${NEWNODE}" = "" ]; then
     echo "Can't find node in request"
     exit 1
   fi
@@ -92,7 +92,7 @@ PORT=$(curl http://localhost:8090/mod_cluster_manager -m 20 | grep Node | grep $
 NUMBER=$(expr ${PORT} - 8080 + 1)
 CODE="200"
 i=0
-while [ "$CODE" == "200" ]
+while [ "$CODE" = "200" ]
 do
   if [ $i -gt 100 ]; then
     echo "Done remaining tomcat still answering!"

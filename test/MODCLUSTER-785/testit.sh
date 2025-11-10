@@ -66,7 +66,7 @@ while true
 do
   sleep 1
   http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8090/app/status.jsp)
-  if [ ${http_code} == 200 ]; then
+  if [ ${http_code} = 200 ]; then
     break
   fi
   i=$(expr $i + 1)
@@ -75,7 +75,7 @@ do
   fi
   echo "*${http_code}*"
 done
-if [ ${http_code} == 503 ]; then
+if [ ${http_code} = 503 ]; then
   echo "MODCLUSTER-785 Failed! return 503"
   exit 1
 fi
@@ -90,7 +90,7 @@ while true
 do
   sleep 1
   http_code=$(curl -s -m 20 -o /dev/null -w "%{http_code}" http://localhost:8090/app/status.jsp)
-  if [ ${http_code} == 503 ]; then
+  if [ ${http_code} = 503 ]; then
     echo "MODCLUSTER-785 Failed! return 503"
     exit 1
   fi
