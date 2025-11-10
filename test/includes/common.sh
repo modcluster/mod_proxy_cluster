@@ -139,11 +139,6 @@ tomcat_start() {
         exit 1
     fi
 
-    if [ $1 -le 0 ] || [ $1 -gt 75 ]; then
-        echo "tomcat_start called with invalid \$1 value (got $1, allowed [1, 75])"
-        exit 2
-    fi
-
     local DEFAULT_OFFSET=$(expr $1 - 1)
     local shutport=$(expr ${SHUTDOWN_PORT:-8005} + $DEFAULT_OFFSET)
 
