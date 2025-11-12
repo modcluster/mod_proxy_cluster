@@ -33,7 +33,9 @@ fi
 
 # get websocket demo repository
 if [ ! -d httpd_websocket-testsuite ]; then
-    git clone https://github.com/jfclere/httpd_websocket httpd_websocket-testsuite
+    git clone https://github.com/modcluster/ci.modcluster.io ci.modcluster.io
+    mv ci.modcluster.io/websocket-hello httpd_websocket-testsuite
+    rm -rf ci.modcluster.io
 fi
 cd httpd_websocket-testsuite
 git pull --rebase
