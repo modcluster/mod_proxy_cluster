@@ -10,14 +10,12 @@ httpd_remove
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
 
-MPC_CONF=${MPC_CONF:-MODCLUSTER-785/mod_proxy_cluster.conf}
-MPC_NAME=MODCLUSTER-785
 PORT=9000
 
-httpd_start
+MPC_NAME=MODCLUSTER-785 MPC_CONF=${MPC_CONF:-MODCLUSTER-785/mod_proxy_cluster.conf} httpd_start
 
 # start tomcat1 on 8080
-tomcat_start 1
+MPC_NAME=MODCLUSTER-785 tomcat_start 1
 
 # wait until tomcat1 is in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 1
@@ -49,7 +47,7 @@ sleep 15
 
 # start tomcat1 on 8080
 tomcat_remove 1
-tomcat_start  1
+MPC_NAME=MODCLUSTER-785 tomcat_start  1
 
 # wait until tomcat1 is in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 1

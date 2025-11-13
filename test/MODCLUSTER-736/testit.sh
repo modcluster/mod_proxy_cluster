@@ -5,12 +5,11 @@
 httpd_remove
 tomcat_all_remove
 
-MPC_NAME=MODCLUSTER-736
 # We must shift tomcat ports so that they do not collide with proxy
 PORT=9000
 SHUTDOWN_PORT=7005
 
-httpd_start
+MPC_NAME=MODCLUSTER-736 httpd_start
 
 # Start a bunch ($1, or 6 if no argument is given) of tomcat
 # containers, then test them and stop them
@@ -23,7 +22,7 @@ runtomcatbatch() {
 
     for i in $(seq $t 10);
     do
-      tomcat_start $i
+      MPC_NAME=MODCLUSTER-736 tomcat_start $i
     done
 
     tomcat_count=$(expr 3 + 11 - $t)
@@ -80,7 +79,7 @@ runtomcatbatch() {
 singlecycle() {
     echo "singlecycle: Testing tomcat$1"
     R=$1
-    tomcat_start $1 || exit 1
+    MPC_NAME=MODCLUSTER-736 tomcat_start $1 || exit 1
 
     # Wait for it to start
     echo "Testing(0) tomcat$1 waiting..."
@@ -194,9 +193,9 @@ cyclestomcats() {
 # basically start and stop random tomcats...
 runmodcluster736() {
     # start 3 tomcats
-    tomcat_start 2
-    tomcat_start 3
-    tomcat_start 4
+    MPC_NAME=MODCLUSTER-736 tomcat_start 2
+    MPC_NAME=MODCLUSTER-736 tomcat_start 3
+    MPC_NAME=MODCLUSTER-736 tomcat_start 4
     tomcat_wait_for_n_nodes 3 || exit 1
     # check them
     tomcat_start_webapp 2 || exit 1
@@ -231,7 +230,7 @@ runmodcluster736() {
             exit 1
         fi
         tomcat_remove 2
-        tomcat_start 5
+        MPC_NAME=MODCLUSTER-736 tomcat_start 5
 
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
@@ -251,7 +250,7 @@ runmodcluster736() {
         fi
         # we have 5 3 4 in shared memory
         # read 2
-        tomcat_start 2
+        MPC_NAME=MODCLUSTER-736 tomcat_start 2
         tomcat_wait_for_n_nodes 4
         if [ $? -ne 0 ]; then
             echo "tomcat_wait_for_n_nodes 4: runmodcluster736 Failed!"

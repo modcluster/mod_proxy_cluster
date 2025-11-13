@@ -9,10 +9,7 @@ httpd_remove
 # build httpd + mod_proxy_cluster
 rm -f nohup.out
 
-MPC_CONF=${MPC_CONF:-MODCLUSTER-734/mod_proxy_cluster.conf}
-MPC_NAME=MODCLUSTER-734
-
-httpd_start
+MPC_NAME=MODCLUSTER-734 MPC_CONF=${MPC_CONF:-MODCLUSTER-734/mod_proxy_cluster.conf} httpd_start
 
 # wait until httpd is started
 httpd_wait_until_ready || exit 1
@@ -20,7 +17,7 @@ httpd_wait_until_ready || exit 1
 sleep 10
 
 # start tomcat1 and tomcat2
-tomcat_start_two
+MPC_NAME=MODCLUSTER-734 tomcat_start_two
 
 # wait until they are in mod_proxy_cluster tables
 tomcat_wait_for_n_nodes 2
