@@ -24,7 +24,7 @@ jobs:
             os: [ ubuntu-latest, ubuntu-24.04-arm ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: mod_proxy_cluster
       - name: Setup Podman
@@ -51,7 +51,7 @@ jobs:
             os: [ ubuntu-latest, ubuntu-24.04-arm ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: mod_proxy_cluster
       - name: Setup Podman
@@ -84,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: mod_proxy_cluster
       - name: Install clang-format
@@ -123,7 +123,7 @@ jobs:
         CFLAGS: "-Wall -Werror"
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Print httpd version
         run: echo $HTTPD_VERSION
       - name: Build
@@ -142,16 +142,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: mod_proxy_cluster
       - name: Checkout latest httpd
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: apache/httpd
           path: httpd
       - name: Checkout apr for httpd
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: apache/apr
           path: httpd/srclib/apr
@@ -203,7 +203,7 @@ jobs:
       HTTPD_DEV_HOME: 'C:\Apache24'
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Developer Command Prompt for Microsoft Visual C++
         uses: ilammy/msvc-dev-cmd@v1
       - name: Get httpd
@@ -244,7 +244,7 @@ jobs:
       TOMCAT_CYCLE_COUNT: 2
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
@@ -277,7 +277,7 @@ jobs:
     needs: make-with-httpd-trunk
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup dependencies
         run: |
           sudo apt-get update
@@ -319,7 +319,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Get doxygen
         run: |
           sudo apt-get update
