@@ -97,8 +97,12 @@
                resourceName="UserDatabase"/>
       </Realm>
 
+      <Host name="example.com"  appBase="examples" />
+
       <Host name="tomcat_address" appBase="webapps"
             unpackWARs="true" autoDeploy="true">
+
+            <Alias>localhost</Alias>
 
         <!-- Access log processes all example.
              Documentation at: /docs/config/valve.html
@@ -108,6 +112,7 @@
                pattern="%h %l %u %t &quot;%r&quot; %s %b" />
 
       </Host>
+
     </Engine>
   </Service>
 </Server>

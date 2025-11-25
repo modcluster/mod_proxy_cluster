@@ -1216,8 +1216,9 @@ static const proxy_worker_shared *read_shared_by_node(request_rec *r, nodeinfo_t
         workers = (proxy_worker **)balancer->workers->elts;
         for (j = 0; j < balancer->workers->nelts; j++, workers++) {
             proxy_worker *worker = *workers;
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "read_shared_by_node: Balancer %s worker %s, %s, %d",
-                         balancer->s->name, worker->s->route, worker->s->hostname, worker->s->port);
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "read_shared_by_node: Balancer %s worker (%d) %s, %s, %d", balancer->s->name, worker->s->index,
+                         worker->s->route, worker->s->hostname, worker->s->port);
             if (worker->s->port == port && strcmp(worker->s->hostname, node->mess.Host) == 0 &&
                 strcmp(worker->s->route, node->mess.JVMRoute) == 0) {
                 return worker->s;
@@ -1904,7 +1905,7 @@ static char *process_info(request_rec *r, int *errtype)
 
         proxystat = read_shared_by_node(r, ou);
         if (!proxystat) {
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: No proxystat, assum zeros");
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: No proxystat, assume zeros");
             proxystat = apr_pcalloc(r->pool, sizeof(proxy_worker_shared));
         }
 

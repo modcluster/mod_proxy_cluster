@@ -67,7 +67,9 @@ httpd_start() {
         echo "    NAME:    ${MPC_NAME:-httpd-mod_proxy_cluster}"
         echo "You can config those with envars MPC_SOURCES, MPC_BRANCH, MPC_CONF, MPC_NAME respectively"
     fi
-    docker run -d --network=host --ulimit nofile=65536:65536 --name ${MPC_NAME:-httpd-mod_proxy_cluster} \
+    docker run -d --network=mod_proxy_cluster_testsuite_net -p 8090:8090 \
+               --ulimit nofile=65536:65536 --name ${MPC_NAME:-httpd-mod_proxy_cluster} \
+               -e MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster} \
                -e CONF=${MPC_CONF:-httpd/mod_proxy_cluster.conf} \
                $HTTPD_IMG
 
@@ -110,51 +112,48 @@ clean_and_exit() {
 # By passing arguments you can change
 #       $1 tomcat version      (default is 10.1, see tomcat/Dockerfile)
 #       $2 tomcat config file  (default is server.xml)
-#       $3 tomcat context file (default is context.xml)
 tomcat_create() {
     if [ -z "$1" ]; then
         docker build -t $IMG -f tomcat/Containerfile tomcat/ \
-                                     --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
-                                     --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
+                                     --build-arg TESTSUITE_TOMCAT_CONFIG=server.xml
     else
         docker build -t $IMG -f tomcat/Containerfile tomcat/ \
                                      --build-arg TESTSUITE_TOMCAT_VERSION=$1 \
-                                     --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml} \
-                                     --build-arg TESTSUITE_TOMCAT_CONTEXT=${3:-context.xml}
+                                     --build-arg TESTSUITE_TOMCAT_CONFIG=${2:-server.xml}
     fi
 }
 
-# Start tomcat$1 container on $2 or 127.0.0.$1 if $2 is not given.
-# Ports are set by default as follows
-#     * tomcat port           8080 + $1 - 1
-#     * tomcat ajp port       8900 + $1 - 1
-#     * tomcat shutdown port  8005 + $1 - 1
-# $1 has to be in range [1, 75].
-# Proxy's IP can be specified by $3 (default: 127.0.0.1) and its
-# port with $4 (default: 8090).
+# Start tomcat$1 container
+#
+# You can change the defaults by using following variables:
+#     * PORT          (default 8080)
+#     * SHUTDOWN_PORT (default 8005)
+#     * AJP_PORT      (default 8900)
+#     * PROXY_PORT    (default 8090)
+#     * OFFSET        (applied to all ports, default $1 - 1)
+#     * PROXY_NAME    (default $MPC_NAME)
+# By default, only the shutdown port is exposed
 tomcat_start() {
     if [ -z "$1" ]; then
         echo "tomcat_start called without arguments"
         exit 1
     fi
 
-    if [ $1 -le 0 ] || [ $1 -gt 75 ]; then
-        echo "tomcat_start called with invalid \$1 value (got $1, allowed [1, 75])"
-        exit 2
-    fi
-    ADDR="127.0.0.$1"
-    if [ ! -z "$2" ]; then
-        ADDR="$2"
-    fi
+    local DEFAULT_OFFSET=$(expr $1 - 1)
+    local shutport=$(expr ${SHUTDOWN_PORT:-8005} + $DEFAULT_OFFSET)
 
-    local OFFSET=$(expr $1 - 1)
-    echo "Starting tomcat$1 on $ADDR:$(expr 8080 + $OFFSET)"
-    nohup docker run --network=host -e tomcat_address=$ADDR \
-                                    -e tomcat_port_offset=$OFFSET \
+    echo "Starting tomcat$1"
+    nohup docker run --network=mod_proxy_cluster_testsuite_net \
+                                    -p $shutport:$shutport \
+                                    -e tomcat_address=tomcat$1 \
+                                    -e tomcat_port_offset=${OFFSET:-$DEFAULT_OFFSET} \
                                     -e jvm_route=tomcat$1 \
-                                    -e cluster_address=${3:-127.0.0.1} \
-                                    -e cluster_port=${4:-8090} \
-                                --name tomcat$1 ${IMG} &
+                                    -e proxy_address=${PROXY_NAME:-$MPC_NAME} \
+                                    -e tomcat_port=${PORT:-8080} \
+                                    -e tomcat_shutdown_port=${SHUTDOWN_PORT:-8005} \
+                                    -e tomcat_ajp_port=${AJP_PORT:-8900} \
+                                    -e proxy_port=${PROXY_PORT:-8090} \
+                                    --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
     if [ $? -ne 0 ]; then
 	    echo "docker run for tomcat$1 failed"
@@ -255,20 +254,34 @@ tomcat_start_webapp() {
 #     $1 tomcat number
 #     $2 the last segment of IPv4 addr ($1 by default)
 tomcat_shutdown() {
-    ADDR="127.0.0.$1"
-    if [ ! -z "$2" ]; then
-        ADDR=$2
+    if [ -z "$1" ]; then
+        echo "An argument is required"
+        exit 1
     fi
 
-    echo "shutting down tomcat$1 with address: $ADDR"
-    echo "SHUTDOWN" | nc $ADDR $(expr 8005 + $1 - 1)
+    echo "shutting down tomcat$1"
+    echo "SHUTDOWN" | nc localhost $(expr ${SHUTDOWN_PORT:-8005} + $1 - 1)
 }
 
 # Remove the docker image tomcat$1
 # Note: To succesfully remove an image it needs to be stopped
 tomcat_remove() {
+    if [ -z "$1" ]; then
+        echo "An argument is required"
+        exit 1
+    fi
     docker stop tomcat$1 > /dev/null 2>&1
     docker rm tomcat$1
+}
+
+# Kills the tomcat process in the given tomcat container, but does not
+# remove the container itself (it will still exist incl. docker DNS records)
+tomcat_kill() {
+    if [ -z "$1" ]; then
+        echo "An argument is required"
+        exit 1
+    fi
+    docker exec tomcat$1 pkill -9 java
 }
 
 #

@@ -1,5 +1,8 @@
 #!/usr/bin/sh
 
+# create a docker network if it does not exist
+docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
+
 # $1 is the command, $2 is the flag used for the check (--version by default)
 check_cmd() {
 if [ -z "$1" ]; then

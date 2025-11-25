@@ -5,6 +5,10 @@
 httpd_remove
 tomcat_all_remove
 
+# We must shift tomcat ports so that they do not collide with proxy
+PORT=9000
+SHUTDOWN_PORT=7005
+
 MPC_NAME=MODCLUSTER-736 httpd_start
 
 # Start a bunch ($1, or 6 if no argument is given) of tomcat
@@ -18,7 +22,7 @@ runtomcatbatch() {
 
     for i in $(seq $t 10);
     do
-      tomcat_start $i
+      MPC_NAME=MODCLUSTER-736 tomcat_start $i
     done
 
     tomcat_count=$(expr 3 + 11 - $t)
@@ -75,15 +79,8 @@ runtomcatbatch() {
 singlecycle() {
     echo "singlecycle: Testing tomcat$1"
     R=$1
-    if [ "$2" = "useran" ]; then
-        R=$(expr 1 + $RANDOM % 10 + 10)
-        R=$(expr $R + 2)
-        # TODO
-        tomcat_start $1 127.0.0.$R || exit 1
-    else
-        R=0
-        tomcat_start $1 127.0.0.$R || exit 1
-    fi
+    MPC_NAME=MODCLUSTER-736 tomcat_start $1 || exit 1
+
     # Wait for it to start
     echo "Testing(0) tomcat$1 waiting..."
     i=0
@@ -106,7 +103,8 @@ singlecycle() {
     i=0
     while true
     do
-        curl -s -m 20 http://localhost:8090/mod_cluster_manager | grep /tomcat$1 > /dev/null
+        # we have to grep the beginning slash but also a comma at the end, otherwise hostname might be matched
+        curl -s -m 20 http://localhost:8090/mod_cluster_manager | grep "/tomcat$1," > /dev/null
         if [ $? -eq 0 ]; then
             break
         fi
@@ -123,7 +121,7 @@ singlecycle() {
     tomcat_test_app $1 || exit 1
     tomcat_run_ab $1 || exit 1
     echo "Testing(3) tomcat$1"
-    tomcat_shutdown $1 127.0.0.$R || exit 1
+    tomcat_shutdown $1 || exit 1
     while true
     do
         curl -s -m 20 http://localhost:8090/mod_cluster_manager | grep Node | grep tomcat$1 > /dev/null
@@ -184,25 +182,20 @@ forevertomcat() {
 
 # Start and stop successively (one after another) $1 tomcats
 cyclestomcats() {
-    i=1
-    while true
-    do
-        i=$(expr $i + 1)
-        if [ $i -gt $1 ]; then
-            echo "Looks OK, Done!"
-            break
-        fi
-        singlecycle $i useran || exit 1
+    for i in $(seq 1 $1); do
+        echo -n "$i/$1: "
+        singlecycle $i || exit 1
     done
+    echo "Looks OK, Done!"
 }
 
 # run test for https://issues.redhat.com/browse/MODCLUSTER-736
 # basically start and stop random tomcats...
 runmodcluster736() {
     # start 3 tomcats
-    tomcat_start 2
-    tomcat_start 3
-    tomcat_start 4
+    MPC_NAME=MODCLUSTER-736 tomcat_start 2
+    MPC_NAME=MODCLUSTER-736 tomcat_start 3
+    MPC_NAME=MODCLUSTER-736 tomcat_start 4
     tomcat_wait_for_n_nodes 3 || exit 1
     # check them
     tomcat_start_webapp 2 || exit 1
@@ -237,7 +230,7 @@ runmodcluster736() {
             exit 1
         fi
         tomcat_remove 2
-        tomcat_start 5
+        MPC_NAME=MODCLUSTER-736 tomcat_start 5
 
         tomcat_wait_for_n_nodes 3
         if [ $? -ne 0 ]; then
@@ -257,7 +250,7 @@ runmodcluster736() {
         fi
         # we have 5 3 4 in shared memory
         # read 2
-        tomcat_start 2
+        MPC_NAME=MODCLUSTER-736 tomcat_start 2
         tomcat_wait_for_n_nodes 4
         if [ $? -ne 0 ]; then
             echo "tomcat_wait_for_n_nodes 4: runmodcluster736 Failed!"

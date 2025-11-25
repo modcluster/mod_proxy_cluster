@@ -291,7 +291,8 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
     helper = *helper_ptr;
     if (helper->index == -1) {
         /* We are going to reuse a removed one */
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker_reuse: reusing removed worker for %s", url);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker_reuse: reusing removed worker (%d) for %s",
+                     node->mess.id, url);
         return APR_SUCCESS;
     }
 
@@ -504,7 +505,7 @@ static apr_status_t create_worker(proxy_server_conf *conf, proxy_balancer *balan
     }
 
     /* No, it does not exist, so we will create a new one.
-     * Note that the ap_proxy_get_worker and ap_proxy_define_worker aren't symetrical, and
+     * Note that the ap_proxy_get_worker and ap_proxy_define_worker aren't symmetrical, and
      * this leaks via the conf->pool
      */
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: worker for %s Will create %d!!!", url,
@@ -797,13 +798,15 @@ static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int 
         for (j = 0; j < balancer->workers->nelts; j++, ptrw = ptrw + sizew) {
             proxy_worker **worker = (proxy_worker **)ptrw;
             proxy_cluster_helper *helper = (proxy_cluster_helper *)(*worker)->context;
+
             if ((*worker)->s == stat && helper->index == id) {
                 if (is_worker_empty(*worker)) {
                     return NULL;
-                } else {
-                    return *worker;
                 }
+
+                return *worker;
             }
+
             if (helper->index == id) {
                 unpair_worker_node((*worker)->s, node);
                 helper->shared->index = -1;
@@ -1836,9 +1839,12 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     char *ptr;
 
     if (node_storage->read_node(id, &node) != APR_SUCCESS) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_isup: Can't read node with id %d.", id);
         return HTTP_INTERNAL_SERVER_ERROR;
     }
     if (node->mess.remove) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "proxy_cluster_isup: Node with id %d is marked for removal.", id);
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 

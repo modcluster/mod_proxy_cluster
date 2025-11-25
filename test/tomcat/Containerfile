@@ -13,15 +13,16 @@ COPY target/mod_cluster-distribution-*-tomcat-${TESTSUITE_TOMCAT_VERSION}.zip /t
 RUN unzip /tmp/mod_cluster-distribution-*-tomcat-${TESTSUITE_TOMCAT_VERSION}.zip && \
     cp mod_cluster-distribution-*/lib/*.jar /usr/local/tomcat/lib/
 
-COPY $TESTSUITE_TOMCAT_CONFIG  ./conf/server.xml
-COPY $TESTSUITE_TOMCAT_CONTEXT ./conf/context.xml
+COPY $TESTSUITE_TOMCAT_CONFIG ./conf/server.xml
 COPY --chmod=755 start.sh ./
 
-ENV cluster_port=8090
-ENV cluster_address=127.0.0.1
+ENV proxy_port=8090
+ENV proxy_address=httpd-mod_proxy_cluster
 ENV jvm_route=
-ENV tomcat_address=
+ENV tomcat_address=localhost
+ENV tomcat_port=8080
+ENV tomcat_shutdown_port=8005
+ENV tomcat_ajp_port=8900
 ENV tomcat_port_offset=0
 
 CMD ["./start.sh"]
-
