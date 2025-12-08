@@ -221,6 +221,7 @@ jobs:
           echo "LogLevel debug"                      >> ${{ env.HTTPD_DEV_HOME }}\conf\mod_proxy_cluster.conf
           echo "Include conf/mod_proxy_cluster.conf" >> ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
           (Get-Content ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf) | %{$_ -replace "Listen 80","#Listen 80"} | Set-Content -Path ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
+          (Get-Content ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf) | %{$_ -replace "Apache24-64","Apache24"} | Set-Content -Path ${{ env.HTTPD_DEV_HOME }}\conf\httpd.conf
       - name: Run
         run: |
           Start-Process -FilePath ${{ env.HTTPD_DEV_HOME }}\bin\httpd.exe
