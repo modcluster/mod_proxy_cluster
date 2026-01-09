@@ -284,6 +284,45 @@ tomcat_kill() {
     docker exec tomcat$1 pkill -9 java
 }
 
+tomcat_jdbsuspend_prepare() {
+    if [ -z "$1" ]; then
+        echo "An argument is required"
+        exit 1
+    fi
+    # Create files we need
+    docker exec -i tomcat$1 sh -c 'echo cont > continue.txt; echo exit >> continue.txt'
+    docker exec -i tomcat$1 sh -c 'echo suspend all > hang.txt; echo exit >> hang.txt'
+    docker exec -i tomcat$1 sh -c 'jdb -attach 6660 < continue.txt'
+}
+
+# This suspends the tomcat (for 1000 seconds) causing it gets removed afterwhile.
+# You should first run `tomcat_jdbsuspend_prepare` for each tomcat you would like to suspend.
+tomcat_jdbsuspend_start() {
+    if [ -z "$1" ]; then
+        echo "An argument is required"
+        exit 1
+    fi
+    # suspend
+    docker exec -i tomcat$1 sh -c 'rm -f /tmp/testpipein'
+    docker exec -i tomcat$1 sh -c 'mkfifo /tmp/testpipein'
+    docker exec -i tomcat$1 sh -c 'rm -f /tmp/testpipeout'
+    docker exec -i tomcat$1 sh -c 'mkfifo /tmp/testpipeout'
+    docker exec -i tomcat$1 sh -c 'sleep 1000 > /tmp/testpipein &'
+    docker exec -i tomcat$1 sh -c 'jdb -attach 6660 < /tmp/testpipein > /tmp/testpipeout &'
+    docker exec -i tomcat$1 sh -c 'echo "suspend" > /tmp/testpipein'
+    docker exec -i tomcat$1 sh -c 'cat < /tmp/testpipeout &'
+}
+
+tomcat_jdbsuspend_exit() {
+    if [ -z "$1" ]; then
+        echo "An argument is required"
+        exit 1
+    fi
+    docker exec -i tomcat$1 sh -c 'cat > /tmp/testpipeout &'
+    docker exec -i tomcat$1 sh -c 'echo "exit" > /tmp/testpipein'
+}
+
+
 #
 # Run a load test for the given tomcat$1 using ab
 tomcat_run_ab() {
