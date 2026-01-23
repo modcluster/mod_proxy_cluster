@@ -40,3 +40,6 @@ t/TEST -apxs /opt/apache2/bin/apxs
 For more information about the testing framework see the official
 [documentation](https://perl.apache.org/docs/general/testing/testing.html).
 
+Alternatively, you can use a prepared Containerfile from
+[ci.modcluster.io repository](https://github.com/modcluster/ci.modcluster.io/blob/main/misc/Containerfile.perltests).
+
