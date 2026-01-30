@@ -236,7 +236,11 @@ jobs:
           retention-days: 7
 
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+        fail-fast: false
+        matrix:
+              os: [ ubuntu-latest, ubuntu-24.04-arm ]
     env:
       IMG: local-tomcat
       HTTPD_IMG: local-httpd
@@ -269,7 +273,7 @@ jobs:
         uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: Test logs
+          name: Test logs ${{ matrix.os }}
           path: |
             test/logs/*
           retention-days: 7
