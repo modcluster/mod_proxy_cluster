@@ -83,13 +83,13 @@ httpd_wait_until_ready() {
     do
         i=$(expr $i + 1)
         if [ $i -gt 20 ]; then
-            echo "Failed to run httpd container"
+            echo "$(date) Failed to run httpd container"
             exit 1;
         fi
         sleep 10;
         curl -m 20 localhost:8090 > /dev/null 2>&1
     done
-    echo "httpd ready after $i attempts"
+    echo "$(date) httpd ready after $i attempts"
 }
 
 httpd_remove() {
@@ -142,7 +142,7 @@ tomcat_start() {
     local DEFAULT_OFFSET=$(expr $1 - 1)
     local shutport=$(expr ${SHUTDOWN_PORT:-8005} + $DEFAULT_OFFSET)
 
-    echo "Starting tomcat$1"
+    echo "$(date) Starting tomcat$1"
     nohup docker run --network=mod_proxy_cluster_testsuite_net \
                                     -p $shutport:$shutport \
                                     -e tomcat_address=tomcat$1 \
@@ -156,7 +156,7 @@ tomcat_start() {
                                     --name tomcat$1 ${IMG} &
     ps -q $! > /dev/null
     if [ $? -ne 0 ]; then
-	    echo "docker run for tomcat$1 failed"
+	    echo "$(date) Failed to start tomcat$1"
 	    exit 1
     fi
 }
@@ -167,7 +167,7 @@ tomcat_wait_for_n_nodes() {
     nodes=${1:-0}
     curl -s http://localhost:8090/mod_cluster_manager -m 20 -o /dev/null
     if [ $? -ne 0 ]; then
-        echo "httpd isn't running or something is VERY wrong"
+        echo "$(date) httpd isn't running or something is VERY wrong"
         exit 1
     fi
     NBNODES=-1
@@ -176,19 +176,19 @@ tomcat_wait_for_n_nodes() {
     do
         NBNODES=$(curl -s http://localhost:8090/mod_cluster_manager -m 20 | grep "Status: OK" | awk ' { print $3} ' | wc -l)
         sleep 10
-        echo "Waiting for ${nodes} node to be ready: $(date)"
+        echo "$(date) Waiting for $nodes node to be ready (nodes ready: $NBNODES)"
         i=$(expr $i + 1)
         if [ $i -gt 60 ]; then
-            echo "Timeout! There are not $nodes nodes but $NBNODES instead"
+            echo "($date) Timeout! There are not $nodes nodes but $NBNODES instead"
             exit 1
         fi
     done
     curl -s http://localhost:8090/mod_cluster_manager -m 20 -o /dev/null
     if [ $? -ne 0 ]; then
-        echo "httpd isn't running or something VERY wrong"
+        echo "$(date) httpd isn't running or something VERY wrong"
         exit 1
     fi
-    echo "Waiting for the nodes DONE: $(date)"
+    echo "($date) Waiting for $nodes nodes DONE"
 }
 
 #
@@ -196,15 +196,15 @@ tomcat_wait_for_n_nodes() {
 tomcat_remove_by_name() {
     docker ps -a | grep $1
     if [ $? -eq 0 ]; then
-        echo "Stopping $1"
+        echo "$(date) Stopping $1"
         docker stop $1
         if [ $? -ne 0 ]; then
-            echo "Can't stop $1"
+            echo "$(date) Can't stop $1"
         fi
-        echo "Removing $1"
+        echo "$(date) Removing $1"
         docker rm $1
         if [ $? -ne 0 ]; then
-            echo "Can't remove $1"
+            echo "($date) Can't remove $1"
         fi
     fi
 }
@@ -219,20 +219,20 @@ tomcat_all_remove() {
 }
 
 tomcat_start_two() {
-    echo "Starting tomcat1..."
+    echo "$(date) Starting tomcat1..."
     tomcat_start 1
     if [ $? -ne 0 ]; then
-        echo "Can't start tomcat1"
+        echo "$(date) Can't start tomcat1"
         exit 1
     fi
     sleep 10
-    echo "Starting tomcat2..."
+    echo "$(date) Starting tomcat2..."
     tomcat_start 2
     if [ $? -ne 0 ]; then
-        echo "Can't start tomcat2"
+        echo "$(date) Can't start tomcat2"
         exit 1
     fi
-    echo "2 Tomcats started..."
+    echo "$(date) Two tomcats started..."
 }
 
 # Start the webapp on the given tomcat
@@ -259,7 +259,7 @@ tomcat_shutdown() {
         exit 1
     fi
 
-    echo "shutting down tomcat$1"
+    echo "$(date) shutting down tomcat$1"
     echo "SHUTDOWN" | nc localhost $(expr ${SHUTDOWN_PORT:-8005} + $1 - 1)
 }
 
@@ -328,7 +328,7 @@ tomcat_jdbsuspend_exit() {
 tomcat_run_ab() {
     ab -c10 -n10 http://localhost:8090/tomcat$1/test.jsp > /dev/null
     if [ $? -ne 0 ]; then
-        echo "abtomcat: Loading tomcat$1 failed"
+        echo "$(date) abtomcat: Loading tomcat$1 failed"
         exit 1
     fi
 }
@@ -342,7 +342,7 @@ tomcat_all_run_ab() {
         tomcat_run_ab $tc || exit 1
         tc=$(expr $tc + 1)
         if [ $tc -gt $1 ]; then
-            echo "abtomcats: Done!"
+            echo "$(date) abtomcats: Done!"
             break
         fi
     done
@@ -352,7 +352,7 @@ tomcat_all_run_ab() {
 tomcat_test_app() {
     CODE=$(curl -s -o /dev/null -m 20 -w "%{http_code}" http://localhost:8090/tomcat$1/test.jsp)
     if [ ${CODE} != "200" ]; then
-        echo "Failed can't reach tomcat$1: ${CODE}"
+        echo "$(date) Failed can't reach tomcat$1: ${CODE}"
         exit 1
     fi
 }
@@ -366,7 +366,7 @@ tomcat_all_test_app() {
         tomcat_test_app $tc || exit 1
         tc=$(expr $tc + 1)
         if [ $tc -gt $1 ]; then
-            echo "tomcat_tests $tc Done!"
+            echo "$(date) tomcat_tests $tc Done!"
             break
         fi
     done
