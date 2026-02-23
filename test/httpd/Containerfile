@@ -54,6 +54,7 @@ ENV CONF=httpd/mod_proxy_cluster.conf
 RUN dnf install pcre apr-util wcstools -y
 
 COPY --from=builder /usr/local/apache2 /usr/local/apache2
+COPY --from=builder /native /native
 
 COPY --from=builder /test /test
 
