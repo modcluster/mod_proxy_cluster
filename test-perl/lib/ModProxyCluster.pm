@@ -4,37 +4,56 @@ use v5.32;
 
 require Exporter;
 use HTTP::Request;
-use HTTP::Request::Common;
+use HTTP::Request::Common ();
 use LWP::UserAgent;
+use Apache::TestRequest 'GET';
 
 our @ISA = qw(Exporter);
 
 our @EXPORT = qw(
+  need_mpc
   CMD
+  CMD_internal
   parse_params
   parse_response
+  remove_nodes
+  remove_all_nodes
 );
 
 our $VERSION = '0.0.1';
+our $ROOT = Apache::TestRequest::module2url('mpc_test_host', { path => '' });
+
+# You have to call `Apache::TestRequest::module(<mpc_host>)` before
+# running this function.
+# `need` or `need_module` for 'proxy_cluster' won't work because it's
+# not a built-in module and the resolver is not dynamic
+sub need_mpc {
+    my $res = GET '/mod_cluster_manager';
+    if ($res->code != 404) {
+        return 1; # the module is alive
+    }
+    Apache::Test::skip_reason("/mod_cluster_manager endpoint returned 404");
+    return 0;
+}
 
 sub CMD_internal {
-	my ($cmd, $url, $params) = @_;
+	my ($cmd, $path, $params) = @_;
 	my $header = [];
 
 	my $ua = LWP::UserAgent->new();
-	my $request = HTTP::Request->new($cmd, $url, $header, $params);
+	my $request = HTTP::Request->new($cmd, $ROOT . $path, $header, $params);
 
 	return $ua->request($request);
 }
 
 sub concat_params {
-	my (%params) = @_;
+	my $params = shift @_;
 	my $p = "";
 	my $d = "";
 
-	foreach my $k (sort(keys %params)) {
-		if ($params{$k}) {
-			$p .= $d . $k . '=' . $params{$k};
+	foreach my $k (sort(keys %$params)) {
+		if ($params->{$k}) {
+			$p .= $d . $k . '=' . $params->{$k};
 			$d = "&";
 		}
 	}
@@ -158,12 +177,14 @@ sub parse_DUMP {
 }
 
 sub CMD {
-	my ($cmd, $url, %params) = @_;
+	my ($cmd, $params, $path) = @_;
 	my @mpc_commands = qw(CONFIG ENABLE-APP DISABLE-APP STOP-APP REMOVE-APP STOP-APP-RSP
 				STATUS STATUS-RSP INFO INFO-RSP DUMP DUMP-RSP PING PING-RSP);
+    $path = '' if not defined $path;
+    $params = {} if not defined $params;
 
 	if (grep /^$cmd$/, @mpc_commands) {
-		return CMD_internal $cmd, $url, concat_params %params;
+		return CMD_internal $cmd, $path, concat_params $params;
 	}
 
 	return HTTP::Response->new();
@@ -189,6 +210,18 @@ sub parse_response {
 	return {};
 }
 
+
+sub remove_nodes {
+    my @node_names = @_;
+    foreach my $name (@node_names) {
+        CMD 'REMOVE-APP', { JVMRoute => $name }, "*";
+    }
+}
+
+sub remove_all_nodes {
+    my $resp = CMD 'INFO';
+    remove_nodes (map { $_->{JVMRoute} } @{$resp->{Nodes}});
+}
 
 1;
 

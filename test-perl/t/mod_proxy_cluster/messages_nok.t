@@ -12,15 +12,11 @@ use Apache::TestRequest 'GET';
 
 # use Test::More;
 use ModProxyCluster;
-
-plan tests => 8;
-
 Apache::TestRequest::module("mpc_test_host");
-my $hostport = Apache::TestRequest::hostport();
 
-my $url = "http://$hostport/";
-my $resp = GET $url;
+plan tests => 8, need_mpc;
 
+my $resp = GET "/";
 ok $resp->is_success;
 ok (index($resp->as_string, "mod_cluster/2.0.0.Alpha1-SNAPSHOT") != -1);
 
@@ -28,14 +24,14 @@ ok (index($resp->as_string, "mod_cluster/2.0.0.Alpha1-SNAPSHOT") != -1);
 ##### STATUS #####
 ##################
 
-$resp = CMD 'STATUS', $url;
+$resp = CMD 'STATUS';
 ok $resp->is_error;
 
 ok ($resp->header('Type') eq 'SYNTAX');
 ok ($resp->header('Mess') eq 'SYNTAX: Invalid field "" in message');
 
 my $nonexistent = "nonexistent";
-$resp = CMD 'STATUS', $url, ( JVMRoute => $nonexistent);
+$resp = CMD 'STATUS', { JVMRoute => $nonexistent };
 ok $resp->is_error;
 
 ok ($resp->header('Type') eq 'MEM');

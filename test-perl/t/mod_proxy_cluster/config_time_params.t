@@ -11,25 +11,19 @@ use Apache::TestConfig;
 use Apache::TestRequest 'GET';
 use ModProxyCluster;
 
-plan tests => 30;
-
 Apache::TestRequest::module("mpc_test_host");
-my $hostport = Apache::TestRequest::hostport();
 
-my $url = "http://$hostport/";
-my $resp = GET $url;
-
-ok $resp->is_success;
+plan tests => 29, need_mpc;
 
 ################################
 ### Check the default values ###
 ################################
-$resp = CMD 'CONFIG', $url, ( JVMRoute => 'test-time' );
+my $resp = CMD 'CONFIG', { JVMRoute => 'test-time' };
 
 ok $resp->is_success;
 ok ($resp->content eq "");
 
-$resp = CMD 'DUMP', $url;
+$resp = CMD 'DUMP';
 
 ok $resp->is_success;
 my %p = parse_response 'DUMP', $resp->content;
@@ -44,17 +38,17 @@ ok($node->{ping} == 10);
 ok($node->{timeout} == 0);
 
 # Clean after yourself
-CMD 'REMOVE-APP', "$url/*", ( JVMRoute => 'test-time' );
+remove_nodes 'test-time';
 
 ##################################
 ### Check custom valid values  ###
 ##################################
-$resp = CMD 'CONFIG', $url, ( JVMRoute => 'test-time', flushwait => 25, ttl => 30, ping => 65, timeout => 10 );
+$resp = CMD 'CONFIG', { JVMRoute => 'test-time', flushwait => 25, ttl => 30, ping => 65, timeout => 10 };
 
 ok $resp->is_success;
 ok ($resp->content eq "");
 
-$resp = CMD 'DUMP', $url;
+$resp = CMD 'DUMP';
 
 ok $resp->is_success;
 %p = parse_response 'DUMP', $resp->content;
@@ -68,40 +62,40 @@ ok($node->{ping} == 65);
 ok($node->{timeout} == 10);
 
 # Clean after yourself
-CMD 'REMOVE-APP', "$url/*", ( JVMRoute => 'test-time' );
+remove_nodes 'test-time';
 sleep 25; # to have enough time for the removal
 
 #################################
 ### Check some invalid values ###
 #################################
-$resp = CMD 'CONFIG', $url, ( JVMRoute => 'test-time', flushwait => -30 );
+$resp = CMD 'CONFIG', { JVMRoute => 'test-time', flushwait => -30 };
 ok $resp->is_error;
 
-$resp = CMD 'DUMP', $url;
+$resp = CMD 'DUMP';
 ok $resp->is_success;
 %p = parse_response 'DUMP', $resp->content;
 ok (@{$p{Nodes}} == 0);
 
-$resp = CMD 'CONFIG', $url, ( JVMRoute => 'test-time', ttl => -1000 );
+$resp = CMD 'CONFIG', { JVMRoute => 'test-time', ttl => -1000 };
 ok $resp->is_error;
 
-$resp = CMD 'DUMP', $url;
+$resp = CMD 'DUMP';
 ok $resp->is_success;
 %p = parse_response 'DUMP', $resp->content;
 ok (@{$p{Nodes}} == 0);
 
-$resp = CMD 'CONFIG', $url, ( JVMRoute => 'test-time', ping => -300 );
+$resp = CMD 'CONFIG', { JVMRoute => 'test-time', ping => -300 };
 ok $resp->is_error;
 
-$resp = CMD 'DUMP', $url;
+$resp = CMD 'DUMP';
 ok $resp->is_success;
 %p = parse_response 'DUMP', $resp->content;
 ok (@{$p{Nodes}} == 0);
 
-$resp = CMD 'CONFIG', $url, ( JVMRoute => 'test-time', timeout => -10 );
+$resp = CMD 'CONFIG', { JVMRoute => 'test-time', timeout => -10 };
 ok $resp->is_error;
 
-$resp = CMD 'DUMP', $url;
+$resp = CMD 'DUMP';
 ok $resp->is_success;
 %p = parse_response 'DUMP', $resp->content;
 ok (@{$p{Nodes}} == 0);
@@ -109,7 +103,7 @@ ok (@{$p{Nodes}} == 0);
 
 END {
     # Clean after yourself even with failure
-    CMD 'REMOVE-APP', "$url/*", ( JVMRoute => 'test-time' );
+    remove_nodes 'test-time';
     sleep 25;
 }
 
