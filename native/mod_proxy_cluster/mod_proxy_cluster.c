@@ -1672,26 +1672,35 @@ static proxy_worker *internal_process_worker(proxy_worker *worker, int checking_
         *mycandidate = worker;
         *mynodecontext = best1;
         return worker; /* Done */
-    } else if (!(*mycandidate)) {
+    }
+
+    if (!(*mycandidate)) {
         *mycandidate = worker;
         *mynodecontext = best1;
         *node1 = node;
-    } else {
-        int lbstatus, lbstatus1;
+        return worker;
+    }
 
-        /* Let's avoid repeat reads of mycandidate through our loop iterations */
-        if (!(*node1) && node_storage->read_node((*mycandidate)->s->index, node1) != APR_SUCCESS) {
-            *mycandidate = NULL;
-            return worker;
-        }
+    /* Let's avoid repeat reads of mycandidate through our loop iterations */
+    if (!(*node1) && node_storage->read_node((*mycandidate)->s->index, node1) != APR_SUCCESS) {
+        *mycandidate = NULL;
+        return worker;
+    }
 
-        lbstatus1 = (((*mycandidate)->s->elected - (*node1)->mess.oldelected) * 1000) / (*mycandidate)->s->lbfactor +
-                    (*mycandidate)->s->lbstatus;
-        lbstatus = ((worker->s->elected - node->mess.oldelected) * 1000) / worker->s->lbfactor + worker->s->lbstatus;
+    if ((*mycandidate)->s->lbfactor > 0 && worker->s->lbfactor) {
+        int lbstatus1 =
+            (((*mycandidate)->s->elected - (*node1)->mess.oldelected) * 1000) / (*mycandidate)->s->lbfactor +
+            (*mycandidate)->s->lbstatus;
+        int lbstatus =
+            ((worker->s->elected - node->mess.oldelected) * 1000) / worker->s->lbfactor + worker->s->lbstatus;
         if (lbstatus1 > lbstatus) {
             *mycandidate = worker;
             *mynodecontext = best1;
         }
+    } else {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "find_session_route: Could not recalculate lbstatus (candidate lbfactor: %d, worker lbfactor %d)",
+                     (*mycandidate)->s->lbfactor, worker->s->lbfactor);
     }
 
     return worker;

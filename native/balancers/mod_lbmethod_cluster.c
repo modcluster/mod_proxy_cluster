@@ -37,8 +37,8 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, const proxy_b
     int i;
 
     for (i = 0; i < balancer->workers->nelts; i++) {
-        const nodeinfo_t *node;
-        int id;
+        const nodeinfo_t *node, *node1;
+        int id, id1;
         proxy_worker *worker = *((proxy_worker **)(ptr + i * sizew));
 
         if (!PROXY_WORKER_IS_USABLE(worker)) {
@@ -54,18 +54,22 @@ static proxy_worker *internal_find_best_byrequests(request_rec *r, const proxy_b
         }
         if (!mycandidate) {
             mycandidate = worker;
-        } else {
-            const nodeinfo_t *node1;
-            int id1;
-            node1 = table_get_node_route(node_table, mycandidate->s->route, &id1);
-            if (node1) {
-                int lbstatus, lbstatus1;
-                lbstatus1 = ((mycandidate->s->elected - node1->mess.oldelected) * 1000) / mycandidate->s->lbfactor;
-                lbstatus = ((worker->s->elected - node->mess.oldelected) * 1000) / worker->s->lbfactor;
-                if (lbstatus1 > lbstatus) {
-                    mycandidate = worker;
-                }
+            continue;
+        }
+
+        node1 = table_get_node_route(node_table, mycandidate->s->route, &id1);
+        if (node1 && mycandidate->s->lbfactor > 0 && worker->s->lbfactor > 0) {
+            int lbstatus, lbstatus1;
+            lbstatus1 = ((mycandidate->s->elected - node1->mess.oldelected) * 1000) / mycandidate->s->lbfactor;
+            lbstatus = ((worker->s->elected - node->mess.oldelected) * 1000) / worker->s->lbfactor;
+            if (lbstatus1 > lbstatus) {
+                mycandidate = worker;
             }
+        } else {
+            ap_log_error(
+                APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                "internal_find_best_byrequests: skipping node %d mycandidate->s->lbfactor %d worker->s->lbfactor %d",
+                id1, mycandidate->s->lbfactor, worker->s->lbfactor);
         }
     }
 
