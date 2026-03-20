@@ -42,6 +42,7 @@ run_test() {
         # preserve the coverage files
         # docker has problems with names containing spaces
         f=$(echo ${2:-1} | sed 's/ /-/g')
+        docker exec ${httpd_cont} find / -name "*.gcda" -exec stat -c "%d %y" {} \;
         docker exec ${httpd_cont} sh -c "cd /native; gcovr --gcov-ignore-errors=no_working_dir_found --json /coverage/coverage-$f.json > /coverage/coverage-$f.log 2>&1"
         docker exec ${httpd_cont} sh -c "cd /native; lcov --capture --directory . --output-file /coverage/coverage-$f.info  > /coverage/coverage-lcov-$f.log 2>&1"
 
