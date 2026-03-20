@@ -248,6 +248,7 @@ jobs:
       FOREVER_PAUSE: 100
       ITERATION_COUNT: 2
       TOMCAT_CYCLE_COUNT: 2
+      CODE_COVERAGE: 1
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -277,6 +278,14 @@ jobs:
           path: |
             test/logs/*
           retention-days: 7
+    # Preserve coverage data if defined
+      - name: Preserve coverage files
+        if: env.CODE_COVERAGE
+        uses: actions/upload-artifact@v4
+        with:
+            name: Coverage ${{ matrix.os }}
+            path: test/coverage/*
+            retention-days: 7
 
   perl-tests:
     runs-on: ubuntu-latest
