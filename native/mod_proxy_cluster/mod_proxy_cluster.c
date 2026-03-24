@@ -1833,7 +1833,7 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
  * Check that we could connect to the node and create corresponding balancers and workers.
  * id   : worker id
  * load : load factor from the cluster manager.
- * load > 0  : a load factor.
+ * load between 1 and 100: a load factor.
  * load = 0  : standby worker.
  * load = -1 : errored worker.
  * load = -2 : just do a cping/cpong.
@@ -1923,7 +1923,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
     } else if (load == 0) {
         worker->s->status |= PROXY_WORKER_HOT_STANDBY;
         worker->s->lbfactor = 0;
-    } else {
+    } else if (load >= 1 && load <= 100) {
         worker->s->status &= ~PROXY_WORKER_IN_ERROR;
         worker->s->status &= ~PROXY_WORKER_STOPPED;
         worker->s->status &= ~PROXY_WORKER_DISABLED;
