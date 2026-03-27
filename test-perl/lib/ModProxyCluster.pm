@@ -179,7 +179,7 @@ sub parse_DUMP {
 sub CMD {
 	my ($cmd, $params, $path) = @_;
 	my @mpc_commands = qw(CONFIG ENABLE-APP DISABLE-APP STOP-APP REMOVE-APP STOP-APP-RSP
-				STATUS STATUS-RSP INFO INFO-RSP DUMP DUMP-RSP PING PING-RSP);
+				STATUS STATUS-RSP INFO INFO-RSP DUMP DUMP-RSP PING PING-RSP VERSION);
     $path = '' if not defined $path;
     $params = {} if not defined $params;
 
