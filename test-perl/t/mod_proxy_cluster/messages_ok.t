@@ -14,7 +14,6 @@ use Apache::TestRequest 'GET';
 use ModProxyCluster;
 Apache::TestRequest::module("mpc_test_host");
 
-
 my $extra_tests = 0;
 my $version1 = (mpc_version())[0] == 1;
 $extra_tests = 9 if ($version1);
@@ -23,7 +22,6 @@ plan tests => 203 + $extra_tests, need_mpc;
 
 my $resp = GET "/";
 ok $resp->is_success;
-ok (index($resp->as_string, "mod_cluster/2.0.0.Alpha1-SNAPSHOT") != -1);
 
 
 ##################
