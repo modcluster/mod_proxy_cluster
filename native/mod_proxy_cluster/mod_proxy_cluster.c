@@ -1879,6 +1879,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
         }
         s = s->next;
     }
+
     if (worker == NULL) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
                      "proxy_cluster_isup: Can't find worker for %d. Check balancer names.", id);
@@ -2678,7 +2679,7 @@ static int proxy_cluster_trans(request_rec *r)
                 rv = ap_proxy_trans_match(r, dconf->alias, dconf);
                 if (rv != HTTP_CONTINUE) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
-                                  "proxy_cluster_trans: ap_proxy_trans_match(dconf) matches or reject %s  to %s %d",
+                                  "proxy_cluster_trans: ap_proxy_trans_match(dconf) matches or reject %s to %s %d",
                                   r->uri, r->filename, rv);
                     return rv; /* Done */
                 }
@@ -2692,7 +2693,7 @@ static int proxy_cluster_trans(request_rec *r)
                 rv = ap_proxy_trans_match(r, ent, dconf);
                 if (rv != HTTP_CONTINUE) {
                     ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r,
-                                  "proxy_cluster_trans: ap_proxy_trans_match(conf) matches or reject %s  to %s %d",
+                                  "proxy_cluster_trans: ap_proxy_trans_match(conf) matches or reject %s to %s %d",
                                   r->uri, r->filename, rv);
                     return rv; /* Done */
                 }
@@ -2700,7 +2701,7 @@ static int proxy_cluster_trans(request_rec *r)
         }
 
         /* Here the ProxyPass or ProxyPassMatch have been checked and have NOT returned ERRROR nor OK */
-        ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r, "proxy_cluster_trans: no match for ap_proxy_trans_match on:%s",
+        ap_log_rerror(APLOG_MARK, APLOG_TRACE3, 0, r, "proxy_cluster_trans: no match for ap_proxy_trans_match on: %s",
                       r->uri);
 
         /* Use proxy-nocanon if needed */

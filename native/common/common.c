@@ -432,6 +432,7 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
             }
         }
     }
+
     if (max == 0) {
         return NULL;
     }
@@ -470,6 +471,7 @@ node_context *find_node_context_host(request_rec *r, const proxy_balancer *balan
             }
         }
     }
+
     if (nbest == 0) {
         return NULL;
     }
