@@ -12,6 +12,31 @@ on:
       - '.gitignore'
       - '**.md'
       - 'LICENSE'
+  workflow_dispatch:
+    inputs:
+      debug:
+        description: "Test logs are generated when on"
+        type: choice
+        options:
+          - "on"
+          - "off"
+        default: "on"
+
+      forever-pause:
+        description: "Length of a period during which tomcats are run and stopped (MODCLUSTER-736 test)"
+        type: number
+        default: 100
+
+      iteration-count:
+        description: "Number of iterations during which tomcats are started/stopped (Base tests)"
+        type: number
+        default: 2
+
+      tomcat-cycle-count:
+        description: "Number of repetitions of a test cycle (MODCLUSTER-736)"
+        type: number
+        default: 2
+
 jobs:
 
   cmake-fedora-latest:
@@ -244,10 +269,10 @@ jobs:
     env:
       IMG: local-tomcat
       HTTPD_IMG: local-httpd
-      DEBUG: on
-      FOREVER_PAUSE: 100
-      ITERATION_COUNT: 2
-      TOMCAT_CYCLE_COUNT: 2
+      DEBUG: ${{ inputs.debug || 'on' }}
+      FOREVER_PAUSE: ${{ inputs.forever-pause || 100 }}
+      ITERATION_COUNT: ${{ inputs.iteration-count || 2 }}
+      TOMCAT_CYCLE_COUNT: ${{ inputs.tomcat-cycle-count || 2 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
