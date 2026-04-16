@@ -188,7 +188,7 @@ tomcat_wait_for_n_nodes() {
         echo "$(date) httpd isn't running or something VERY wrong"
         exit 1
     fi
-    echo "($date) Waiting for $nodes nodes DONE"
+    echo "$(date) Waiting for $nodes nodes DONE"
 }
 
 #
