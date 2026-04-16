@@ -7,7 +7,7 @@ httpd_remove
 tomcat_all_remove
 
 # Make sure to use custom conf with UseAlias On
-MPC_CONF=usealias/mod_proxy_cluster.conf httpd_start
+MPC_CONF=${MPC_CONF:-usealias/mod_proxy_cluster.conf} httpd_start
 
 
 tomcat_start 1
