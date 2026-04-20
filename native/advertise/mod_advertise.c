@@ -691,8 +691,8 @@ static void advertise_info(request_rec *r)
         }
         if (mconf->ma_advertise_server != NULL) {
             ap_rprintf(r, " Advertising on Group %s Port %d ", mconf->ma_advertise_adrs, mconf->ma_advertise_port);
-            ap_rprintf(r, "for %s://%s:%d every %ld seconds<br/>", mconf->ma_advertise_srvm, mconf->ma_advertise_srvs,
-                       mconf->ma_advertise_srvp, apr_time_sec(mconf->ma_advertise_freq));
+            ap_rprintf(r, "for %s://%s:%d every %" APR_INT64_T_FMT " seconds<br/>", mconf->ma_advertise_srvm,
+                       mconf->ma_advertise_srvs, mconf->ma_advertise_srvp, apr_time_sec(mconf->ma_advertise_freq));
         } else {
             ap_rputs("<br/>", r);
         }
