@@ -7,7 +7,7 @@ httpd_remove
 tomcat_all_remove
 
 # run a fresh httpd
-MPC_CONF=websocket/mod_proxy_cluster.conf httpd_start
+MPC_CONF=${MPC_CONF:-websocket/mod_proxy_cluster.conf} httpd_start
 
 tomcat_start_two || exit 1
 tomcat_wait_for_n_nodes 2 || exit 1
