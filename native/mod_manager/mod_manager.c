@@ -2424,6 +2424,10 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
         i++;
     }
 
+    if (Load < -1 || Load > 100) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "Load value %d is outside the supported range", Load);
+    }
+
     /* Read the node */
     loc_lock_nodes();
     node = read_node(nodestatsmem, &nodeinfo);
