@@ -2442,7 +2442,7 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
 
     ap_rprintf(r, isnode_up(r, node->mess.id, Load) != OK ? "&State=NOTOK" : "&State=OK");
 
-    ap_rprintf(r, "&id=%ld", ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "&id=%" APR_INT64_T_FMT, ap_scoreboard_image->global->restart_time);
 
     ap_rprintf(r, "\n");
     return NULL;
@@ -2544,7 +2544,7 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
 
         ap_rprintf(r, isnode_up(r, node->mess.id, -2) != OK ? "&State=NOTOK" : "&State=OK");
     }
-    ap_rprintf(r, "&id=%ld", ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "&id=%" APR_INT64_T_FMT, ap_scoreboard_image->global->restart_time);
 
     ap_rprintf(r, "\n");
     return NULL;

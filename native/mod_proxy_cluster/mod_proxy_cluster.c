@@ -1992,7 +1992,8 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
                 if (worker->s->index != -1) {
                     *id = worker->s->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                 "searchworker: %s worker->s->index: %d the_conf %ld", ptr, *id, (uintptr_t)conf);
+                                 "searchworker: %s worker->s->index: %d the_conf %" APR_INT64_T_FMT, ptr, *id,
+                                 (uintptr_t)conf);
                     *the_conf = conf;
                     return worker; /* Done current index */
                 }
@@ -2000,14 +2001,16 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
                 if (helper && helper->index != -1) {
                     *id = helper->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                 "searchworker: %s helper->index %d the_conf %ld", ptr, *id, (uintptr_t)conf);
+                                 "searchworker: %s helper->index %d the_conf %" APR_INT64_T_FMT, ptr, *id,
+                                 (uintptr_t)conf);
                     *the_conf = conf;
                     return worker; /* Done previous index */
                 }
                 if (helper && helper->shared) {
                     *id = helper->shared->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                 "searchworker: %s helper->shared->index %d the_conf %ld", ptr, *id, (uintptr_t)conf);
+                                 "searchworker: %s helper->shared->index %d the_conf %" APR_INT64_T_FMT, ptr, *id,
+                                 (uintptr_t)conf);
                     *the_conf = conf;
                     return worker; /* our index was saved when we remove... */
                 }
@@ -2042,7 +2045,8 @@ static proxy_worker *proxy_node_getid(request_rec *r, const char *balancername, 
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_node_getid: searchworker returns NULL");
         return NULL;
     }
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_node_getid: the_conf %ld", (uintptr_t)*the_conf);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_node_getid: the_conf %" APR_INT64_T_FMT,
+                 (uintptr_t)*the_conf);
     return worker;
 }
 
@@ -2476,7 +2480,7 @@ static int proxy_cluster_post_config(apr_pool_t *p, apr_pool_t *plog, apr_pool_t
     }
     if (SIZEOFSCORE <= sizeof(proxy_worker_shared)) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s,
-                     "SIZEOFSCORE too small for mod_proxy shared stat structure %d <= %ld", SIZEOFSCORE,
+                     "SIZEOFSCORE too small for mod_proxy shared stat structure %d <= %" APR_INT64_T_FMT, SIZEOFSCORE,
                      sizeof(proxy_worker_shared));
         return HTTP_INTERNAL_SERVER_ERROR;
     }
