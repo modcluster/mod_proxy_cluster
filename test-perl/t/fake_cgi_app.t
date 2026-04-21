@@ -16,10 +16,11 @@ plan tests => 3;
 Apache::TestRequest::module("fake_cgi_app");
 my $hostport = Apache::TestRequest::hostport();
 
-my $url = "http://$hostport/news";
-my $data = GET $url;
+my $url = "http://$hostport/";
+my $resp = GET $url;
 
-ok $data->is_success;
+ok $resp->is_success;
 
-ok (index($data->as_string, "REDIRECT_") == -1);
-ok (index($data->as_string, "Fake App!") != -1);
+ok t_cmp($resp->content, qr/REDIRECT_STATUS --> 200/);
+ok t_cmp($resp->content, qr/Fake App!/);
+

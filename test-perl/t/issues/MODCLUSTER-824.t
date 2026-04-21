@@ -21,8 +21,6 @@ my $resp = CMD 'INFO';
 ok $resp->is_success;
 my %p = parse_response 'INFO', $resp->content;
 
-my $host_count = scalar @{$p{Hosts}};
-
 $resp = CMD 'CONFIG', { JVMRoute => 'modcluster824' };
 ok $resp->is_success;
 
@@ -33,7 +31,7 @@ $resp = CMD 'INFO';
 ok $resp->is_success;
 %p = parse_response 'INFO', $resp->content;
 
-ok (@{$p{Hosts}} == $host_count + 2);
+ok t_cmp(@{$p{Hosts}}, 2, "Two aliases are present");
 
 $resp = CMD 'ENABLE-APP', { JVMRoute => 'modcluster824', Context => '/news', Alias => "beta,testalias" };
 ok $resp->is_success;
@@ -43,7 +41,8 @@ ok $resp->is_success;
 %p = parse_response 'INFO', $resp->content;
 
 # count should increase only by one
-ok (@{$p{Hosts}} == $host_count + 3);
+my @ls = map { $_->{Alias} } @{$p{Hosts}};
+ok t_cmp(@{$p{Hosts}}, 3, "A third alias was added (merged with the previous configuration: @ls)");
 
 $resp = CMD 'ENABLE-APP', { JVMRoute => 'modcluster824', Context => '/news', Alias => "completely,unrelated" };
 ok $resp->is_success;
@@ -53,7 +52,8 @@ ok $resp->is_success;
 %p = parse_response 'INFO', $resp->content;
 
 # two new vhosts should be created
-ok (@{$p{Hosts}} == $host_count + 5);
+@ls = map { $_->{Alias} } @{$p{Hosts}};
+ok t_cmp(@{$p{Hosts}}, 5, "Another two aliases were added (@ls)");
 
 # Clean after yourself
 remove_nodes 'modcluster824';
@@ -62,7 +62,7 @@ sleep 25; # just to make sure we'll have enough time to get it removed
 $resp = CMD 'INFO';
 ok $resp->is_success;
 %p = parse_response 'INFO', $resp->content;
-ok (@{$p{Hosts}} == $host_count);
+ok t_cmp(@{$p{Hosts}}, 0, "Everything is gone");
 
 END {
     remove_nodes 'modcluster824';
