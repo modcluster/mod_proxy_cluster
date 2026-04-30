@@ -32,7 +32,8 @@ echotestlabel "sticky one app"
 SESSIONCO=$(curl -v http://localhost:8090/testapp/test.jsp -m 20 -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
 if [ "${SESSIONCO}" = "" ];then
   echo "Failed no sessionid in curl output..."
-  curl -v http://localhost:8090/testapp/test.jsp
+  curl -v -m 20 http://localhost:8090/testapp/test.jsp
+  exit 1
 fi
 echo ${SESSIONCO}
 NEWCO=$(curl -v --cookie "${SESSIONCO}" http://localhost:8090/testapp/test.jsp -m 20 -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
@@ -68,7 +69,7 @@ do
     echo "Can't find node in request"
     exit 1
   fi
-  echo "trying other webapp try: ${i}"
+  echo "$(date) trying other webapp try: ${i}"
 done
 echo "${i} try gives: ${NEWCO} node: ${NEWNODE}"
 
