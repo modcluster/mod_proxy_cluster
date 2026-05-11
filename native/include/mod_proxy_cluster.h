@@ -21,7 +21,7 @@
 #include "context.h"
 #include "host.h"
 
-#define MOD_CLUSTER_EXPOSED_VERSION "mod_cluster/2.0.0.Alpha1-SNAPSHOT"
+#define MOD_CLUSTER_EXPOSED_VERSION "mod_proxy_cluster/2.0.0.Dev"
 
 /* define HAVE_CLUSTER_EX_DEBUG to have extented debug in mod_cluster */
 #define HAVE_CLUSTER_EX_DEBUG       0
