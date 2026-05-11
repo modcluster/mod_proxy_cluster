@@ -144,19 +144,19 @@ static apr_status_t loc_read_node(void *mem, void *data, apr_pool_t *pool)
 nodeinfo_t *read_node(mem_t *s, nodeinfo_t *node)
 {
     apr_status_t rv;
-    nodeinfo_t *ou;
 
     if (node->mess.id == -1) {
         rv = s->storage->doall(s->slotmem, loc_read_node, node, s->p);
-        if (rv == APR_EEXIST) {
-            return node;
-        }
-    } else {
-        rv = s->storage->dptr(s->slotmem, node->mess.id, (void **)&ou);
-        if (rv == APR_SUCCESS) {
-            return ou;
+        if (rv != APR_EEXIST) {
+            return NULL;
         }
     }
+
+    rv = s->storage->dptr(s->slotmem, node->mess.id, (void **)&node);
+    if (rv == APR_SUCCESS) {
+        return node;
+    }
+
     return NULL;
 }
 
