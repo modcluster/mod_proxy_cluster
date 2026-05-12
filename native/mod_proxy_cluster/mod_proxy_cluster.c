@@ -298,8 +298,9 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
 
     /* Check if the shared memory goes to the right place */
     ptr = ptr_node + NODEOFFSET;
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "create_worker: reusing worker (id %d) for %s", node->mess.id,
-                 url);
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
+                 "create_worker: reusing worker (id: %d) for %s (worker->s->status: %d, lbstatus: %d lbfactor: %d)",
+                 node->mess.id, url, worker->s->status, worker->s->lbstatus, worker->s->lbfactor);
     if (helper->index == node->mess.id && worker->s == (proxy_worker_shared *)ptr) {
         /* the shared memory may have been removed and recreated */
         if (!worker->s->status) {
@@ -339,16 +340,15 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
                  "create_worker: can't reuse worker as it is for %s (scheme: %s hostname %s port %d route %s "
-                 "name %s) cleaning...",
+                 "name %s) cleaning... (helper->index: %d node->mess.id: %d worker->s: %pp ptr: %pp)",
                  url, worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route,
 #ifdef PROXY_WORKER_EXT_NAME_SIZE
-                 worker->s->name_ex);
+                 worker->s->name_ex, helper->index, node->mess.id, (void *)worker->s, (void *)ptr);
 #else
-                 worker->s->name);
+                 worker->s->name, helper->index, node->mess.id, (void *)worker->s, (void *)ptr);
 #endif
-    ptr = ptr_node + NODEOFFSET;
-    *shared = worker->s;
     worker->s = (proxy_worker_shared *)ptr;
+    *shared = worker->s;
     worker->s->was_malloced = 0; /* Prevent mod_proxy to free it */
     helper->isinnodes = 1;
     helper->index = node->mess.id;
@@ -784,32 +784,23 @@ static void add_balancers_workers(nodeinfo_t *node, const char *ptr_node, apr_po
 static proxy_worker *get_worker_from_id_stat(const proxy_server_conf *conf, int id, const proxy_worker_shared *stat,
                                              nodeinfo_t *node)
 {
-    int i;
-    char *ptr = conf->balancers->elts;
-    int sizeb = conf->balancers->elt_size;
-    int sizew = sizeof(proxy_worker *);
-    (void)node;
+    int i, j;
+    for (i = 0; i < conf->balancers->nelts; i++) {
+        proxy_balancer *balancer = &(APR_ARRAY_IDX(conf->balancers, i, proxy_balancer));
+        for (j = 0; j < balancer->workers->nelts; j++) {
+            proxy_worker *worker = APR_ARRAY_IDX(balancer->workers, j, proxy_worker *);
+            proxy_cluster_helper *helper = (proxy_cluster_helper *)worker->context;
 
-    for (i = 0; i < conf->balancers->nelts; i++, ptr = ptr + sizeb) {
-        int j;
-        char *ptrw;
-        proxy_balancer *balancer = (proxy_balancer *)ptr;
-        ptrw = balancer->workers->elts;
-        for (j = 0; j < balancer->workers->nelts; j++, ptrw = ptrw + sizew) {
-            proxy_worker **worker = (proxy_worker **)ptrw;
-            proxy_cluster_helper *helper = (proxy_cluster_helper *)(*worker)->context;
+            ap_log_error(APLOG_MARK, APLOG_TRACE3, 0, main_server,
+                         "get_worker_from_id_stat: Processing id: %d helper->index: %d ptr: %pp stat: %pp", id,
+                         helper->index, (void *)worker->s, (void *)stat);
 
-            if ((*worker)->s == stat && helper->index == id) {
-                if (is_worker_empty(*worker)) {
-                    return NULL;
-                }
-
-                return *worker;
+            if (worker->s == stat && helper->index == id) {
+                return is_worker_empty(worker) ? NULL : worker;
             }
 
             if (helper->index == id) {
-                unpair_worker_node((*worker)->s, node);
-                helper->shared->index = -1;
+                unpair_worker_node(worker->s, node);
             }
         }
     }
@@ -996,8 +987,10 @@ static void copy_and_trim_crlf(char *buffer, const char *ptr, apr_size_t len)
     }
 }
 
-/* Do a ping/pong to the node */
-static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn, request_rec *r, apr_interval_time_t timeout)
+/* * Replicates AJP CPING/CPONG for HTTP backends.
+ * Returns APR_SUCCESS if the backend answers, or an error code if it's dead.
+ */
+static apr_status_t http_handle_ping_pong(proxy_conn_rec *p_conn, request_rec *r, apr_interval_time_t timeout)
 {
     char *srequest;
     apr_size_t len;
@@ -1080,8 +1073,8 @@ static apr_status_t http_handle_cping_cpong(proxy_conn_rec *p_conn, request_rec 
     return APR_SUCCESS;
 }
 
-static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *worker, char *url, proxy_server_conf *conf,
-                                               apr_interval_time_t ping, apr_interval_time_t workertimeout)
+
+static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *worker, char *url, proxy_server_conf *conf)
 {
     apr_status_t status;
     apr_interval_time_t timeout;
@@ -1091,19 +1084,20 @@ static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *wor
     apr_uri_t *uri;
     char *scheme = worker->s->scheme;
     int is_ssl = 0;
-    (void)ping;
-    (void)workertimeout;
 
     if ((strcasecmp(scheme, "HTTPS") == 0 || strcasecmp(scheme, "WSS") == 0 || strcasecmp(scheme, "WS") == 0 ||
          strcasecmp(scheme, "HTTP") == 0) &&
         !enable_options) {
-        /* we cant' do CPING/CPONG so we just return OK */
+        /* we cant' do PING/PONG so we just return OK */
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "proxy_cluster_try_pingpong: can't do pingpong for: %s enable_options: %d", scheme,
+                     enable_options);
         return APR_SUCCESS;
     }
     if (strcasecmp(scheme, "HTTPS") == 0 || strcasecmp(scheme, "WSS") == 0) {
         if (!ap_proxy_ssl_enable(NULL)) {
             ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-                         "proxy_cluster_try_pingpong: cping_cpong failed (mod_ssl not configured?)");
+                         "proxy_cluster_try_pingpong: pingpong failed (mod_ssl not configured?)");
             return APR_EGENERAL;
         }
         is_ssl = 1;
@@ -1178,11 +1172,11 @@ static apr_status_t proxy_cluster_try_pingpong(request_rec *r, proxy_worker *wor
         }
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_try_pingpong: trying %s",
                      backend->connection->client_ip);
-        status = http_handle_cping_cpong(backend, r, timeout);
+        status = http_handle_ping_pong(backend, r, timeout);
     }
 
     if (status != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_try_pingpong: cping_cpong failed");
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_try_pingpong: pingpong failed");
         backend->close = 1;
     }
 
@@ -1256,7 +1250,7 @@ static void *APR_THREAD_FUNC check_proxy_worker(apr_thread_t *thread, void *data
     rnew->method = "PING";
     rnew->uri = "/";
     rnew->headers_in = apr_table_make(rnew->pool, 1);
-    rv = proxy_cluster_try_pingpong(rnew, worker, url, conf, ou->mess.ping, ou->mess.timeout);
+    rv = proxy_cluster_try_pingpong(rnew, worker, url, conf);
     apr_pool_destroy(rrp);
 
     /* We have checked the worker... check if we were told to stop */
@@ -1615,10 +1609,20 @@ static proxy_worker *internal_process_worker(proxy_worker *worker, int checking_
     }
     if (helper->index != worker->s->index) {
         /* something is very bad */
-        ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-                     "find_session_route: byrequests balancer skipping BAD worker");
+        ap_log_error(
+            APLOG_MARK, APLOG_ERR, 0, r->server,
+            "find_session_route: byrequests balancer skipping BAD worker (helper->index: %d, worker->s->index: %d)",
+            helper->index, worker->s->index);
         return NULL; /* probably used by different worker */
     }
+
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                 "find_session_route: worker %d name: %s lbfactor: %d checking_standby: %d", worker->s->index,
+#ifdef PROXY_WORKER_EXT_NAME_SIZE
+                 worker->s->name_ex, worker->s->lbfactor, checking_standby);
+#else
+                 worker->s->name, worker->s->lbfactor, checking_standby);
+#endif
 
     /* standby logic
      * lbfactor: -1 broken node.
@@ -1829,6 +1833,27 @@ static proxy_worker *internal_find_best_byrequests(const proxy_balancer *balance
     return mycandidate;
 }
 
+static void set_worker_load(proxy_worker *worker, int load)
+{
+    if (worker == NULL || load < -1 || load > 100) {
+        return;
+    }
+
+    if (load == -1) {
+        worker->s->status |= PROXY_WORKER_IN_ERROR;
+    } else if (load == 0) {
+        worker->s->status &= ~PROXY_WORKER_IN_ERROR;
+        worker->s->status |= PROXY_WORKER_HOT_STANDBY;
+    } else {
+        worker->s->status &= ~PROXY_WORKER_IN_ERROR;
+        worker->s->status &= ~PROXY_WORKER_STOPPED;
+        worker->s->status &= ~PROXY_WORKER_DISABLED;
+        worker->s->status &= ~PROXY_WORKER_HOT_STANDBY;
+    }
+
+    worker->s->lbfactor = load;
+}
+
 /*
  * Check that we could connect to the node and create corresponding balancers and workers.
  * id   : worker id
@@ -1886,7 +1911,7 @@ static int proxy_node_isup(request_rec *r, int id, int load)
         return HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    /* Try a  ping/pong to check the node */
+    /* Try a ping/pong to check the node */
     if (load >= 0 || load == -2) {
         /* Only try usuable nodes */
         if (!apr_is_empty_table(proxyhctemplate)) {
@@ -1909,28 +1934,19 @@ static int proxy_node_isup(request_rec *r, int id, int load)
                 url = apr_pstrcat(r->pool, worker->s->scheme, "://", worker->s->hostname, ":", sport, "/", NULL);
             }
             worker->s->error_time = 0; /* Force retry now */
-            if (proxy_cluster_try_pingpong(r, worker, url, conf, node->mess.ping, node->mess.timeout) != APR_SUCCESS) {
+            if (proxy_cluster_try_pingpong(r, worker, url, conf) != APR_SUCCESS) {
                 worker->s->status |= PROXY_WORKER_IN_ERROR;
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_isup: pingpong %s failed", url);
                 return HTTP_INTERNAL_SERVER_ERROR;
             }
         }
     }
-    if (load == -2) {
-        return 0;
-    } else if (load == -1) {
-        worker->s->status |= PROXY_WORKER_IN_ERROR;
-        worker->s->lbfactor = -1;
-    } else if (load == 0) {
-        worker->s->status |= PROXY_WORKER_HOT_STANDBY;
-        worker->s->lbfactor = 0;
-    } else {
-        worker->s->status &= ~PROXY_WORKER_IN_ERROR;
-        worker->s->status &= ~PROXY_WORKER_STOPPED;
-        worker->s->status &= ~PROXY_WORKER_DISABLED;
-        worker->s->status &= ~PROXY_WORKER_HOT_STANDBY;
-        worker->s->lbfactor = load;
-    }
+
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_cluster_isup: Found worker %d, setting load: %d", id,
+                 load);
+
+    set_worker_load(worker, load);
+
     return 0;
 }
 
@@ -1941,40 +1957,100 @@ static int proxy_host_isup(request_rec *r, const char *scheme, const char *host,
     apr_status_t rv;
     int nport = atoi(port);
 
-    rv = apr_socket_create(&sock, APR_INET, SOCK_STREAM, 0, r->pool);
-    if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server, "proxy_host_isup: pingpong (apr_socket_create) failed");
-        return HTTP_INTERNAL_SERVER_ERROR;
-    }
-    rv = apr_sockaddr_info_get(&to, host, APR_INET, nport, 0, r->pool);
-    if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
-                     "proxy_host_isup: pingpong (apr_sockaddr_info_get(%s, %d)) failed", host, nport);
-        return HTTP_INTERNAL_SERVER_ERROR;
-    }
-
-    rv = apr_socket_connect(sock, to);
-    if (rv != APR_SUCCESS) {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_host_isup: pingpong (apr_socket_connect) failed");
-        return HTTP_INTERNAL_SERVER_ERROR;
-    }
-
     /* XXX: For the moment we support only AJP */
     if (strcasecmp(scheme, "AJP") == 0) {
+        rv = apr_socket_create(&sock, APR_INET, SOCK_STREAM, 0, r->pool);
+        if (rv != APR_SUCCESS) {
+            ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
+                         "proxy_host_isup: pingpong (apr_socket_create) failed");
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
+        rv = apr_sockaddr_info_get(&to, host, APR_INET, nport, 0, r->pool);
+        if (rv != APR_SUCCESS) {
+            ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
+                         "proxy_host_isup: pingpong (apr_sockaddr_info_get(%s, %d)) failed", host, nport);
+            apr_socket_close(sock);
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        rv = apr_socket_connect(sock, to);
+        if (rv != APR_SUCCESS) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "proxy_host_isup: pingpong (apr_socket_connect) failed");
+            apr_socket_close(sock);
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
         rv = ajp_handle_cping_cpong(sock, r, apr_time_from_sec(10));
+        apr_socket_close(sock);
         if (rv != APR_SUCCESS) {
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_host_isup: cping_cpong failed");
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
+    } else if (strncasecmp(scheme, "HTTP", 4) == 0 || strncasecmp(scheme, "WS", 2) == 0) {
+        char *url;
+        proxy_server_conf *conf;
+        proxy_worker *worker = NULL;
+        server_rec *s = main_server;
+        int nport = atoi(port);
+
+        while (s && worker == NULL) {
+            int i, j;
+            void *sconf = s->module_config;
+            conf = (proxy_server_conf *)ap_get_module_config(sconf, &proxy_module);
+
+            for (i = 0; i < conf->balancers->nelts; i++) {
+                proxy_balancer *balancer = &(APR_ARRAY_IDX(conf->balancers, i, proxy_balancer));
+                if (balancer == NULL) {
+                    continue;
+                }
+
+                /* we could use worker = ap_proxy_get_worker(r->pool, balancer, conf, url); instead, but
+                 * that would require us to guess the scheme correctly and there are many options with upgrades */
+                for (j = 0; j < balancer->workers->nelts; j++) {
+                    proxy_worker *w = APR_ARRAY_IDX(balancer->workers, j, proxy_worker *);
+                    if (w->s->port == nport &&
+                        (strncasecmp(w->s->scheme, "HTTP", 4) == 0 || strncasecmp(w->s->scheme, "WS", 2) == 0) &&
+                        compare_hostname(w->s->hostname, host) == 0) {
+                        /* we have it! */
+                        worker = w;
+                        break;
+                    }
+                }
+
+                if (worker != NULL) {
+                    break;
+                }
+            }
+
+            s = s->next;
+        }
+
+        if (worker == NULL) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "proxy_host_isup: worker not found for %s://%s:%s, no pingpong possible", scheme, host, port);
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
+        /* Using worker's scheme will allow us to not care about whether http was upgraded or not... */
+        url = apr_pstrcat(r->pool, worker->s->scheme, "://", host, ":", port, NULL);
+        url = normalize_workername(r->pool, url);
+        if (url == NULL) {
+            ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "proxy_host_isup: normalize_workername returns NULL");
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        rv = proxy_cluster_try_pingpong(r, worker, url, conf);
+        if (rv != APR_SUCCESS) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "proxy_host_isup: pingpong failed");
             return HTTP_INTERNAL_SERVER_ERROR;
         }
     } else {
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, r->server, "proxy_host_isup: %s no yet supported", scheme);
     }
 
-    apr_socket_close(sock);
     return 0;
 }
 
-static proxy_worker *searchworker(request_rec *r, const char *bal, const char *ptr, int *id,
+static proxy_worker *searchworker(request_rec *r, const char *bal, const char *url, int *id,
                                   const proxy_server_conf **the_conf)
 {
     /* search for the worker in the VirtualHosts */
@@ -1987,13 +2063,13 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
 
         balancer = ap_proxy_get_balancer(r->pool, conf, bal, 0);
         if (balancer != NULL) {
-            worker = ap_proxy_get_worker(r->pool, balancer, conf, ptr);
+            worker = ap_proxy_get_worker(r->pool, balancer, conf, url);
             if (worker != NULL) {
                 proxy_cluster_helper *helper;
                 if (worker->s->index != -1) {
                     *id = worker->s->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                 "searchworker: %s worker->s->index: %d the_conf %ld", ptr, *id, (uintptr_t)conf);
+                                 "searchworker: %s worker->s->index: %d the_conf %ld", url, *id, (uintptr_t)conf);
                     *the_conf = conf;
                     return worker; /* Done current index */
                 }
@@ -2001,18 +2077,18 @@ static proxy_worker *searchworker(request_rec *r, const char *bal, const char *p
                 if (helper && helper->index != -1) {
                     *id = helper->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                 "searchworker: %s helper->index %d the_conf %ld", ptr, *id, (uintptr_t)conf);
+                                 "searchworker: %s helper->index %d the_conf %ld", url, *id, (uintptr_t)conf);
                     *the_conf = conf;
                     return worker; /* Done previous index */
                 }
                 if (helper && helper->shared) {
                     *id = helper->shared->index;
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                                 "searchworker: %s helper->shared->index %d the_conf %ld", ptr, *id, (uintptr_t)conf);
+                                 "searchworker: %s helper->shared->index %d the_conf %ld", url, *id, (uintptr_t)conf);
                     *the_conf = conf;
                     return worker; /* our index was saved when we remove... */
                 }
-                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "searchworker: %s FAILED", ptr);
+                ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "searchworker: %s FAILED", url);
                 return NULL;
             }
         }
