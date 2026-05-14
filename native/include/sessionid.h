@@ -33,7 +33,7 @@ struct sessionidinfo
     /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
     int id;                          /* id in table */
     char sessionid[SESSIONIDSZ + 1]; /* Sessionid value */
-    char JVMRoute[JVMROUTESZ + 1];   /* corresponding node */
+    char jvm_route[JVMROUTESZ + 1];  /* corresponding node */
 
     apr_time_t updatetime; /* time of last received message */
 };

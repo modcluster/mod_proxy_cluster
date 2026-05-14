@@ -35,16 +35,16 @@ struct nodemess
 
     /* balancer info */
     char balancer[BALANCERSZ]; /* name of the balancer */
-    char JVMRoute[JVMROUTESZ];
-    char Domain[DOMAINNDSZ];
-    char Host[HOSTNODESZ];
-    char Port[PORTNODESZ];
-    char Type[SCHEMENDSZ];
-    char Upgrade[SCHEMENDSZ];
-    char AJPSecret[AJPSECRETSZ];
+    char jvm_route[JVMROUTESZ];
+    char domain[DOMAINNDSZ];
+    char host[HOSTNODESZ];
+    char port[PORTNODESZ];
+    char type[SCHEMENDSZ];
+    char upgrade[SCHEMENDSZ];
+    char ajp_secret[AJPSECRETSZ];
     int reversed; /* 1 : reversed... 0 : normal */
     int remove;   /* 1 : removed     0 : normal */
-    long ResponseFieldSize;
+    long response_field_size;
     unsigned has_workers;
 
     /* node conf part */
@@ -126,16 +126,16 @@ apr_status_t get_node(mem_t *s, nodeinfo_t **node, int ids);
 apr_status_t remove_node(mem_t *s, int ids);
 
 /**
- * Find a node record from the shared table using JVMRoute
+ * Find a node record from the shared table using jvm_route
  * @param s pointer to the shared table
  * @param node address where the node is located in the shared table
- * @param route JVMRoute to search
+ * @param route jvm_route to search
  * @return APR_SUCCESS if all went well
  */
 apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route);
 
 /**
- * Find a node record from the shared table using Host/Port
+ * Find a node record from the shared table using host/port
  * @param s pointer to the shared table
  * @param node address where the node is located in the shared table
  * @param host host to search
@@ -227,7 +227,7 @@ struct node_storage_method
      */
     int (*remove_node)(int node);
     /**
-     * Find the node using the JVMRoute information
+     * Find the node using the jvm_route information
      */
     apr_status_t (*find_node)(nodeinfo_t **node, const char *route);
     /**

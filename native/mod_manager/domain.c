@@ -55,7 +55,7 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     domaininfo_t *ou = (domaininfo_t *)mem;
     (void)pool;
 
-    if (strcmp(in->JVMRoute, ou->JVMRoute) == 0 && strcmp(in->balancer, ou->balancer) == 0) {
+    if (strcmp(in->jvm_route, ou->jvm_route) == 0 && strcmp(in->balancer, ou->balancer) == 0) {
         in->id = ou->id;
         memcpy(ou, in, sizeof(domaininfo_t));
         ou->updatetime = apr_time_sec(apr_time_now());
@@ -104,7 +104,7 @@ static apr_status_t loc_read_domain(void *mem, void *data, apr_pool_t *pool)
     domaininfo_t *ou = (domaininfo_t *)mem;
     (void)pool;
 
-    if (strcmp(in->JVMRoute, ou->JVMRoute) == 0 && strcmp(in->balancer, ou->balancer) == 0) {
+    if (strcmp(in->jvm_route, ou->jvm_route) == 0 && strcmp(in->balancer, ou->balancer) == 0) {
         in->id = ou->id;
         return APR_EEXIST;
     }
@@ -155,8 +155,8 @@ apr_status_t find_domain(mem_t *s, domaininfo_t **domain, const char *route, con
     domaininfo_t ou;
     apr_status_t rv;
 
-    strncpy(ou.JVMRoute, route, sizeof(ou.JVMRoute));
-    ou.JVMRoute[sizeof(ou.JVMRoute) - 1] = '\0';
+    strncpy(ou.jvm_route, route, sizeof(ou.jvm_route));
+    ou.jvm_route[sizeof(ou.jvm_route) - 1] = '\0';
     strncpy(ou.balancer, balancer, sizeof(ou.balancer));
     ou.balancer[sizeof(ou.balancer) - 1] = '\0';
     *domain = &ou;

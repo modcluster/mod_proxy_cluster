@@ -31,10 +31,10 @@ typedef struct mem mem_t;
 struct domaininfo
 {
     /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
-    int id;                    /* id in table */
-    char domain[DOMAINNDSZ];   /* domain value */
-    char JVMRoute[JVMROUTESZ]; /* corresponding node */
-    char balancer[BALANCERSZ]; /* name of the balancer */
+    int id;                     /* id in table */
+    char domain[DOMAINNDSZ];    /* domain value */
+    char jvm_route[JVMROUTESZ]; /* corresponding node */
+    char balancer[BALANCERSZ];  /* name of the balancer */
 
     apr_time_t updatetime; /* time of last received message */
 };
@@ -74,10 +74,10 @@ apr_status_t get_domain(mem_t *s, domaininfo_t **domain, int ids);
 apr_status_t remove_domain(mem_t *s, domaininfo_t *domain);
 
 /**
- * Find a domain record from the shared table using JVMRoute and balancer
+ * Find a domain record from the shared table using jvm_route and balancer
  * @param s pointer to the shared table
  * @param domain address where the node is located in the shared table
- * @param route JVMRoute to search
+ * @param route jvm_route to search
  * @param balancer balancer to search
  * @return APR_SUCCESS if all went well
  */
@@ -153,7 +153,7 @@ struct domain_storage_method
      */
     apr_status_t (*insert_update_domain)(domaininfo_t *domain);
     /**
-     * Find the domain using the JVMRoute and balancer information
+     * Find the domain using the jvm_route and balancer information
      * @return APR_SUCCESS if all went well
      */
     apr_status_t (*find_domain)(domaininfo_t **node, const char *route, const char *balancer);

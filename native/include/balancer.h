@@ -33,13 +33,13 @@ struct balancerinfo
     /* NOTE: Due to `loc_get_id`, struct MUST begin with id */
     int id;                    /* id in table */
     char balancer[BALANCERSZ]; /* Name of the balancer */
-    int StickySession;         /* 0 : Don't use, 1: Use it */
-    char StickySessionCookie[COOKNAMESZ];
-    char StickySessionPath[PATHNAMESZ];
-    int StickySessionRemove; /* 0 : Don't remove, 1: Remove it */
-    int StickySessionForce;  /* 0: Don't force, 1: return error */
-    int Timeout;
-    int Maxattempts;
+    int sticky_session;        /* 0 : Don't use, 1: Use it */
+    char sticky_session_cookie[COOKNAMESZ];
+    char sticky_session_path[PATHNAMESZ];
+    int sticky_session_remove; /* 0 : Don't remove, 1: Remove it */
+    int sticky_session_force;  /* 0: Don't force, 1: return error */
+    int timeout;
+    int max_attempts;
 
     apr_time_t updatetime; /* time of last received message */
 };
