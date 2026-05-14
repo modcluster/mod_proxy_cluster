@@ -64,7 +64,7 @@ sub concat_params {
 	my $d = "";
 
 	foreach my $k (sort(keys %$params)) {
-		if ($params->{$k}) {
+		if (defined $params->{$k}) {
 			$p .= $d . $k . '=' . $params->{$k};
 			$d = "&";
 		}
