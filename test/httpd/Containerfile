@@ -36,7 +36,7 @@ WORKDIR /native
 
 RUN mkdir build || true
 
-RUN cd build && rm -rf * && cmake .. && make && for f in modules/*.so; do ln -s "$PWD/modules/$f" /usr/local/apache2/modules/$f; done;
+RUN cd build && rm -rf * && cmake .. -DAPACHE_INCLUDE_DIR=/usr/local/apache2/include && make && for f in modules/*.so; do ln -s "$PWD/modules/$f" /usr/local/apache2/modules/$f; done;
 
 RUN rm -rf /test/httpd/mod_proxy_cluster
 
