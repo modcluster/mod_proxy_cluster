@@ -6,7 +6,7 @@ ARG LDFLAGS=""
 ARG HTTPD_DEFAULT_FLAGS="--enable-proxy --enable-proxy-http --enable-proxy-ajp --enable-proxy-wstunnel --enable-proxy-hcheck --with-port=8000"
 ARG HTTPD_EXTRA_FLAGS=""
 
-RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr lcov -y
+RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr lcov cmake -y
 
 ENV HTTPD=${HTTPD_SOURCES}
 ENV CFLAGS="${CFLAGS}"
@@ -33,17 +33,10 @@ RUN sed -i 's/\(Listen 80\)/#\1/' /usr/local/apache2/conf/httpd.conf
 # httpd is installed in /usr/local/apache2/bin/
 # build and install mod_proxy_cluster *.so files.
 WORKDIR /native
-RUN for m in advertise mod_proxy_cluster balancers mod_manager; \
-    do \
-        cd $m; \
-        echo "Building $m"; \
-        ./buildconf; \
-        ./configure --with-apxs=/usr/local/apache2/bin/apxs; \
-        make clean; \
-        make || exit 1; \
-        for f in *.so; do ln -s "$PWD/$f" /usr/local/apache2/modules/$f; done; \
-        cd $OLDPWD; \
-    done;
+
+RUN mkdir build || true
+
+RUN cd build && rm -rf * && cmake .. && make && for f in modules/*.so; do ln -s "$PWD/modules/$f" /usr/local/apache2/modules/$f; done;
 
 RUN rm -rf /test/httpd/mod_proxy_cluster
 
