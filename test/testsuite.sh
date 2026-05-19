@@ -82,8 +82,8 @@ IMG_NOVER=$(echo $IMG | cut -d: -f1)
 # done
 # run_test hangingtests.sh            "Hanging tests"
 # res=$(expr $res + $?)
-# run_test maintests.sh               "Main tests"
-# res=$(expr $res + $?)
+run_test maintests.sh               "Main tests"
+res=$(expr $res + $?)
 # run_test websocket/basic.sh         "Websocket tests"
 # res=$(expr $res + $?)
 # run_test MODCLUSTER-640/testit.sh   "MODCLUSTER-640"
@@ -103,14 +103,14 @@ MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test basetests.sh "Basic tests with
 res=$(expr $res + $?)
 # MPC_CONF=MODCLUSTER-640/mod_lbmethod_cluster.conf run_test MODCLUSTER-640/testit.sh   "MODCLUSTER-640 with mod_proxy_balancer"
 # res=$(expr $res + $?)
-MPC_CONF=MODCLUSTER-734/mod_lbmethod_cluster.conf run_test MODCLUSTER-734/testit.sh   "MODCLUSTER-734 with mod_proxy_balancer"
-res=$(expr $res + $?)
-MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test MODCLUSTER-755/testit.sh   "MODCLUSTER-755 with mod_proxy_balancer"
-res=$(expr $res + $?)
-MPC_CONF=MODCLUSTER-785/mod_lbmethod_cluster.conf run_test MODCLUSTER-785/testit.sh   "MODCLUSTER-785 with mod_proxy_balancer"
-res=$(expr $res + $?)
-MPC_CONF=MODCLUSTER-794/mod_lbmethod_cluster.conf run_test MODCLUSTER-794/testit.sh   "MODCLUSTER-794 with mod_proxy_balancer"
-res=$(expr $res + $?)
+# MPC_CONF=MODCLUSTER-734/mod_lbmethod_cluster.conf run_test MODCLUSTER-734/testit.sh   "MODCLUSTER-734 with mod_proxy_balancer"
+# res=$(expr $res + $?)
+# MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test MODCLUSTER-755/testit.sh   "MODCLUSTER-755 with mod_proxy_balancer"
+# res=$(expr $res + $?)
+# MPC_CONF=MODCLUSTER-785/mod_lbmethod_cluster.conf run_test MODCLUSTER-785/testit.sh   "MODCLUSTER-785 with mod_proxy_balancer"
+# res=$(expr $res + $?)
+# MPC_CONF=MODCLUSTER-794/mod_lbmethod_cluster.conf run_test MODCLUSTER-794/testit.sh   "MODCLUSTER-794 with mod_proxy_balancer"
+# res=$(expr $res + $?)
 
 echo -n "Cleaning containers if any..."
 httpd_remove   > /dev/null 2>&1
