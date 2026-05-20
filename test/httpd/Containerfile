@@ -43,6 +43,8 @@ RUN rm -rf /test/httpd/mod_proxy_cluster
 FROM fedora:42
 
 ENV CONF=httpd/mod_proxy_cluster.conf
+ENV GCOV_PREFIX=/coverage
+ENV GCOV_PREFIX_STRIP=3 
 
 RUN dnf install pcre apr-util wcstools gcovr lcov -y
 

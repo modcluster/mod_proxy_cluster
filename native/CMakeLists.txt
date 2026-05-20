@@ -17,6 +17,8 @@ ELSE()
     SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -p -std=gnu99 -fPIC -Wall -Wextra --coverage -fprofile-arcs -ftest-coverage -fPIC -O0 -lgcov")
 ENDIF()
 
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --coverage")
+
 SET(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/modules)
 SET(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 SET(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules ${CMAKE_MODULE_PATH})
