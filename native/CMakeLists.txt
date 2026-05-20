@@ -13,9 +13,11 @@ IF(WIN32)
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /O2 /Wall /Z7")
     SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Wall /Zi")
 ELSE()
-    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -std=gnu99 -fPIC -Wall -Wextra -Werror")
-    SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -p -O1 -std=gnu99 -fPIC -Wall -Wextra")
+    SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -fPIC -Wall -Wextra -Werror --coverage -fprofile-arcs -ftest-coverage -fPIC -g -O0 -lgcov")
+    SET(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -p -std=gnu99 -fPIC -Wall -Wextra --coverage -fprofile-arcs -ftest-coverage -fPIC -O0 -lgcov")
 ENDIF()
+
+SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} --coverage")
 
 SET(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/modules)
 SET(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
@@ -30,6 +32,9 @@ INCLUDE_DIRECTORIES(${APACHE_INCLUDE_DIR})
 
 INCLUDE_DIRECTORIES("${PROJECT_INCLUDE_DIR}")
 INCLUDE_DIRECTORIES("${PROJECT_SOURCE_DIR}")
+
+ADD_LIBRARY(mod_proxy_cluster_common OBJECT common/common.c)
+TARGET_INCLUDE_DIRECTORIES(mod_proxy_cluster_common PUBLIC ${PROJECT_INCLUDE_DIR})
 
 ADD_SUBDIRECTORY(mod_proxy_cluster)
 ADD_SUBDIRECTORY(advertise)

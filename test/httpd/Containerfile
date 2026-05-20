@@ -1,10 +1,18 @@
 FROM fedora:42 AS builder
 
 ARG HTTPD_SOURCES="https://dlcdn.apache.org/httpd/httpd-2.4.67.tar.gz"
+ARG CFLAGS=""
+ARG LDFLAGS=""
+ARG HTTPD_DEFAULT_FLAGS="--enable-proxy --enable-proxy-http --enable-proxy-ajp --enable-proxy-wstunnel --enable-proxy-hcheck --with-port=8000"
+ARG HTTPD_EXTRA_FLAGS=""
 
-RUN dnf install gcc apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config autoconf wcstools -y
+RUN yum install gcc wget apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm-config wcstools git autoconf gcovr lcov cmake -y
 
 ENV HTTPD=${HTTPD_SOURCES}
+ENV CFLAGS="${CFLAGS}"
+ENV LDFLAGS="${LDFLAGS}"
+ENV HTTPD_FLAGS="${HTTPD_DEFAULT_FLAGS} ${HTTPD_EXTRA_FLAGS}"
+ENV CXXFLAGS="-fprofile-arcs -ftest-coverage"
 
 # make sure you have copy of the local repository at place
 # (our function "httpd_create" takes care of that)
@@ -16,11 +24,7 @@ RUN mkdir /httpd && tar xvf $(filename $HTTPD) --strip 1 -C /httpd
 
 WORKDIR /httpd
 
-RUN ./configure --enable-proxy \
-                --enable-proxy-http \
-                --enable-proxy-ajp \
-                --enable-proxy-wstunnel \
-                --enable-proxy-hcheck
+RUN ./configure ${HTTPD_FLAGS}
 RUN make
 RUN make install
 # we don't need any other listeners except the ones we define in our config files
@@ -29,27 +33,23 @@ RUN sed -i 's/\(Listen 80\)/#\1/' /usr/local/apache2/conf/httpd.conf
 # httpd is installed in /usr/local/apache2/bin/
 # build and install mod_proxy_cluster *.so files.
 WORKDIR /native
-RUN for m in advertise mod_proxy_cluster balancers mod_manager; \
-    do \
-        cd $m; \
-        echo "Building $m"; \
-        ./buildconf; \
-        ./configure --with-apxs=/usr/local/apache2/bin/apxs; \
-        make clean; \
-        make || exit 1; \
-        cp *.so /usr/local/apache2/modules; \
-        cd $OLDPWD; \
-    done;
+
+RUN mkdir build || true
+
+RUN cd build && rm -rf * && cmake .. -DAPACHE_INCLUDE_DIR=/usr/local/apache2/include && make && for f in modules/*.so; do ln -s "$PWD/$f" /usr/local/apache2/$f; done;
 
 RUN rm -rf /test/httpd/mod_proxy_cluster
 
 FROM fedora:42
 
 ENV CONF=httpd/mod_proxy_cluster.conf
+ENV GCOV_PREFIX=/
+ENV GCOV_PREFIX_STRIP=3 
 
-RUN dnf install pcre apr-util wcstools -y
+RUN dnf install pcre apr-util wcstools gcovr lcov -y
 
 COPY --from=builder /usr/local/apache2 /usr/local/apache2
+COPY --from=builder /native /native
 
 COPY --from=builder /test /test
 
