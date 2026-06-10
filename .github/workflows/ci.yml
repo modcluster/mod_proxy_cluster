@@ -230,7 +230,7 @@ jobs:
                 - os: windows-11-arm
                   arch: amd64 # we're cross-compiling at this point
     env:
-      APACHE_LOUNGE_DISTRO_VERSION: 2.4.67-260504
+      APACHE_LOUNGE_DISTRO_VERSION: 2.4.68-260610
       HTTPD_DEV_HOME: 'C:\Apache24'
     steps:
       - name: Checkout
