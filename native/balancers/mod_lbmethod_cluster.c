@@ -18,7 +18,7 @@ static struct domain_storage_method *domain_storage = NULL;
 static apr_table_t *proxyhctemplate;
 static void (*set_proxyhctemplate_f)(apr_pool_t *, apr_table_t *) = NULL;
 
-static int use_alias = 0; /* 1 : Compare Alias with server_name */
+static int use_alias = 0; /* 1 : Compare alias with server_name */
 static int use_nocanon = 0;
 static apr_time_t lbstatus_recalc_time =
     apr_time_from_sec(5); /* recalcul the lbstatus based on number of request in the time interval */

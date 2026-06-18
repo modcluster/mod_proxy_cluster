@@ -27,13 +27,13 @@
 #endif
 
 /* define OUR load balancer method names (lbpname), must start by MC */
-/* default behaviour be sticky StickySession="yes" */
+/* default behaviour be sticky sticky_session="yes" */
 #define MC_STICKY         "MC"
-/* don't be STICKY use the best factor worker StickySession="no" */
+/* don't be STICKY use the best factor worker sticky_session="no" */
 #define MC_NOT_STICKY     "MC_NS"
-/* remove session information on fail-over StickySessionRemove="yes", implies StickySession="yes" */
+/* remove session information on fail-over sticky_session_remove="yes", implies sticky_session="yes" */
 #define MC_REMOVE_SESSION "MC_R"
-/* Don't failover if the corresponding worker is failing StickySessionForce="yes", implies StickySession="yes" */
+/* Don't failover if the corresponding worker is failing sticky_session_force="yes", implies sticky_session="yes" */
 #define MC_NO_FAILOVER    "MC_NF"
 
 #if APR_HAS_THREADS
@@ -87,7 +87,7 @@ static server_rec *main_server = NULL;
 #define CREAT_ROOT 2 /* Only create balancers/workers in the main server */
 static int creat_bal = CREAT_ROOT;
 
-static int use_alias = 0; /* 1 : Compare Alias with server_name */
+static int use_alias = 0; /* 1 : Compare alias with server_name */
 static int deterministic_failover = 0;
 static int use_nocanon = 0;
 static int responsecode_when_no_context = HTTP_NOT_FOUND;
@@ -304,16 +304,16 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
         /* the shared memory may have been removed and recreated */
         if (!worker->s->status) {
             worker->s->status = PROXY_WORKER_INITIALIZED;
-            strncpy(worker->s->route, node->mess.JVMRoute, sizeof(worker->s->route));
+            strncpy(worker->s->route, node->mess.jvm_route, sizeof(worker->s->route));
             worker->s->route[sizeof(worker->s->route) - 1] = '\0';
-            strncpy(worker->s->upgrade, node->mess.Upgrade, sizeof(worker->s->upgrade));
+            strncpy(worker->s->upgrade, node->mess.upgrade, sizeof(worker->s->upgrade));
             worker->s->upgrade[sizeof(worker->s->upgrade) - 1] = '\0';
-            strncpy(worker->s->secret, node->mess.AJPSecret, sizeof(worker->s->secret));
+            strncpy(worker->s->secret, node->mess.ajp_secret, sizeof(worker->s->secret));
             worker->s->secret[sizeof(worker->s->secret) - 1] = '\0';
-            if (node->mess.ResponseFieldSize > 0) {
-                worker->s->response_field_size = node->mess.ResponseFieldSize;
+            if (node->mess.response_field_size > 0) {
+                worker->s->response_field_size = node->mess.response_field_size;
             }
-            worker->s->response_field_size_set = node->mess.ResponseFieldSize > 0 ? 1 : 0;
+            worker->s->response_field_size_set = node->mess.response_field_size > 0 ? 1 : 0;
             /* XXX: We need that information from TC */
             worker->s->redirect[0] = '\0';
             worker->s->lbstatus = 0;
@@ -373,7 +373,7 @@ static apr_status_t create_worker_reuse(proxy_server_conf *conf, const char *ptr
 static char *create_worker_build_name(const nodeinfo_t *node, apr_uri_t *uri, server_rec *server, apr_pool_t *pool)
 {
     char *url;
-    url = apr_pstrcat(pool, node->mess.Type, "://", normalize_hostname(pool, node->mess.Host), ":", node->mess.Port,
+    url = apr_pstrcat(pool, node->mess.type, "://", normalize_hostname(pool, node->mess.host), ":", node->mess.port,
                       NULL);
     if (apr_uri_parse(pool, url, uri) != APR_SUCCESS) {
         ap_log_error(APLOG_MARK, APLOG_ERR, 0, server, "create_worker: worker for %s failed: Unable to parse URL", url);
@@ -385,7 +385,7 @@ static char *create_worker_build_name(const nodeinfo_t *node, apr_uri_t *uri, se
         return NULL;
     }
     if (uri->port && uri->port == ap_proxy_port_of_scheme(uri->scheme)) {
-        url = apr_pstrcat(pool, node->mess.Type, "://", normalize_hostname(pool, node->mess.Host), NULL);
+        url = apr_pstrcat(pool, node->mess.type, "://", normalize_hostname(pool, node->mess.host), NULL);
     }
     return url;
 }
@@ -422,17 +422,17 @@ static void create_worker_arrange_shared_mem(proxy_server_conf *conf, proxy_work
     strncpy(worker->s->scheme, shared->scheme, sizeof(worker->s->scheme));
     worker->s->port = shared->port;
     worker->s->hmax = shared->hmax;
-    strncpy(worker->s->route, node->mess.JVMRoute, sizeof(worker->s->route));
+    strncpy(worker->s->route, node->mess.jvm_route, sizeof(worker->s->route));
     worker->s->route[sizeof(worker->s->route) - 1] = '\0';
-    strncpy(worker->s->upgrade, node->mess.Upgrade, sizeof(worker->s->upgrade));
+    strncpy(worker->s->upgrade, node->mess.upgrade, sizeof(worker->s->upgrade));
     worker->s->upgrade[sizeof(worker->s->upgrade) - 1] = '\0';
-    if (node->mess.ResponseFieldSize > 0) {
-        worker->s->response_field_size = node->mess.ResponseFieldSize;
+    if (node->mess.response_field_size > 0) {
+        worker->s->response_field_size = node->mess.response_field_size;
         worker->s->response_field_size_set = 1;
     } else {
         worker->s->response_field_size_set = 0;
     }
-    strncpy(worker->s->secret, node->mess.AJPSecret, sizeof(worker->s->secret));
+    strncpy(worker->s->secret, node->mess.ajp_secret, sizeof(worker->s->secret));
     worker->s->secret[sizeof(worker->s->secret) - 1] = '\0';
     worker->s->redirect[0] = '\0';
     worker->s->smax = node->mess.smax;
@@ -653,24 +653,24 @@ static proxy_balancer *add_balancer_node(const nodeinfo_t *node, proxy_server_co
         if (balan == NULL) {
             return balancer; /* Done broken */
         }
-        /* StickySession, StickySessionRemove we hack it via the lbpname (16 bytes) */
-        strcpy(balancer->s->lbpname, balan->StickySession ? MC_STICKY : MC_NOT_STICKY);
+        /* sticky_session, sticky_session_remove we hack it via the lbpname (16 bytes) */
+        strcpy(balancer->s->lbpname, balan->sticky_session ? MC_STICKY : MC_NOT_STICKY);
 
-        if (balan->StickySessionRemove) {
+        if (balan->sticky_session_remove) {
             strcpy(balancer->s->lbpname, MC_REMOVE_SESSION);
         }
 
-        strncpy(balancer->s->sticky, balan->StickySessionCookie, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+        strncpy(balancer->s->sticky, balan->sticky_session_cookie, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
         balancer->s->sticky[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
-        strncpy(balancer->s->sticky_path, balan->StickySessionPath, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+        strncpy(balancer->s->sticky_path, balan->sticky_session_path, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
         balancer->s->sticky_path[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
-        if (balan->StickySessionForce) {
+        if (balan->sticky_session_force) {
             strcpy(balancer->s->lbpname, MC_NO_FAILOVER);
             balancer->s->sticky_force = 1;
             balancer->s->sticky_force_set = 1;
         }
-        balancer->s->timeout = balan->Timeout;
-        balancer->s->max_attempts = balan->Maxattempts;
+        balancer->s->timeout = balan->timeout;
+        balancer->s->max_attempts = balan->max_attempts;
         balancer->s->max_attempts_set = 1;
     }
     return balancer;
@@ -690,41 +690,41 @@ static void reuse_balancer(proxy_balancer *balancer, const char *name, apr_pool_
         strcpy(balancer->s->lbpname, MC_STICKY);
         changed = 1;
     }
-    if (balan->StickySessionForce && !balancer->s->sticky_force) {
+    if (balan->sticky_session_force && !balancer->s->sticky_force) {
         balancer->s->sticky_force = 1;
         balancer->s->sticky_force_set = 1;
         strcpy(balancer->s->lbpname, MC_NO_FAILOVER);
         changed = 1;
     }
-    if (!balan->StickySessionForce && balancer->s->sticky_force) {
+    if (!balan->sticky_session_force && balancer->s->sticky_force) {
         balancer->s->sticky_force = 0;
         strcpy(balancer->s->lbpname, MC_STICKY);
         changed = 1;
     }
-    if (balan->StickySessionForce && strcmp(balancer->s->lbpname, MC_NO_FAILOVER)) {
+    if (balan->sticky_session_force && strcmp(balancer->s->lbpname, MC_NO_FAILOVER)) {
         strcpy(balancer->s->lbpname, MC_NO_FAILOVER);
         changed = 1;
     }
-    if (balan->StickySessionRemove && strcmp(balancer->s->lbpname, MC_REMOVE_SESSION)) {
+    if (balan->sticky_session_remove && strcmp(balancer->s->lbpname, MC_REMOVE_SESSION)) {
         strcpy(balancer->s->lbpname, MC_REMOVE_SESSION);
         changed = 1;
     }
-    if (!balan->StickySession && strcmp(balancer->s->lbpname, MC_NOT_STICKY)) {
+    if (!balan->sticky_session && strcmp(balancer->s->lbpname, MC_NOT_STICKY)) {
         strcpy(balancer->s->lbpname, MC_NOT_STICKY);
         changed = 1;
     }
-    if (strcmp(balan->StickySessionCookie, balancer->s->sticky) != 0) {
-        strncpy(balancer->s->sticky, balan->StickySessionCookie, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+    if (strcmp(balan->sticky_session_cookie, balancer->s->sticky) != 0) {
+        strncpy(balancer->s->sticky, balan->sticky_session_cookie, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
         balancer->s->sticky[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
         changed = 1;
     }
-    if (strcmp(balan->StickySessionPath, balancer->s->sticky_path) != 0) {
-        strncpy(balancer->s->sticky_path, balan->StickySessionPath, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
+    if (strcmp(balan->sticky_session_path, balancer->s->sticky_path) != 0) {
+        strncpy(balancer->s->sticky_path, balan->sticky_session_path, PROXY_BALANCER_MAX_STICKY_SIZE - 1);
         balancer->s->sticky_path[PROXY_BALANCER_MAX_STICKY_SIZE - 1] = '\0';
         changed = 1;
     }
-    balancer->s->timeout = balan->Timeout;
-    balancer->s->max_attempts = balan->Maxattempts;
+    balancer->s->timeout = balan->timeout;
+    balancer->s->max_attempts = balan->max_attempts;
     balancer->s->max_attempts_set = 1;
     if (changed) {
         ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s, "Balancer %s changed", &balancer->s->name[11]);
@@ -854,7 +854,7 @@ static void remove_workers_node(nodeinfo_t *node, proxy_server_conf *conf, apr_p
 
     i = helper->count_active;
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "remove_workers_node: helper count_active: %d JVMRoute: %s", i,
-                 node->mess.JVMRoute);
+                 node->mess.jvm_route);
 
     if (i != 0) {
         node->mess.lastcleantry = apr_time_now();
@@ -1199,8 +1199,8 @@ static apr_status_t read_node_worker(int id, nodeinfo_t **node, const proxy_work
         return status;
     }
     apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
-    if (strcmp(worker->s->scheme, (*node)->mess.Type) || compare_hostname(worker->s->hostname, (*node)->mess.Host) ||
-        strcmp(sport, (*node)->mess.Port)) {
+    if (strcmp(worker->s->scheme, (*node)->mess.type) || compare_hostname(worker->s->hostname, (*node)->mess.host) ||
+        strcmp(sport, (*node)->mess.port)) {
         /* for some reasons it is not the right node */
         return APR_NOTFOUND;
     }
@@ -1309,12 +1309,12 @@ static proxy_worker *update_lbstatus_get_worker(server_rec *s, proxy_server_conf
 
     apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
 
-    if (strcmp(worker->s->scheme, ou->mess.Type) || compare_hostname(worker->s->hostname, ou->mess.Host) ||
-        strcmp(sport, ou->mess.Port)) {
+    if (strcmp(worker->s->scheme, ou->mess.type) || compare_hostname(worker->s->hostname, ou->mess.host) ||
+        strcmp(sport, ou->mess.port)) {
         /* the worker doesn't correspond to the node something is very broken */
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, s,
                      "update_workers_lbstatus worker: (%s) does not correspond to the node (%s)", worker->s->hostname,
-                     ou->mess.Host);
+                     ou->mess.host);
         return NULL;
     }
 
@@ -1354,12 +1354,12 @@ static int update_lbstatus_hcheck(proxy_server_conf *conf, server_rec *server, a
     }
     apr_snprintf(sport, sizeof(sport), "%d", worker->s->port);
 
-    if (strcmp(worker->s->scheme, ou->mess.Type) || compare_hostname(worker->s->hostname, ou->mess.Host) ||
-        strcmp(sport, ou->mess.Port)) {
+    if (strcmp(worker->s->scheme, ou->mess.type) || compare_hostname(worker->s->hostname, ou->mess.host) ||
+        strcmp(sport, ou->mess.port)) {
         /* the worker doesn't correspond to the node something is very broken */
         ap_log_error(APLOG_MARK, APLOG_CRIT, 0, server,
                      "update_workers_lbstatus worker: (%s) does not correspond to the node (%s)", worker->s->hostname,
-                     ou->mess.Host);
+                     ou->mess.host);
         return 1;
     }
 
@@ -1575,15 +1575,15 @@ static void remove_timeout_domain(apr_pool_t *pool)
     }
 }
 
-/* Check that the worker corresponds to a node that belongs to the same domain according to the JVMRoute. */
+/* Check that the worker corresponds to a node that belongs to the same domain according to the jvm_route. */
 static int isnode_domain_ok(const request_rec *r, const nodeinfo_t *node, const char *domain)
 {
     (void)r;
-    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "isnode_domain_ok: domain %s:%s", domain, node->mess.Domain);
+    ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "isnode_domain_ok: domain %s:%s", domain, node->mess.domain);
     if (domain == NULL) {
         return 1; /* OK no domain in the corresponding to the SESSIONID */
     }
-    if (strcmp(node->mess.Domain, domain) == 0) {
+    if (strcmp(node->mess.domain, domain) == 0) {
         return 1; /* OK */
     }
     return 0;
@@ -2101,14 +2101,14 @@ static void init_proxy_worker(server_rec *server, nodeinfo_t *node, proxy_worker
                               const proxy_server_conf *the_conf)
 {
     worker->s->status = PROXY_WORKER_INITIALIZED;
-    strncpy(worker->s->route, node->mess.JVMRoute, sizeof(worker->s->route));
+    strncpy(worker->s->route, node->mess.jvm_route, sizeof(worker->s->route));
     worker->s->route[sizeof(worker->s->route) - 1] = '\0';
-    strncpy(worker->s->upgrade, node->mess.Upgrade, sizeof(worker->s->upgrade));
+    strncpy(worker->s->upgrade, node->mess.upgrade, sizeof(worker->s->upgrade));
     worker->s->upgrade[sizeof(worker->s->upgrade) - 1] = '\0';
-    strncpy(worker->s->secret, node->mess.AJPSecret, sizeof(worker->s->secret));
+    strncpy(worker->s->secret, node->mess.ajp_secret, sizeof(worker->s->secret));
     worker->s->secret[sizeof(worker->s->secret) - 1] = '\0';
-    if (node->mess.ResponseFieldSize > 0) {
-        worker->s->response_field_size = node->mess.ResponseFieldSize;
+    if (node->mess.response_field_size > 0) {
+        worker->s->response_field_size = node->mess.response_field_size;
         worker->s->response_field_size_set = 1;
     } else {
         worker->s->response_field_size_set = 0;
@@ -2177,7 +2177,7 @@ static void remove_removed_node(apr_pool_t *pool, const proxy_server_conf *conf,
         if (node_storage->read_node(id[i], &ou) != APR_SUCCESS) {
             continue;
         }
-        if (strcmp(ou->mess.JVMRoute, "REMOVED") == 0 && (now - ou->updatetime) >= wait_for_remove) {
+        if (strcmp(ou->mess.jvm_route, "REMOVED") == 0 && (now - ou->updatetime) >= wait_for_remove) {
             if (node_has_workers(ou)) {
                 ou->updatetime = now;
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
@@ -2185,10 +2185,10 @@ static void remove_removed_node(apr_pool_t *pool, const proxy_server_conf *conf,
             } else {
                 ou->mess.num_remove_check++;
                 ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "remove_removed_node: %d %s for REMOVED done %d",
-                             ou->mess.id, ou->mess.Port, getpid());
+                             ou->mess.id, ou->mess.port, getpid());
                 if (ou->mess.num_remove_check > 10) {
                     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server,
-                                 "remove_removed_node: %d %s for REMOVED done (DONE) %d", ou->mess.id, ou->mess.Port,
+                                 "remove_removed_node: %d %s for REMOVED done (DONE) %d", ou->mess.id, ou->mess.port,
                                  getpid());
                     node_storage->remove_node(ou->mess.id);
                 }
@@ -2198,13 +2198,13 @@ static void remove_removed_node(apr_pool_t *pool, const proxy_server_conf *conf,
         if (ou->mess.remove && (now - ou->updatetime) >= wait_for_remove &&
             (now - ou->mess.lastcleantry) >= wait_for_remove) {
             /* if it has a domain store it in the domain */
-            if (ou->mess.Domain[0] != '\0') {
+            if (ou->mess.domain[0] != '\0') {
                 domaininfo_t dom;
-                strncpy(dom.JVMRoute, ou->mess.JVMRoute, sizeof(dom.JVMRoute));
-                dom.JVMRoute[sizeof(dom.JVMRoute) - 1] = '\0';
+                strncpy(dom.jvm_route, ou->mess.jvm_route, sizeof(dom.jvm_route));
+                dom.jvm_route[sizeof(dom.jvm_route) - 1] = '\0';
                 strncpy(dom.balancer, ou->mess.balancer, sizeof(dom.balancer));
                 dom.balancer[sizeof(dom.balancer) - 1] = '\0';
-                strncpy(dom.domain, ou->mess.Domain, sizeof(dom.domain));
+                strncpy(dom.domain, ou->mess.domain, sizeof(dom.domain));
                 dom.domain[sizeof(dom.domain) - 1] = '\0';
                 if (domain_storage->insert_update_domain(&dom) != APR_SUCCESS) {
                     remove_timeout_domain(pool);
@@ -2213,11 +2213,11 @@ static void remove_removed_node(apr_pool_t *pool, const proxy_server_conf *conf,
             }
             /* remove the node from the shared memory */
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, server, "remove_removed_node: %d %s %s %d", ou->mess.id,
-                         ou->mess.JVMRoute, ou->mess.Port, getpid());
+                         ou->mess.jvm_route, ou->mess.port, getpid());
             node_storage->remove_host_context(ou->mess.id, pool);
 
-            strcpy(ou->mess.JVMRoute, "REMOVED");
-            ou->mess.Domain[0] = '\0';
+            strcpy(ou->mess.jvm_route, "REMOVED");
+            ou->mess.domain[0] = '\0';
 
             /* prevent real remove until processes don't have the node in workers */
             ou->updatetime = now;
@@ -2929,7 +2929,7 @@ static proxy_worker *find_route_worker(request_rec *r, const proxy_balancer *bal
 }
 
 /*
- * Find the worker corresponding to the JVMRoute.
+ * Find the worker corresponding to the jvm_route.
  */
 static proxy_worker *find_session_route(const proxy_balancer *balancer, request_rec *r, const char **route,
                                         const char **sticky_used, char **url, const char **domain,
@@ -3443,7 +3443,7 @@ static int proxy_cluster_post_request(proxy_worker *worker, proxy_balancer *bala
             if (sessionid && route) {
                 sessionidinfo_t ou;
                 strncpy(ou.sessionid, sessionid, SESSIONIDSZ);
-                strncpy(ou.JVMRoute, route, JVMROUTESZ);
+                strncpy(ou.jvm_route, route, JVMROUTESZ);
                 sessionid_storage->insert_update_sessionid(&ou);
             }
         }

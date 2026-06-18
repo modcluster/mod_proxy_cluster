@@ -28,6 +28,12 @@ jobs:
       - name: Skip
         run: echo "Skipping the job"
 
+  clang-tidy-naming-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip
+        run: echo "Skipping the job"
+
   make-fedora-latest:
     runs-on: ubuntu-latest
     steps:

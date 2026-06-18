@@ -491,11 +491,11 @@ static apr_status_t find_nodedomain(request_rec *r, const char **domain, char *r
     /* XXX JFCLERE!!!! domaininfo_t *dom; */
     ap_log_error(APLOG_MARK, APLOG_TRACE4, 0, r->server, "find_nodedomain: finding node for %s: %s", route, balancer);
     for (i = 0; i < node_table->sizenode; i++) {
-        if (strcmp(node_table->node_info[i].mess.JVMRoute, route) == 0) {
+        if (strcmp(node_table->node_info[i].mess.jvm_route, route) == 0) {
             const nodeinfo_t *ou = &node_table->node_info[i];
             if (!strcasecmp(balancer, ou->mess.balancer)) {
-                if (ou->mess.Domain[0] != '\0') {
-                    *domain = ou->mess.Domain;
+                if (ou->mess.domain[0] != '\0') {
+                    *domain = ou->mess.domain;
                 }
                 return APR_SUCCESS;
             }
@@ -600,7 +600,7 @@ nodeinfo_t *table_get_node_route(proxy_node_table *node_table, char *route, int 
 {
     int i;
     for (i = 0; i < node_table->sizenode; i++) {
-        if (!strcmp(node_table->node_info[i].mess.JVMRoute, route)) {
+        if (!strcmp(node_table->node_info[i].mess.jvm_route, route)) {
             *id = node_table->nodes[i];
             return &node_table->node_info[i];
         }

@@ -65,7 +65,7 @@ static apr_status_t update(void *mem, void *data, apr_pool_t *pool)
     nodeinfo_t *ou = (nodeinfo_t *)mem;
     (void)pool;
 
-    if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
+    if (strcmp(in->mess.jvm_route, ou->mess.jvm_route) == 0) {
         in->mess.id = ou->mess.id;
         memcpy(ou, in, sizeof(nodemess_t));
         ou->updatetime = apr_time_now();
@@ -134,7 +134,7 @@ static apr_status_t loc_read_node(void *mem, void *data, apr_pool_t *pool)
     nodeinfo_t *ou = (nodeinfo_t *)mem;
     (void)pool;
 
-    if (strcmp(in->mess.JVMRoute, ou->mess.JVMRoute) == 0) {
+    if (strcmp(in->mess.jvm_route, ou->mess.jvm_route) == 0) {
         in->mess.id = ou->mess.id;
         return APR_EEXIST;
     }
@@ -175,8 +175,8 @@ apr_status_t find_node(mem_t *s, nodeinfo_t **node, const char *route)
     nodeinfo_t ou;
     apr_status_t rv;
 
-    strncpy(ou.mess.JVMRoute, route, sizeof(ou.mess.JVMRoute));
-    ou.mess.JVMRoute[sizeof(ou.mess.JVMRoute) - 1] = '\0';
+    strncpy(ou.mess.jvm_route, route, sizeof(ou.mess.jvm_route));
+    ou.mess.jvm_route[sizeof(ou.mess.jvm_route) - 1] = '\0';
     rv = s->storage->doall(s->slotmem, loc_read_node, &ou, s->p);
     if (rv == APR_SUCCESS) {
         return APR_NOTFOUND;
@@ -227,7 +227,7 @@ static apr_status_t loc_read_node_byhostport(void *mem, void *data, apr_pool_t *
     nodeinfo_t *ou = (nodeinfo_t *)mem;
     (void)pool;
 
-    if (strcmp(in->mess.Host, ou->mess.Host) == 0 && strcmp(in->mess.Port, ou->mess.Port) == 0) {
+    if (strcmp(in->mess.host, ou->mess.host) == 0 && strcmp(in->mess.port, ou->mess.port) == 0) {
         in->mess.id = ou->mess.id;
         return APR_EEXIST;
     }
@@ -247,10 +247,10 @@ apr_status_t find_node_byhostport(mem_t *s, nodeinfo_t **node, const char *host,
     nodeinfo_t ou;
     apr_status_t rv;
 
-    strncpy(ou.mess.Host, host, sizeof(ou.mess.Host));
-    ou.mess.Host[sizeof(ou.mess.Host) - 1] = '\0';
-    strncpy(ou.mess.Port, port, sizeof(ou.mess.Port));
-    ou.mess.Port[sizeof(ou.mess.Port) - 1] = '\0';
+    strncpy(ou.mess.host, host, sizeof(ou.mess.host));
+    ou.mess.host[sizeof(ou.mess.host) - 1] = '\0';
+    strncpy(ou.mess.port, port, sizeof(ou.mess.port));
+    ou.mess.port[sizeof(ou.mess.port) - 1] = '\0';
 
     rv = s->storage->doall(s->slotmem, loc_read_node_byhostport, &ou, s->p);
     if (rv == APR_EEXIST) {
