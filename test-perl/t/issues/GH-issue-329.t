@@ -29,7 +29,8 @@ my %p = parse_response 'INFO', $resp->content;
 
 ok(@{$p{Nodes}} == 1);
 
-ok (@{$p{Contexts}} == 2);
+# For 1.3.x we have 2 aliases and 2 contexts, with 2.x we have 2 aliases and 2 context per each
+ok (@{$p{Contexts}} == ((mpc_version())[0] == 1 ? 2 : 4));
 ok ($p{Contexts}->[0]{Context} eq '/news');
 ok ($p{Contexts}->[1]{Context} eq '/test');
 
@@ -54,7 +55,7 @@ ok $resp->is_success;
 
 ok(@{$p{Nodes}} == 1);
 
-ok (@{$p{Contexts}} == 2);
+ok (@{$p{Contexts}} == ((mpc_version())[0] == 1 ? 2 : 4));
 ok ($p{Contexts}->[0]{Context} eq '/news');
 ok ($p{Contexts}->[1]{Context} eq '/test');
 
@@ -79,7 +80,7 @@ ok $resp->is_success;
 
 ok(@{$p{Nodes}} == 1);
 
-ok (@{$p{Contexts}} == 2);
+ok (@{$p{Contexts}} == ((mpc_version())[0] == 1 ? 2 : 4));
 ok ($p{Contexts}->[0]{Context} eq '/news');
 ok ($p{Contexts}->[1]{Context} eq '/test');
 

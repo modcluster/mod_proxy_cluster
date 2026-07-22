@@ -12,6 +12,7 @@ our @ISA = qw(Exporter);
 
 our @EXPORT = qw(
   need_mpc
+  mpc_version
   CMD
   CMD_internal
   parse_params
@@ -23,6 +24,11 @@ our @EXPORT = qw(
 our $VERSION = '0.0.1';
 our $ROOT = Apache::TestRequest::module2url('mpc_test_host', { path => '' });
 
+our $MPC_VERSION_MAJOR = 0;
+our $MPC_VERSION_MINOR = 0;
+our $MPC_VERSION_PATCH = 0;
+our $MPC_VERSION_STRING = "";
+
 # You have to call `Apache::TestRequest::module(<mpc_host>)` before
 # running this function.
 # `need` or `need_module` for 'proxy_cluster' won't work because it's
@@ -30,10 +36,16 @@ our $ROOT = Apache::TestRequest::module2url('mpc_test_host', { path => '' });
 sub need_mpc {
     my $res = GET '/mod_cluster_manager';
     if ($res->code != 404) {
+        my $sw_info_pattern = '\/(\d+)\.(\d+)\.(\d+)\.(Dev|Alpha\d+|Beta\d+|CR\d+|Final)';
+        ($MPC_VERSION_MAJOR, $MPC_VERSION_MINOR, $MPC_VERSION_PATCH, $MPC_VERSION_STRING) = $res->content =~ /$sw_info_pattern/;
         return 1; # the module is alive
     }
     Apache::Test::skip_reason("/mod_cluster_manager endpoint returned 404");
     return 0;
+}
+
+sub mpc_version {
+    return ($MPC_VERSION_MAJOR, $MPC_VERSION_MINOR, $MPC_VERSION_PATCH, $MPC_VERSION_STRING);
 }
 
 sub CMD_internal {
@@ -52,7 +64,7 @@ sub concat_params {
 	my $d = "";
 
 	foreach my $k (sort(keys %$params)) {
-		if ($params->{$k}) {
+		if (defined $params->{$k}) {
 			$p .= $d . $k . '=' . $params->{$k};
 			$d = "&";
 		}
@@ -179,7 +191,7 @@ sub parse_DUMP {
 sub CMD {
 	my ($cmd, $params, $path) = @_;
 	my @mpc_commands = qw(CONFIG ENABLE-APP DISABLE-APP STOP-APP REMOVE-APP STOP-APP-RSP
-				STATUS STATUS-RSP INFO INFO-RSP DUMP DUMP-RSP PING PING-RSP);
+				STATUS STATUS-RSP INFO INFO-RSP DUMP DUMP-RSP PING PING-RSP VERSION);
     $path = '' if not defined $path;
     $params = {} if not defined $params;
 

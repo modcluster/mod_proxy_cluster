@@ -10,11 +10,13 @@ LoadModule rewrite_module modules/mod_rewrite.so
 </Directory>
 
 <VirtualHost fake_cgi_app>
-    <Location /news>
+    <Location />
         AllowOverride None
         Require all granted
         RewriteEngine On
-        RewriteRule ^(.*)$ /cgi-bin/test.pl?url=$1 [R]
+        # to prevent infinite loops/redirects
+        RewriteCond %{REQUEST_URI} !^/cgi-bin/test\.pl
+        RewriteRule ^(.*)$ /cgi-bin/test.pl?url=$1 [L,PT]
     </Location>
 </VirtualHost>
 

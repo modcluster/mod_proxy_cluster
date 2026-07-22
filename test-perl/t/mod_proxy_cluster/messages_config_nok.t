@@ -13,13 +13,12 @@ use Apache::TestRequest 'GET';
 use ModProxyCluster;
 Apache::TestRequest::module("mpc_test_host");
 
-plan tests => 70, need_mpc;
+plan tests => 69, need_mpc;
 
 my $hostport = Apache::TestRequest::hostport();
 
 my $resp = GET "/";
 ok $resp->is_success;
-ok (index($resp->as_string, "mod_cluster/2.0.0.Alpha1-SNAPSHOT") != -1);
 
 my $is_httpd2_4 = $resp->header('Server') =~ m/Apache\/2\.4/;
 

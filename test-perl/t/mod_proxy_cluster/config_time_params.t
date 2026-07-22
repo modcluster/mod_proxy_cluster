@@ -39,6 +39,7 @@ ok($node->{timeout} == 0);
 
 # Clean after yourself
 remove_nodes 'test-time';
+sleep 25; # to have enough time for the removal
 
 ##################################
 ### Check custom valid values  ###

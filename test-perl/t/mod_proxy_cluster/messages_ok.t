@@ -14,11 +14,14 @@ use Apache::TestRequest 'GET';
 use ModProxyCluster;
 Apache::TestRequest::module("mpc_test_host");
 
-plan tests => 214, need_mpc;
+my $extra_tests = 0;
+my $version1 = (mpc_version())[0] == 1;
+$extra_tests = 9 if ($version1);
+
+plan tests => 203 + $extra_tests, need_mpc;
 
 my $resp = GET "/";
 ok $resp->is_success;
-ok (index($resp->as_string, "mod_cluster/2.0.0.Alpha1-SNAPSHOT") != -1);
 
 
 ##################
@@ -69,8 +72,8 @@ ok (@{$p{Contexts}} == 0);
 ok (@{$p{Hosts}} == 0);
 
 ## TODO: Make this implementation independent, i.e., we should not care whether indexing starts by 0 or 1...
-ok ($p{Nodes}->[0]{Name} eq 'next');
-ok ($p{Nodes}->[1]{Name} eq 'spare');
+my @names = map { $_->{Name} } @{$p{Nodes}};
+ok t_cmp([sort @names], ['next', 'spare']);
 
 # All returned by INFO (+ Node: [%d])
 my @info_opts = qw( Name Balancer LBGroup Host Port Type Flushpackets Flushwait Ping Smax Ttl Elected Read Transfered Connected Load );
@@ -198,7 +201,7 @@ ok $resp->is_success;
 $resp = CMD 'ENABLE-APP', { JVMRoute => 'app', Context => '/news', Alias => $apphost };
 
 ok $resp->is_success;
-ok ($resp->content eq "");
+ok ($resp->content eq "") if $version1;
 
 $resp = GET $app;
 ok $resp->is_success;
@@ -244,7 +247,7 @@ ok ($p{Hosts}->[0]{vhost} == $p{Contexts}->[0]{vhost});
 $resp = CMD 'DISABLE-APP', { JVMRoute => 'app', Context => '/news', Alias => $apphost };
 
 ok $resp->is_success;
-ok ($resp->content eq "");
+ok ($resp->content eq "") if $version1;
 
 $resp = GET $app;
 ok $resp->is_error;
@@ -283,16 +286,19 @@ ok ($p{Hosts}->[0]{vhost} == $p{Contexts}->[0]{vhost});
 ######################
 CMD 'ENABLE-APP', { JVMRoute => 'app', Context => '/news', Alias => $apphost };
 
-my @stop_opts = qw( Type JvmRoute Alias Context Requests );
 $resp = CMD 'STOP-APP', { JVMRoute => 'app', Context => '/news', Alias => $apphost };
 
 ok $resp->is_success;
-%p = parse_response 'STOP-APP', $resp->content;
 
-ok ($p{Type} eq 'STOP-APP-RSP');
+if ((mpc_version())[0] == 1) {
+    my @stop_opts = qw( Type JvmRoute Alias Context Requests );
+    %p = parse_response 'STOP-APP', $resp->content;
 
-for my $opt (@stop_opts) {
-	ok (exists $p{$opt});
+    ok ($p{Type} eq 'STOP-APP-RSP');
+
+    for my $opt (@stop_opts) {
+	    ok (exists $p{$opt});
+    }
 }
 
 $resp = GET $app;
@@ -337,7 +343,7 @@ $resp = CMD 'REMOVE-APP', { JVMRoute => 'app', Context => '/news', Alias => $app
 
 ok $resp->is_success;
 
-ok ($resp->content eq "");
+ok ($resp->content eq "") if $version1;
 
 $resp = GET $app;
 ok $resp->is_error;

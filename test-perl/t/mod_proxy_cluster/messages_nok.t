@@ -14,11 +14,10 @@ use Apache::TestRequest 'GET';
 use ModProxyCluster;
 Apache::TestRequest::module("mpc_test_host");
 
-plan tests => 8, need_mpc;
+plan tests => 7, need_mpc;
 
 my $resp = GET "/";
 ok $resp->is_success;
-ok (index($resp->as_string, "mod_cluster/2.0.0.Alpha1-SNAPSHOT") != -1);
 
 ##################
 ##### STATUS #####

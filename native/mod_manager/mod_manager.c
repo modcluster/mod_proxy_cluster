@@ -731,40 +731,6 @@ static apr_status_t insert_update_host_helper(server_rec *s, mem_t *mem, hostinf
 }
 
 /**
- * Insert the hosts from Alias information
- */
-static apr_status_t insert_update_hosts(server_rec *s, mem_t *mem, char *str, int node, int vhost)
-{
-    hostinfo_t info;
-    apr_status_t status;
-    char *ptr = str;
-    char *previous = str;
-
-    char empty[] = {'\0'};
-    if (str == NULL) {
-        ptr = empty;
-        previous = empty;
-    }
-
-    info.node = node;
-    info.vhost = vhost;
-
-    while (*ptr) {
-        if (*ptr == ',') {
-            *ptr = '\0';
-            status = insert_update_host_helper(s, mem, &info, previous);
-            if (status != APR_SUCCESS) {
-                return status;
-            }
-            previous = ptr + 1;
-        }
-        ptr++;
-    }
-
-    return insert_update_host_helper(s, mem, &info, previous);
-}
-
-/**
  * Remove the context using the contextinfo_t information
  * we read it first then remove it
  */
@@ -792,44 +758,6 @@ static apr_status_t insert_update_context_helper(server_rec *s, mem_t *mem, cont
     return insert_update_context(mem, info);
 }
 
-/**
- * Insert the context from Context information
- * Note:
- *     1 - if status is REMOVE remove_context will be called
- *     2 - return codes of REMOVE are ignored (always success)
- */
-static apr_status_t insert_update_contexts(server_rec *s, mem_t *mem, char *str, int node, int vhost, int status)
-{
-    char *ptr = str;
-    char *previous = str;
-    apr_status_t ret = APR_SUCCESS;
-    contextinfo_t info;
-
-    char root[] = "/";
-    if (ptr == NULL) {
-        ptr = root;
-        previous = root;
-    }
-
-    info.node = node;
-    info.vhost = vhost;
-    info.status = status;
-
-    while (*ptr) {
-        if (*ptr == ',') {
-            *ptr = '\0';
-            ret = insert_update_context_helper(s, mem, &info, previous, status);
-            if (ret != APR_SUCCESS) {
-                return ret;
-            }
-
-            previous = ptr + 1;
-        }
-        ptr++;
-    }
-
-    return insert_update_context_helper(s, mem, &info, previous, status);
-}
 
 /**
  * Check that the node could be handle as is there were the same
@@ -940,7 +868,7 @@ static apr_status_t mod_manager_manage_worker(request_rec *r, const nodeinfo_t *
 
     /* set the health check (requires mod_proxy_hcheck) */
     /* CPING for AJP and OPTIONS for HTTP/1.1 */
-    apr_table_set(params, "w_hm", strcmp(node->mess.Type, "ajp") ? "OPTIONS" : "CPING");
+    apr_table_set(params, "w_hm", strcmp(node->mess.Type, "ajp") != 0 ? "OPTIONS" : "CPING");
 
     /* Use 10 sec for the moment, the idea is to adjust it with the STATUS frequency */
     apr_table_set(params, "w_hi", "10000");
@@ -1243,8 +1171,8 @@ static const proxy_worker_shared *read_shared_by_node(request_rec *r, nodeinfo_t
         for (j = 0; j < balancer->workers->nelts; j++, workers++) {
             proxy_worker *worker = *workers;
             ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                         "read_shared_by_node: Balancer %s worker (%d) %s, %s, %d", balancer->s->name, worker->s->index,
-                         worker->s->route, worker->s->hostname, worker->s->port);
+                         "read_shared_by_node: Balancer %s worker (%d) route (%s), %s://%s:%d", balancer->s->name,
+                         worker->s->index, worker->s->route, worker->s->scheme, worker->s->hostname, worker->s->port);
             if (worker->s->port == port && strcmp(worker->s->hostname, node->mess.Host) == 0 &&
                 strcmp(worker->s->route, node->mess.JVMRoute) == 0) {
                 return worker->s;
@@ -1255,74 +1183,72 @@ static const proxy_worker_shared *read_shared_by_node(request_rec *r, nodeinfo_t
     return NULL;
 }
 
-/* 0 if limit is OK (not exceeded), 1 otherwise */
-static int check_context_alias_length(const char *str, int limit)
+/* Helper function.
+ * Returns:
+ *  -1 when an empty value gets processed
+ *   0 when everything went ok
+ *   1 when the given limit got exceeded
+ */
+static int parse_list_to_array_with_checks(char *val, apr_array_header_t *arr, int len_limit)
 {
-    int i = 0, len = 0;
-    while (str[i]) {
-        if (str[i] == ',') {
+    int len = 0;
+    char *start = val;
+    char *current = val;
+
+    while (*current) {
+        len++;
+        if (*current == ',') {
+            *current = '\0';
+            *(char **)apr_array_push(arr) = start;
+            start = ++current;
             len = 0;
         }
-        if (len >= limit) {
+
+        if (len >= len_limit) {
             return 1;
         }
-        len++;
-        i++;
+        current++;
     }
 
+    if (len >= len_limit) {
+        return 1;
+    } else if (len == 0) {
+        return -1;
+    }
+
+    *(char **)apr_array_push(arr) = start;
     return 0;
 }
 
 /**
  * Process Alias and Context if present.
- * We process both in two different context:
- *     1) during CONFIG command
- *     2) during APP command
- * to differenciate between the two use the last argument (true -> CONFIG, false -> APP)
+ *
+ * Check that their lengths are in limit.
+ * Transform aliases to lowercase if needed.
  */
-static char *process_context_alias(char *key, char *val, apr_pool_t *p, char **contexts, char **aliases, int *errtype,
-                                   int in_config)
+static char *process_context_alias(char *key, char *val, apr_array_header_t *contexts, apr_array_header_t *aliases,
+                                   int *errtype)
 {
+    int res = 0;
     if (strcasecmp(key, "Alias") == 0) {
-        char *tmp;
+        /* val can be a list separated by `,` so we have to process it and add sequentially */
+        char *current = val;
+        while (*current) {
+            /* Aliases to lower case for further case-insensitive treatment, IETF RFC 1035 Section 2.3.3. */
+            *current = apr_tolower(*current);
+            current++;
+        }
 
-        if (*aliases && !in_config) {
+        res = parse_list_to_array_with_checks(val, aliases, HOSTALIASZ);
+        if (res != 0) {
             *errtype = TYPESYNTAX;
-            return in_config ? SALIBAD : SMULALB;
+            return res == 1 ? SALIBIG : "TODO: Empty Alias is not allowed";
         }
-        if (check_context_alias_length(val, HOSTALIASZ)) {
+    } else if (strcasecmp(key, "Context") == 0) {
+        res = parse_list_to_array_with_checks(val, contexts, CONTEXTSZ);
+        if (res != 0) {
             *errtype = TYPESYNTAX;
-            return SALIBIG;
-        }
-
-        /* Aliases to lower case for further case-insensitive treatment, IETF RFC 1035 Section 2.3.3. */
-        tmp = val;
-        while (*tmp) {
-            *tmp = apr_tolower(*tmp);
-            tmp++;
-        }
-
-        if (*aliases) {
-            *aliases = apr_pstrcat(p, *aliases, ",", val, NULL);
-        } else {
-            *aliases = val;
-        }
-    }
-
-    if (strcasecmp(key, "Context") == 0) {
-        if (*contexts && !in_config) {
-            *errtype = TYPESYNTAX;
-            return SMULCTB;
-        }
-        if (check_context_alias_length(val, CONTEXTSZ)) {
-            *errtype = TYPESYNTAX;
-            return SCONBIG;
-        }
-
-        if (*contexts) {
-            *contexts = apr_pstrcat(p, *contexts, ",", val, NULL);
-        } else {
-            *contexts = val;
+            return res == 1 ? SCONBIG : "TODO: Empty Context is not allowed";
         }
     }
 
@@ -1353,14 +1279,15 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     /* Process the node/balancer description */
     nodeinfo_t nodeinfo;
     nodeinfo_t *node;
-    balancerinfo_t balancerinfo;
+    balancerinfo_t balancerinfo, oldbalancerinfo, *balancerinfo_ptr;
 
-    char *contexts = NULL;
-    char *aliases = NULL;
+    apr_array_header_t *contexts = apr_array_make(r->pool, 4, sizeof(char *));
+    apr_array_header_t *aliases = apr_array_make(r->pool, 4, sizeof(char *));
 
+    char *err_msg = NULL;
     int i = 0;
     int id = -1;
-    int vid = 1; /* zero and "" is empty */
+    int vid = 1;
     int removed = -1;
     void *sconf = r->server->module_config;
     mod_manager_config *mconf = ap_get_module_config(sconf, &manager_module);
@@ -1377,7 +1304,6 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     process_config_balancer_defaults(r, &balancerinfo, mconf);
 
     while (ptr[i]) {
-        char *err_msg = NULL;
         if (!ptr[i + 1] || *ptr[i + 1] == '\0') {
             *errtype = TYPESYNTAX;
             return SMESPAR;
@@ -1394,7 +1320,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
             return err_msg;
         }
         /* Optional parameters */
-        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, &contexts, &aliases, errtype, 1);
+        err_msg = process_context_alias(ptr[i], ptr[i + 1], contexts, aliases, errtype);
         if (err_msg != NULL) {
             return err_msg;
         }
@@ -1407,12 +1333,24 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         *errtype = TYPESYNTAX;
         return SROUBAD;
     }
+    /* Check that either both, context and alias, are present or none of them */
+    if (!apr_is_empty_array(aliases) && apr_is_empty_array(contexts)) {
+        *errtype = TYPESYNTAX;
+        return SALIBAD;
+    } else if (apr_is_empty_array(aliases) && !apr_is_empty_array(contexts)) {
+        *errtype = TYPESYNTAX;
+        return SCONBAD;
+    }
 
-    if (mconf->enable_ws_tunnel && strcmp(nodeinfo.mess.Type, "ajp")) {
-        if (!strcmp(nodeinfo.mess.Type, "http")) {
-            strcpy(nodeinfo.mess.Type, "ws");
+    if (strcmp(nodeinfo.mess.Type, "ajp") == 0) {
+        if (mconf->ajp_secret) {
+            strncpy(nodeinfo.mess.AJPSecret, mconf->ajp_secret, sizeof(nodeinfo.mess.AJPSecret));
+            nodeinfo.mess.AJPSecret[sizeof(nodeinfo.mess.AJPSecret) - 1] = '\0';
         }
-        if (!strcmp(nodeinfo.mess.Type, "https")) {
+    } else if (mconf->enable_ws_tunnel) {
+        if (strcmp(nodeinfo.mess.Type, "http") == 0) {
+            strcpy(nodeinfo.mess.Type, "ws");
+        } else if (strcmp(nodeinfo.mess.Type, "https") == 0) {
             strcpy(nodeinfo.mess.Type, "wss");
         }
         if (mconf->ws_upgrade_header) {
@@ -1423,23 +1361,8 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         }
     }
 
-    if (strcmp(nodeinfo.mess.Type, "ajp") == 0) {
-        if (mconf->ajp_secret) {
-            strncpy(nodeinfo.mess.AJPSecret, mconf->ajp_secret, sizeof(nodeinfo.mess.AJPSecret));
-            nodeinfo.mess.AJPSecret[sizeof(nodeinfo.mess.AJPSecret) - 1] = '\0';
-        }
-    }
-
-    if (mconf->response_field_size && strcmp(nodeinfo.mess.Type, "ajp")) {
+    if (strcmp(nodeinfo.mess.Type, "ajp") != 0 && mconf->response_field_size) {
         nodeinfo.mess.ResponseFieldSize = mconf->response_field_size;
-    }
-    /* Insert or update balancer description */
-    rv = loc_lock_nodes();
-    ap_assert(rv == APR_SUCCESS);
-    if (insert_update_balancer(balancerstatsmem, &balancerinfo) != APR_SUCCESS) {
-        loc_unlock_nodes();
-        *errtype = TYPEMEM;
-        return apr_psprintf(r->pool, MBALAUI, nodeinfo.mess.JVMRoute);
     }
 
     /* check for removed node */
@@ -1447,19 +1370,16 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
     if (node != NULL) {
         /* If the node is removed (or kill and restarted) and recreated unchanged that is ok: network problems */
         if (!is_same_node(node, &nodeinfo)) {
-            /* Here we can't update it because the old one is still in */
-            char *mess = apr_psprintf(r->pool, MNODERM, node->mess.JVMRoute);
-            ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server,
-                         "process_config: node %s %d %s : %s  %s already exists, removing...", node->mess.JVMRoute,
-                         node->mess.id, node->mess.Port, nodeinfo.mess.JVMRoute, nodeinfo.mess.Port);
-            mark_node_removed(node);
-            loc_remove_host_context(node->mess.id, r->pool);
-            inc_version_node();
+            /* Here we can't update it because another one is still in */
+            ap_log_error(APLOG_MARK, APLOG_ERR, 0, r->server, "process_config: node %s %d %s : %s %s already exists",
+                         node->mess.JVMRoute, node->mess.id, node->mess.Port, nodeinfo.mess.JVMRoute,
+                         nodeinfo.mess.Port);
             loc_unlock_nodes();
             *errtype = TYPEMEM;
-            return mess;
+            return apr_psprintf(r->pool, "MEM: Node with \"%s\" JVMRoute already exists", node->mess.JVMRoute);
         }
     }
+
     /* check if a node corresponding to the same worker already exists */
     if (is_same_worker_existing(r, &nodeinfo)) {
         loc_unlock_nodes();
@@ -1537,9 +1457,24 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
                          "process_config: NEW (%s) %s %s will not be added (Maxnode reached)", nodeinfo.mess.JVMRoute,
                          nodeinfo.mess.Host, nodeinfo.mess.Port);
         } else if (id != -1) {
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s %s in %d",
-                         nodeinfo.mess.JVMRoute, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: NEW (%s) %s://%s:%s in %d",
+                         nodeinfo.mess.JVMRoute, nodeinfo.mess.Type, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
         }
+    }
+
+    /* Now we'll start inserting. First the balancer part, then the node. */
+    /* Insert or update balancer description */
+    ap_assert(loc_lock_nodes() == APR_SUCCESS);
+    balancerinfo_ptr = read_balancer(balancerstatsmem, &balancerinfo);
+    if (balancerinfo_ptr != NULL) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: backing up the existing balancerinfo");
+        oldbalancerinfo = *balancerinfo_ptr;
+    }
+
+    if (insert_update_balancer(balancerstatsmem, &balancerinfo) != APR_SUCCESS) {
+        loc_unlock_nodes();
+        *errtype = TYPEMEM;
+        return apr_psprintf(r->pool, MBALAUI, nodeinfo.mess.JVMRoute);
     }
 
     /* Insert or update node description */
@@ -1549,6 +1484,12 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         if (removed != -1) {
             nodeinfo_t *workernode = read_node_by_id(nodestatsmem, removed);
             mark_node_removed(workernode);
+        }
+        /* Revert back balancer changes */
+        if (balancerinfo_ptr != NULL) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_config: insert/update node failed, restoring the old balancerinfo");
+            insert_update_balancer(balancerstatsmem, &oldbalancerinfo);
         }
         loc_unlock_nodes();
         *errtype = TYPEMEM;
@@ -1570,7 +1511,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         /* so the scheme, hostname and port correspond to worker which was removed and readded */
         reenable_proxy_worker(r, workernode, worker, &nodeinfo, the_conf);
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
-                     "process_config: reenable_proxy_worker... scheme %s hostname %s port %d route %s name %s id: %d",
+                     "process_config: reenable_proxy_worker scheme %s hostname %s port %d route %s name %s id: %d",
                      worker->s->scheme, worker->s->hostname_ex, worker->s->port, worker->s->route,
 #ifdef PROXY_WORKER_EXT_NAME_SIZE
                      worker->s->name_ex,
@@ -1579,13 +1520,14 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
 #endif
                      worker->s->index);
     } else {
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: (%s) %s inserted/updated in worker %d",
-                     nodeinfo.mess.JVMRoute, nodeinfo.mess.Port, id);
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                     "process_config: (%s) (%s://%s:%s) inserted/updated in worker %d", nodeinfo.mess.JVMRoute,
+                     nodeinfo.mess.Type, nodeinfo.mess.Host, nodeinfo.mess.Port, id);
     }
     inc_version_node();
 
     /* Insert the Alias and corresponding Context */
-    if (aliases == NULL && contexts == NULL) {
+    if (apr_is_empty_array(aliases) && apr_is_empty_array(contexts)) {
         /* if using mod_balancer create or update the worker */
         if (balancer_manage) {
             apr_status_t rv = mod_manager_manage_worker(r, &nodeinfo, &balancerinfo);
@@ -1597,18 +1539,42 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
         return NULL; /* Alias and Context missing */
     }
 
+    for (i = 0; i < aliases->nelts; i++) {
+        int j = 0;
+        hostinfo_t hinfo;
+        hinfo.node = id;
+        hinfo.vhost = vid;
+        hinfo.id = 0;
+        rv = insert_update_host_helper(r->server, hoststatsmem, &hinfo, APR_ARRAY_IDX(aliases, i, char *));
+        if (rv != APR_SUCCESS) {
+            /* TODO: Clean this as part of #330 */
+            char *tmp =
+                apr_psprintf(r->pool, MHOSTUI " (%s)", nodeinfo.mess.JVMRoute, APR_ARRAY_IDX(aliases, i, char *));
+            err_msg = err_msg == NULL ? tmp : apr_pstrcat(r->pool, err_msg, ", ", tmp, NULL);
+            continue;
+        }
 
-    if (insert_update_hosts(r->server, hoststatsmem, aliases, id, vid) != APR_SUCCESS) {
-        loc_unlock_nodes();
-        return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
+        for (j = 0; j < contexts->nelts; j++) {
+            contextinfo_t cinfo;
+            cinfo.node = hinfo.node;
+            cinfo.vhost = hinfo.vhost;
+            cinfo.status = STOPPED;
+            rv = insert_update_context_helper(r->server, contextstatsmem, &cinfo, APR_ARRAY_IDX(contexts, j, char *),
+                                              STOPPED);
+
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: ADDING context: %s for alias: %s",
+                         APR_ARRAY_IDX(contexts, j, char *), APR_ARRAY_IDX(aliases, i, char *));
+
+            if (rv != APR_SUCCESS) {
+                /* TODO: Clean this as part of #330 */
+                char *tmp = apr_psprintf(r->pool, MCONTUI " (%s and alias: %s)", nodeinfo.mess.JVMRoute,
+                                         APR_ARRAY_IDX(contexts, j, char *), APR_ARRAY_IDX(aliases, i, char *));
+                err_msg = err_msg == NULL ? tmp : apr_pstrcat(r->pool, err_msg, ", ", tmp, NULL);
+            }
+        }
+
+        vid++;
     }
-
-    if (insert_update_contexts(r->server, contextstatsmem, contexts, id, vid, STOPPED) != APR_SUCCESS) {
-        loc_unlock_nodes();
-        return apr_psprintf(r->pool, MCONTUI, nodeinfo.mess.JVMRoute);
-    }
-
-    vid++;
 
     /* if using mod_balancer create or update the worker */
     if (balancer_manage) {
@@ -1621,7 +1587,7 @@ static char *process_config(request_rec *r, char **ptr, int *errtype)
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_config: Done");
 
-    return NULL;
+    return err_msg;
 }
 
 /*
@@ -2096,20 +2062,64 @@ static char *process_node_cmd(request_rec *r, int status, int *errtype, nodeinfo
 }
 
 
+static void print_app_cmd_response(request_rec *r, int cmd, const char *jvmroute, const apr_array_header_t *updated,
+                                   const apr_array_header_t *aliases, const apr_array_header_t *contexts)
+{
+    int i, j;
+    ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
+    switch (cmd) {
+    case ENABLED:
+        ap_rprintf(r, "Type=ENABLE-APP-RSP");
+        break;
+    case STOPPED:
+        ap_rprintf(r, "Type=STOP-APP-RSP");
+        break;
+    case DISABLED:
+        ap_rprintf(r, "Type=DISABLE-APP-RSP");
+        break;
+    case REMOVE: /* fall through */
+    default:
+        ap_rprintf(r, "Type=REMOVE-APP-RSP");
+        break;
+    }
+
+    ap_rprintf(r, "\nJvmRoute=%.*s", JVMROUTESZ, jvmroute);
+
+    for (j = 0; j < aliases->nelts; j++) {
+        char *str = apr_psprintf(r->pool, "\nAlias=%.*s Contexts=", HOSTALIASZ, APR_ARRAY_IDX(aliases, j, char *));
+        for (i = 0; i < contexts->nelts; i++) {
+            int idx = j * contexts->nelts + i;
+            /* print only contexts and aliases that were touched */
+            if (APR_ARRAY_IDX(updated, idx, int) == 1) {
+                ap_rprintf(r, "%s%s", str, APR_ARRAY_IDX(contexts, i, char *));
+                str = ",";
+            }
+        }
+
+        if (str[0] == ',') {
+            /* this means at least one context was updated/inserted */
+            ap_rprintf(r, "\n");
+        }
+    }
+
+    ap_rprintf(r, "\n");
+}
+
+
 /**
  * Process an enable/disable/stop/remove application message
  */
-static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errtype, int global, int fromnode)
+static char *process_app_cmd(request_rec *r, char **ptr, int cmd, int *errtype)
 {
-    nodeinfo_t nodeinfo;
-    nodeinfo_t *node;
+    nodeinfo_t nodeinfo, *node = NULL;
 
-    char *contexts = NULL;
-    char *aliases = NULL;
+    apr_array_header_t *aliases = apr_array_make(r->pool, 4, sizeof(char *));
+    apr_array_header_t *contexts = apr_array_make(r->pool, 4, sizeof(char *));
+    apr_array_header_t *updated_aliases_contexts = NULL;
 
-    int i = 0;
-    hostinfo_t hostinfo;
-    hostinfo_t *host = NULL;
+    int i = 0, j = 0, vid = 0;
+    hostinfo_t hostinfo, *host = NULL;
+    int global = strcmp(r->filename, NODE_COMMAND) == 0;
     char *err_msg;
 
     memset(&nodeinfo.mess, '\0', sizeof(nodeinfo.mess));
@@ -2123,7 +2133,7 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = -1;
         }
-        err_msg = process_context_alias(ptr[i], ptr[i + 1], r->pool, &contexts, &aliases, errtype, 0);
+        err_msg = process_context_alias(ptr[i], ptr[i + 1], contexts, aliases, errtype);
         if (err_msg) {
             return err_msg;
         }
@@ -2137,42 +2147,29 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
         return SROUBAD;
     }
 
-    /* Note: This applies only for non-wildcarded requests for which Alias and Context are required */
-    if (contexts == NULL && aliases == NULL && strcmp(r->uri, "/*") != 0) {
-        *errtype = TYPESYNTAX;
-        return NOCONAL;
-    }
-
-    if (contexts == NULL && aliases != NULL) {
-        *errtype = TYPESYNTAX;
-        return SALIBAD;
-    }
-    if (aliases == NULL && contexts != NULL) {
-        *errtype = TYPESYNTAX;
-        return SCONBAD;
+    /* Note: Non-wildcarded requests require Alias and Context */
+    if (!global) {
+        if (apr_is_empty_array(contexts) && apr_is_empty_array(aliases)) {
+            *errtype = TYPESYNTAX;
+            return NOCONAL;
+        } else if (apr_is_empty_array(contexts) && !apr_is_empty_array(aliases)) {
+            *errtype = TYPESYNTAX;
+            return SALIBAD;
+        } else if (!apr_is_empty_array(contexts) && apr_is_empty_array(aliases)) {
+            *errtype = TYPESYNTAX;
+            return SCONBAD;
+        }
     }
 
     /* Read the node */
     loc_lock_nodes();
     node = read_node(nodestatsmem, &nodeinfo);
-    if (node == NULL) {
+    if (node == NULL || node->mess.remove) {
         loc_unlock_nodes();
-        if (status == REMOVE) {
-            return NULL; /* Already done */
-        }
+        /* TODO: Let's consider returning NULL for an already removed node */
+        /* Even for a removed node act has if the node wasn't found */
         *errtype = TYPEMEM;
         return apr_psprintf(r->pool, MNODERD, nodeinfo.mess.JVMRoute);
-    }
-
-    /* If the node is marked removed check what to do */
-    if (node->mess.remove) {
-        loc_unlock_nodes();
-        if (status == REMOVE) {
-            return NULL; /* Already done */
-        }
-        /* Act has if the node wasn't found */
-        *errtype = TYPEMEM;
-        return apr_psprintf(r->pool, MNODERD, node->mess.JVMRoute);
     }
 
     inc_version_node();
@@ -2180,206 +2177,192 @@ static char *process_appl_cmd(request_rec *r, char **ptr, int status, int *errty
     /* Process the * APP commands */
     if (global) {
         char *ret;
-        ret = process_node_cmd(r, status, errtype, node);
+        ret = process_node_cmd(r, cmd, errtype, node);
         loc_unlock_nodes();
         return ret;
     }
 
-    /* Go through the provided Aliases, the first Alias that matches an existing host gets used
-     * otherwise, a new host will be created
-     */
-    hostinfo.node = node->mess.id;
-    hostinfo.id = 0;
-    if (aliases != NULL) {
-        int start = 0;
-        i = 0;
-        while (host == NULL && (unsigned)(i + start) < strlen(aliases)) {
-            while (aliases[start + i] != ',' && aliases[start + i] != '\0') {
-                i++;
-            }
-
-            strncpy(hostinfo.host, aliases + start, i);
-            hostinfo.host[i] = '\0';
-            host = read_host(hoststatsmem, &hostinfo);
-            start = start + i + 1;
-            i = 0;
-        }
-    } else {
-        hostinfo.host[0] = '\0';
+    /* We'll track which contexts for which aliases were processed successfully */
+    updated_aliases_contexts = apr_array_make(r->pool, aliases->nelts * contexts->nelts, sizeof(int));
+    for (j = 0; j < aliases->nelts * contexts->nelts; j++) {
+        /* Indices are alias.idx * contexts.count + context.idx (in aliases and contexts respectively). */
+        int *el = (int *)apr_array_push(updated_aliases_contexts);
+        /* The default 0 indicates this was not processed successfully */
+        *el = 0;
     }
 
-    if (host == NULL) {
-        int vid, size, *id;
-
-        /* If REMOVE ignores it */
-        if (status == REMOVE) {
-            loc_unlock_nodes();
-            return NULL;
-        }
-
-        /* Find the first available vhost id */
-        vid = 0;
-        size = loc_get_max_size_host();
-        id = apr_palloc(r->pool, sizeof(int) * size);
-        size = get_ids_used_host(hoststatsmem, id);
-        for (i = 0; i < size; i++) {
-            hostinfo_t *ou;
-            if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS) {
-                continue;
-            }
-            if (ou->node == node->mess.id && ou->vhost > vid) {
-                vid = ou->vhost;
-            }
-        }
-        vid++; /* Use next one. */
-        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: adding vhost: %d node: %d route: %s",
-                     vid, node->mess.id, nodeinfo.mess.JVMRoute);
-        /* If the Host doesn't exist yet create it */
-        if (insert_update_hosts(r->server, hoststatsmem, aliases, node->mess.id, vid) != APR_SUCCESS) {
-            loc_unlock_nodes();
-            *errtype = TYPEMEM;
-            return apr_psprintf(r->pool, MHOSTUI, nodeinfo.mess.JVMRoute);
-        }
-        hostinfo.id = 0;
+    /* Go through the provided Aliases. If an alias matches an existing host, it gets updated.
+     * Otherwise a new host will be created for the alias.
+     */
+    for (j = 0; j < aliases->nelts; j++) {
+        char *current_alias = APR_ARRAY_IDX(aliases, j, char *);
         hostinfo.node = node->mess.id;
-        hostinfo.host[0] = '\0';
-        if (aliases != NULL) {
-            strncpy(hostinfo.host, aliases, sizeof(hostinfo.host));
-            hostinfo.host[sizeof(hostinfo.host) - 1] = '\0';
-        }
-
+        hostinfo.id = 0;
+        strncpy(hostinfo.host, current_alias, HOSTALIASZ);
+        hostinfo.host[HOSTALIASZ] = '\0';
         host = read_host(hoststatsmem, &hostinfo);
         if (host == NULL) {
-            loc_unlock_nodes();
-            *errtype = TYPEMEM;
-            return apr_psprintf(r->pool, MHOSTRD, node->mess.JVMRoute);
-        }
-    }
-
-    if (status == ENABLED) {
-        /* There is no load balancing between balancers */
-        int size = loc_get_max_size_context();
-        int *id = apr_palloc(r->pool, sizeof(int) * size);
-        size = get_ids_used_context(contextstatsmem, id);
-        for (i = 0; i < size; i++) {
-            contextinfo_t *ou;
-            if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS) {
+            int size, *id;
+            if (cmd == REMOVE) {
+                /* We don't have to do anything on REMOVE, host does not exist */
                 continue;
             }
-            if (strcmp(ou->context, contexts) == 0) {
-                /* There is the same context somewhere else */
-                nodeinfo_t *hisnode;
-                if (get_node(nodestatsmem, &hisnode, ou->node) != APR_SUCCESS) {
-                    continue;
-                }
-                if (strcmp(hisnode->mess.balancer, node->mess.balancer)) {
-                    /* the same context would be on 2 different balancer */
-                    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
-                                 "process_appl_cmd: ENABLE: context %s is in balancer %s and %s", contexts,
-                                 node->mess.balancer, hisnode->mess.balancer);
-                }
-            }
-        }
-    }
-
-    /* Now update each context from Context: part */
-    if (insert_update_contexts(r->server, contextstatsmem, contexts, node->mess.id, host->vhost, status) !=
-        APR_SUCCESS) {
-        loc_unlock_nodes();
-        *errtype = TYPEMEM;
-        return apr_psprintf(r->pool, MCONTUI, node->mess.JVMRoute);
-    }
-
-    if (insert_update_hosts(r->server, hoststatsmem, aliases, node->mess.id, host->vhost) != APR_SUCCESS) {
-        loc_unlock_nodes();
-        *errtype = TYPEMEM;
-        return apr_psprintf(r->pool, MHOSTUI, node->mess.JVMRoute);
-    }
-
-    /* Remove the host if all the contextes have been removed */
-    if (status == REMOVE) {
-        int size = loc_get_max_size_context();
-        int *id = apr_palloc(r->pool, sizeof(int) * size);
-        size = get_ids_used_context(contextstatsmem, id);
-        for (i = 0; i < size; i++) {
-            contextinfo_t *ou;
-            if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS) {
-                continue;
-            }
-            if (ou->vhost == host->vhost && ou->node == node->mess.id) {
-                break;
-            }
-        }
-        if (i == size) {
-            int size = loc_get_max_size_host();
-            int *id = apr_palloc(r->pool, sizeof(int) * size);
+            /* Otherwise we have to create a new host */
+            size = loc_get_max_size_host();
+            id = apr_palloc(r->pool, sizeof(int) * size);
             size = get_ids_used_host(hoststatsmem, id);
             for (i = 0; i < size; i++) {
                 hostinfo_t *ou;
-
                 if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS) {
                     continue;
                 }
-                if (ou->vhost == host->vhost && ou->node == node->mess.id) {
-                    remove_host(hoststatsmem, ou->id);
+                if (ou->node == node->mess.id && ou->vhost > vid) {
+                    vid = ou->vhost;
+                }
+            }
+            hostinfo.vhost = ++vid; /* Use next one. */
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server,
+                         "process_app_cmd: adding vhost: %d node: %d route: %s, alias: %s", vid, node->mess.id,
+                         nodeinfo.mess.JVMRoute, current_alias);
+            /* If the Host doesn't exist yet create it */
+            if (insert_update_host(hoststatsmem, &hostinfo) != APR_SUCCESS) {
+                /* creation failed, but we'll continue with the rest of aliases/hosts */
+                ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server, "Failed to insert/update host (%d) for %s", vid,
+                             current_alias);
+                continue;
+            }
+
+            host = read_host(hoststatsmem, &hostinfo);
+            if (host == NULL) {
+                /* read failed, but we'll continue with the rest of aliases/hosts */
+                ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server, "Failed to read host (%d) for %s", vid,
+                             current_alias);
+                continue;
+            }
+        }
+
+        hostinfo.vhost = host->vhost;
+
+        /* Now we have a host */
+        if (cmd == ENABLED) {
+            /* There is no load balancing between balancers */
+            int size = loc_get_max_size_context();
+            int *id = apr_palloc(r->pool, sizeof(int) * size);
+            size = get_ids_used_context(contextstatsmem, id);
+            for (i = 0; i < size; i++) {
+                int c;
+                contextinfo_t *ou;
+                if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS) {
+                    continue;
+                }
+                for (c = 0; c < contexts->nelts; c++) {
+                    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
+                                 "process_app_cmd: ENABLE: context %s alias %s", APR_ARRAY_IDX(contexts, c, char *),
+                                 current_alias);
+                    if (strcmp(ou->context, APR_ARRAY_IDX(contexts, c, char *)) == 0) {
+                        /* There is the same context somewhere else */
+                        nodeinfo_t *hisnode;
+                        if (get_node(nodestatsmem, &hisnode, ou->node) != APR_SUCCESS) {
+                            continue;
+                        }
+                        if (strcmp(hisnode->mess.balancer, node->mess.balancer)) {
+                            /* the same context would be on 2 different balancer */
+                            ap_log_error(APLOG_MARK, APLOG_WARNING, 0, r->server,
+                                         "process_app_cmd: ENABLE: context %s is in balancer %s and %s",
+                                         APR_ARRAY_IDX(contexts, c, char *), node->mess.balancer,
+                                         hisnode->mess.balancer);
+                        }
+                    }
                 }
             }
         }
-    } else if (status == STOPPED) {
-        /* insert_update_contexts in fact makes that contexts corresponds only to the first context... */
-        contextinfo_t in;
-        contextinfo_t *ou;
-        in.id = 0;
-        strncpy(in.context, contexts, CONTEXTSZ);
-        in.context[CONTEXTSZ] = '\0';
-        in.vhost = host->vhost;
-        in.node = node->mess.id;
-        ou = read_context(contextstatsmem, &in);
-        if (ou != NULL) {
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP nbrequests %d",
-                         ou->nbrequests);
-            if (fromnode) {
-                ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
-                ap_rprintf(r, "Type=STOP-APP-RSP&JvmRoute=%.*s&Alias=%.*s&Context=%.*s&Requests=%d",
-                           (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute, (int)sizeof(aliases), aliases,
-                           (int)sizeof(contexts), contexts, ou->nbrequests);
-                ap_rprintf(r, "\n");
+
+        /* Now update each context from Context: part */
+        for (i = 0; i < contexts->nelts; i++) {
+            apr_status_t status;
+            contextinfo_t info;
+            info.node = node->mess.id;
+            info.vhost = host->vhost;
+            info.status = cmd;
+            status = insert_update_context_helper(r->server, contextstatsmem, &info, APR_ARRAY_IDX(contexts, i, char *),
+                                                  cmd);
+            if (status != APR_SUCCESS) {
+                /* insert/update failed, but we'll continue with the rest of contexts */
+                ap_log_error(APLOG_MARK, APLOG_WARNING, status, r->server,
+                             "Failed to insert/update context (%s) for %s", APR_ARRAY_IDX(contexts, i, char *),
+                             current_alias);
+                continue;
             }
-        } else {
-            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "process_appl_cmd: STOP-APP can't read_context");
+            /* the insert/update was successfull, so we note it in our array */
+            APR_ARRAY_IDX(updated_aliases_contexts, j * contexts->nelts + i, int) = 1;
+        }
+
+        /* Remove the host if all the contextes have been removed */
+        if (cmd == REMOVE) {
+            int size = loc_get_max_size_context();
+            int *id = apr_palloc(r->pool, sizeof(int) * size);
+            size = get_ids_used_context(contextstatsmem, id);
+            for (i = 0; i < size; i++) {
+                contextinfo_t *ou;
+                if (get_context(contextstatsmem, &ou, id[i]) != APR_SUCCESS) {
+                    continue;
+                }
+                if (ou->vhost == host->vhost && ou->node == node->mess.id) {
+                    break;
+                }
+            }
+            if (i == size) {
+                int size = loc_get_max_size_host();
+                int *id = apr_palloc(r->pool, sizeof(int) * size);
+                size = get_ids_used_host(hoststatsmem, id);
+                for (i = 0; i < size; i++) {
+                    hostinfo_t *ou;
+
+                    if (get_host(hoststatsmem, &ou, id[i]) != APR_SUCCESS) {
+                        continue;
+                    }
+                    if (ou->vhost == host->vhost && ou->node == node->mess.id) {
+                        remove_host(hoststatsmem, ou->id);
+                    }
+                }
+            }
         }
     }
+
+    /* This is always !global (see the global return above). */
+    print_app_cmd_response(r, cmd, nodeinfo.mess.JVMRoute, updated_aliases_contexts, aliases, contexts);
+
     loc_unlock_nodes();
     return NULL;
 }
 
-static char *process_enable(request_rec *r, char **ptr, int *errtype, int global)
+static char *process_enable(request_rec *r, char **ptr, int *errtype)
 {
-    return process_appl_cmd(r, ptr, ENABLED, errtype, global, 0);
+    return process_app_cmd(r, ptr, ENABLED, errtype);
 }
 
-static char *process_disable(request_rec *r, char **ptr, int *errtype, int global)
+static char *process_disable(request_rec *r, char **ptr, int *errtype)
 {
-    return process_appl_cmd(r, ptr, DISABLED, errtype, global, 0);
+    return process_app_cmd(r, ptr, DISABLED, errtype);
 }
 
-static char *process_stop(request_rec *r, char **ptr, int *errtype, int global, int fromnode)
+static char *process_stop(request_rec *r, char **ptr, int *errtype)
 {
-    return process_appl_cmd(r, ptr, STOPPED, errtype, global, fromnode);
+    return process_app_cmd(r, ptr, STOPPED, errtype);
 }
 
-static char *process_remove(request_rec *r, char **ptr, int *errtype, int global)
+static char *process_remove(request_rec *r, char **ptr, int *errtype)
 {
-    return process_appl_cmd(r, ptr, REMOVE, errtype, global, 0);
+    return process_app_cmd(r, ptr, REMOVE, errtype);
 }
 
 /*
  * Call the ping/pong logic
  * Do a ping/png request to the node and set the load factor.
  */
-static int isnode_up(request_rec *r, int id, int Load)
+static int isnode_up(request_rec *r, int id, int load)
 {
-    return balancerhandler != NULL ? balancerhandler->proxy_node_isup(r, id, Load) : OK;
+    return balancerhandler != NULL ? balancerhandler->proxy_node_isup(r, id, load) : OK;
 }
 
 /*
@@ -2391,6 +2374,15 @@ static int ishost_up(request_rec *r, char *scheme, char *host, char *port)
     return balancerhandler != NULL ? balancerhandler->proxy_host_isup(r, scheme, host, port) : OK;
 }
 
+static void print_status_response(request_rec *r, const char *jvmroute, int node_up)
+{
+    ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
+    ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", JVMROUTESZ, jvmroute);
+    ap_rprintf(r, node_up ? "&State=OK" : "&State=NOTOK");
+    ap_rprintf(r, "&id=%ld", ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "\n");
+}
+
 /*
  * Process the STATUS command
  * Load -1 : Broken
@@ -2399,7 +2391,7 @@ static int ishost_up(request_rec *r, char *scheme, char *host, char *port)
  */
 static char *process_status(request_rec *r, const char *const *ptr, int *errtype)
 {
-    int Load = -1;
+    int load = -2;
     nodeinfo_t nodeinfo;
     nodeinfo_t *node;
 
@@ -2415,13 +2407,21 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
             nodeinfo.mess.id = -1;
         } else if (strcasecmp(ptr[i], "Load") == 0) {
-            Load = atoi(ptr[i + 1]);
+            sscanf(ptr[i + 1], "%d", &load);
+            if (load < -1 || load > 100) {
+                *errtype = TYPESYNTAX;
+                return "TODO: Bad value for Load";
+            }
         } else {
             *errtype = TYPESYNTAX;
             return apr_psprintf(r->pool, SBADFLD, ptr[i]);
         }
-        i++;
-        i++;
+        i += 2;
+    }
+
+    if (nodeinfo.mess.JVMRoute[0] == '\0') {
+        *errtype = TYPESYNTAX;
+        return "TODO: No JVMRoute given!";
     }
 
     /* Read the node */
@@ -2437,14 +2437,8 @@ static char *process_status(request_rec *r, const char *const *ptr, int *errtype
      * If the node is usualable do a ping/pong to prevent Split-Brain Syndrome
      * and update the worker status and load factor acccording to the test result.
      */
-    ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
-    ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
-
-    ap_rprintf(r, isnode_up(r, node->mess.id, Load) != OK ? "&State=NOTOK" : "&State=OK");
-
-    ap_rprintf(r, "&id=%d", (int)ap_scoreboard_image->global->restart_time);
-
-    ap_rprintf(r, "\n");
+    /* TODO: Do we need isnode_up? Shouldn't we just check (or potentially change) just the status? */
+    print_status_response(r, nodeinfo.mess.JVMRoute, isnode_up(r, node->mess.id, load) == OK);
     return NULL;
 }
 
@@ -2470,12 +2464,25 @@ static char *process_version(request_rec *r, const char *const *const ptr, int *
     return NULL;
 }
 
+
+static void print_ping_response(request_rec *r, const char *jvmroute, int is_up)
+{
+    ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
+
+    if (jvmroute != NULL && jvmroute[0] != '\0') {
+        ap_rprintf(r, "Type=PING-RSP&JVMRoute=%.*s", JVMROUTESZ, jvmroute);
+        ap_rprintf(r, is_up ? "&State=OK" : "&State=NOTOK");
+    } else {
+        ap_rprintf(r, "Type=PING-RSP");
+        ap_rprintf(r, is_up ? "&State=OK" : "&State=NOTOK");
+    }
+
+    ap_rprintf(r, "&id=%ld", ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "\n");
+}
+
 /*
  * Process the PING command
- * With a JVMRoute does a cping/cpong in the node.
- * Without just answers ok.
- * NOTE: It is hard to cping/cpong a host + port but CONFIG + PING + REMOVE_APP *
- *       would do the same.
  */
 static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
 {
@@ -2486,9 +2493,11 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
     char *port = NULL;
 
     int i = 0;
+    int node_up = -1;
+    nodeinfo.mess.JVMRoute[0] = '\0';
+    nodeinfo.mess.id = -1;
 
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, r->server, "Processing PING");
-    nodeinfo.mess.id = -2;
     while (ptr[i] && ptr[i][0] != '\0') {
         if (strcasecmp(ptr[i], "JVMRoute") == 0) {
             if (strlen(ptr[i + 1]) >= sizeof(nodeinfo.mess.JVMRoute)) {
@@ -2496,9 +2505,13 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
                 return SROUBIG;
             }
             strcpy(nodeinfo.mess.JVMRoute, ptr[i + 1]);
-            nodeinfo.mess.id = -1;
         } else if (strcasecmp(ptr[i], "Scheme") == 0) {
             scheme = apr_pstrdup(r->pool, ptr[i + 1]);
+            if (strcasecmp(scheme, "ajp") != 0 && strcasecmp(scheme, "http") != 0 && strcasecmp(scheme, "https") != 0 &&
+                strcasecmp(scheme, "ws") != 0 && strcasecmp(scheme, "wss") != 0) {
+                *errtype = TYPESYNTAX;
+                return apr_psprintf(r->pool, "PING Unsupported scheme: %s", scheme);
+            }
         } else if (strcasecmp(ptr[i], "Host") == 0) {
             host = apr_pstrdup(r->pool, ptr[i + 1]);
         } else if (strcasecmp(ptr[i], "Port") == 0) {
@@ -2507,25 +2520,11 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
             *errtype = TYPESYNTAX;
             return apr_psprintf(r->pool, SBADFLD, ptr[i]);
         }
-        i++;
-        i++;
-    }
-    if (nodeinfo.mess.id == -2) {
-        /* PING scheme, host, port or just httpd */
-        if (scheme == NULL && host == NULL && port == NULL) {
-            ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
-            ap_rprintf(r, "Type=PING-RSP&State=OK");
-        } else {
-            if (scheme == NULL || host == NULL || port == NULL) {
-                *errtype = TYPESYNTAX;
-                return apr_psprintf(r->pool, SMISFLD);
-            }
-            ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
-            ap_rprintf(r, "Type=PING-RSP");
-            ap_rprintf(r, ishost_up(r, scheme, host, port) != OK ? "&State=NOTOK" : "&State=OK");
-        }
-    } else {
 
+        i += 2;
+    }
+
+    if (nodeinfo.mess.JVMRoute[0] != '\0') {
         /* Read the node */
         loc_lock_nodes();
         node = read_node(nodestatsmem, &nodeinfo);
@@ -2535,18 +2534,20 @@ static char *process_ping(request_rec *r, const char *const *ptr, int *errtype)
             return apr_psprintf(r->pool, MNODERD, nodeinfo.mess.JVMRoute);
         }
 
-        /*
-         * If the node is usualable do a ping/pong to prevent Split-Brain Syndrome
-         * and update the worker status and load factor acccording to the test result.
-         */
-        ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
-        ap_rprintf(r, "Type=PING-RSP&JVMRoute=%.*s", (int)sizeof(nodeinfo.mess.JVMRoute), nodeinfo.mess.JVMRoute);
-
-        ap_rprintf(r, isnode_up(r, node->mess.id, -2) != OK ? "&State=NOTOK" : "&State=OK");
+        scheme = node->mess.Type;
+        host = node->mess.Host;
+        port = node->mess.Port;
     }
-    ap_rprintf(r, "&id=%d", (int)ap_scoreboard_image->global->restart_time);
 
-    ap_rprintf(r, "\n");
+    if (scheme != NULL || host != NULL || port != NULL) {
+        if (scheme == NULL || host == NULL || port == NULL) {
+            *errtype = TYPESYNTAX;
+            return apr_psprintf(r->pool, SMISFLD);
+        }
+        node_up = ishost_up(r, scheme, host, port) == OK;
+    }
+
+    print_ping_response(r, nodeinfo.mess.JVMRoute, node_up);
     return NULL;
 }
 
@@ -3049,17 +3050,16 @@ static void sort_nodes(nodeinfo_t *nodes, int nbnodes)
 /*
  * Helper function, returns 1 in case of the application command. Otherwise returns 0
  */
-static int process_appl(const char *cmd, request_rec *r, char **ptr, int *errtype, int global, char **errstring,
-                        int fromnode)
+static int process_appl(const char *cmd, request_rec *r, char **ptr, int *errtype, char **errstring)
 {
     if (strcasecmp(cmd, "ENABLE-APP") == 0) {
-        *errstring = process_enable(r, ptr, errtype, global);
+        *errstring = process_enable(r, ptr, errtype);
     } else if (strcasecmp(cmd, "DISABLE-APP") == 0) {
-        *errstring = process_disable(r, ptr, errtype, global);
+        *errstring = process_disable(r, ptr, errtype);
     } else if (strcasecmp(cmd, "STOP-APP") == 0) {
-        *errstring = process_stop(r, ptr, errtype, global, fromnode);
+        *errstring = process_stop(r, ptr, errtype);
     } else if (strcasecmp(cmd, "REMOVE-APP") == 0) {
-        *errstring = process_remove(r, ptr, errtype, global);
+        *errstring = process_remove(r, ptr, errtype);
     } else {
         return 0;
     }
@@ -3097,7 +3097,7 @@ static char *process_domain(request_rec *r, char **ptr, int *errtype, const char
         }
         /* add the JVMRoute */
         ptr[pos + 1] = apr_pstrdup(r->pool, ou->mess.JVMRoute);
-        process_appl(cmd, r, ptr, errtype, RANGENODE, &errstring, 0);
+        process_appl(cmd, r, ptr, errtype, &errstring);
     }
     return errstring;
 }
@@ -3254,6 +3254,7 @@ static const char *process_params(request_rec *r, apr_table_t *params, int allow
     if (errstring) {
         process_error(r, errstring, errtype);
     }
+
     /* Process other command if any */
     if (range != NULL && allow_cmd && errstring == NULL) {
         int global = RANGECONTEXT;
@@ -3283,7 +3284,7 @@ static const char *process_params(request_rec *r, apr_table_t *params, int allow
 
         if (global == RANGEDOMAIN) {
             errstring = process_domain(r, ptr, &errtype, cmd, domain);
-        } else if (!process_appl(cmd, r, ptr, &errtype, global, errstr, 0)) {
+        } else if (!process_appl(cmd, r, ptr, &errtype, errstr)) {
             errstring = SCMDUNS;
             errtype = TYPESYNTAX;
         }
@@ -3440,7 +3441,7 @@ static int manager_handler(request_rec *r)
 {
     apr_bucket_brigade *input_brigade;
     char *buff, *errstring = NULL;
-    int errtype = 0, global = 0;
+    int errtype = 0;
     apr_size_t bufsiz = 0, maxbufsiz, len;
     apr_status_t status;
     char **ptr;
@@ -3504,9 +3505,6 @@ static int manager_handler(request_rec *r)
         process_error(r, SMESPAR, TYPESYNTAX);
         return HTTP_INTERNAL_SERVER_ERROR;
     }
-    if (strstr(r->filename, NODE_COMMAND)) {
-        global = 1;
-    }
 
     if (strcasecmp(r->method, "CONFIG") == 0) {
         errstring = process_config(r, ptr, &errtype);
@@ -3522,7 +3520,7 @@ static int manager_handler(request_rec *r)
     } else if (strcasecmp(r->method, "VERSION") == 0) {
         errstring = process_version(r, (const char *const *)ptr, &errtype);
         /* Application handling */
-    } else if (!process_appl(r->method, r, ptr, &errtype, global, &errstring, 1)) {
+    } else if (!process_appl(r->method, r, ptr, &errtype, &errstring)) {
         errstring = SCMDUNS;
         errtype = TYPESYNTAX;
     }
