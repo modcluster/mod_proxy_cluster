@@ -2379,7 +2379,7 @@ static void print_status_response(request_rec *r, const char *jvmroute, int node
     ap_set_content_type(r, PLAINTEXT_CONTENT_TYPE);
     ap_rprintf(r, "Type=STATUS-RSP&JVMRoute=%.*s", JVMROUTESZ, jvmroute);
     ap_rprintf(r, node_up ? "&State=OK" : "&State=NOTOK");
-    ap_rprintf(r, "&id=%ld", ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "&id=%" APR_INT64_T_FMT, ap_scoreboard_image->global->restart_time);
     ap_rprintf(r, "\n");
 }
 
@@ -2477,7 +2477,7 @@ static void print_ping_response(request_rec *r, const char *jvmroute, int is_up)
         ap_rprintf(r, is_up ? "&State=OK" : "&State=NOTOK");
     }
 
-    ap_rprintf(r, "&id=%ld", ap_scoreboard_image->global->restart_time);
+    ap_rprintf(r, "&id=%" APR_INT64_T_FMT, ap_scoreboard_image->global->restart_time);
     ap_rprintf(r, "\n");
 }
 
