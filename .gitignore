@@ -36,6 +36,12 @@ test/httpd/mod_proxy_cluster
 # Log files
 **/*.log
 
+# Coverage files
+test/coverage/
+*.gcno
+*.gcda
+*.gcov
+
 # build files
 *.slo
 *.so
