@@ -24,7 +24,15 @@ if [ ! -z "$MPC_NAME" ]; then
     sed -i "s/ServerName httpd-mod_proxy_cluster/ServerName ${MPC_NAME}/g" /usr/local/apache2/conf/$FILECONF
 fi
 
-# start apache httpd server in foreground
+# start apache httpd server
 echo "Starting httpd..."
+if [ "$ENABLE_COVERAGE" = "1" ]; then
+    # Let the unprivileged worker children create/merge .gcda files in the
+    # root-owned build tree: 777 for directory traversal + file creation, and
+    # umask 0 so gcov creates the .gcda files world-writable (0666). umask is
+    # inherited across fork(), so every worker gets it.
+    chmod -R 777 /native
+    umask 0
+fi
 /usr/local/apache2/bin/apachectl start
 tail -f /usr/local/apache2/logs/error_log
