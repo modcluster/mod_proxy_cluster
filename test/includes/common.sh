@@ -182,7 +182,7 @@ tomcat_wait_for_n_nodes() {
         echo "$(date) httpd isn't running or something is VERY wrong"
         exit 1
     fi
-    NBNODES=-1
+    NBNODES=$(curl -s http://localhost:8090/mod_cluster_manager -m 20 | grep "Status: OK" | awk ' { print $3} ' | wc -l)
     i=0
     while [ ${NBNODES} != ${nodes} ]
     do
