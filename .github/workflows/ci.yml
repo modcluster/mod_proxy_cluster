@@ -17,9 +17,7 @@ on:
       debug:
         description: "Test logs are generated when on"
         type: choice
-        options:
-          - "on"
-          - "off"
+        options: [ "on", "off" ]
         default: "on"
 
       forever-pause:
@@ -36,6 +34,18 @@ on:
         description: "Number of repetitions of a test cycle (MODCLUSTER-736)"
         type: number
         default: 2
+
+      mod_proxy_cluster:
+        description: "mod_proxy_cluster tests are executed"
+        type: choice
+        options: [ "on", "off" ]
+        default: "on"
+
+      balancer:
+        description: "mod_proxy_balancer tests are executed"
+        type: choice
+        options: [ "on", "off" ]
+        default: "on"
 
 jobs:
 
@@ -298,6 +308,7 @@ jobs:
         fail-fast: false
         matrix:
               os: [ ubuntu-latest, ubuntu-24.04-arm ]
+              suite: [ mod_proxy_cluster, mod_proxy_balancer ]
     env:
       IMG: local-tomcat
       HTTPD_IMG: local-httpd
@@ -305,6 +316,8 @@ jobs:
       FOREVER_PAUSE: ${{ inputs.forever-pause || 100 }}
       ITERATION_COUNT: ${{ inputs.iteration-count || 2 }}
       TOMCAT_CYCLE_COUNT: ${{ inputs.tomcat-cycle-count || 2 }}
+      MOD_PROXY_CLUSTER_TESTS:  ${{ matrix.suite == 'mod_proxy_cluster'  && (inputs.mod_proxy_cluster || 'on') || 'off' }}
+      MOD_PROXY_BALANCER_TESTS: ${{ matrix.suite == 'mod_proxy_balancer' && (inputs.balancer          || 'on') || 'off' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -338,7 +351,7 @@ jobs:
         uses: actions/upload-artifact@v6
         if: ${{ env.DEBUG == 'on' }}
         with:
-          name: Test logs ${{ matrix.os }}
+          name: Test logs ${{ matrix.os }} ${{ matrix.suite }}
           path: |
             test/logs/*
           retention-days: 7
