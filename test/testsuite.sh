@@ -4,34 +4,19 @@
 # exits with 2 if httpd container build failed
 # exits with 3 if tomcat container build failed
 
-# configuration of variables
-# if you want tests to pass much faster, decrease these values
-if [ -z ${FOREVER_PAUSE+x} ]; then
-    export FOREVER_PAUSE=3600 # sleep period length during which tomcats are run & stopped
-fi
-if [ -z ${TOMCAT_CYCLE_COUNT+x} ]; then
-    export TOMCAT_CYCLE_COUNT=100 # the number of repetitions of a test cycle
-fi
-if [ -z ${ITERATION_COUNT+x} ]; then
-    export ITERATION_COUNT=50 # the number of iteration of starting/stopping a tomcat
-fi
-if [ -z ${IMG+x} ]; then
-    export IMG=mod_proxy_cluster-testsuite-tomcat
-fi
-if [ -z ${HTTPD_IMG+x} ]; then
-    export HTTPD_IMG=mod_proxy_cluster-testsuite-httpd
-fi
-
 echo "Test parameters are:"
-echo "        FOREVER_PAUSE=$FOREVER_PAUSE"
-echo "        TOMCAT_CYCLE_COUNT=$TOMCAT_CYCLE_COUNT"
-echo "        ITERATION_COUNT=$ITERATION_COUNT"
-echo "        IMG=$IMG"
-echo "        HTTPD_IMG=$HTTPD_IMG"
+echo "        FOREVER_PAUSE=${FOREVER_PAUSE:=3600}"          # sleep period length during which tomcats are run & stopped
+echo "        TOMCAT_CYCLE_COUNT=${TOMCAT_CYCLE_COUNT:=100}" # the number of repetitions of a test cycle
+echo "        ITERATION_COUNT=${ITERATION_COUNT:=50}"        # the number of iteration of starting/stopping a tomcat
+echo "        IMG=${IMG:=mod_proxy_cluster-testsuite-tomcat}"            # tomcat container image
+echo "        HTTPD_IMG=${HTTPD_IMG:=mod_proxy_cluster-testsuite-httpd}" # httpd with mod_proxy_cluster container image
 if [ ! -z ${MPC_CONF+x} ]; then
     echo "        MPC_CONF=$MPC_CONF"
 fi
 echo "        DEBUG=${DEBUG:-Off (undefined)}"
+export FOREVER_PAUSE TOMCAT_CYCLE_COUNT ITERATION_COUNT IMG HTTPD_IMG
+
+>>>>>>> 76f3193 (fix)
 
 if [ ! -d logs ]; then
     mkdir logs
