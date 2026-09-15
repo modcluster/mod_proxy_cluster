@@ -8,9 +8,9 @@ MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster}
 run_test() {
     local ret=0
     if [ ! -z "$2" ]; then
-        printf "Running %-42s ..." "$2"
+        printf "Running %-64s ..." "$2"
     else
-        printf "Running %-42s ..." "$1"
+        printf "Running %-64s ..." "$1"
     fi
     if is_enabled "$DEBUG"; then
         sh $1 > "logs/${2:-$1}.log" 2>&1
