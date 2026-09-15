@@ -37,6 +37,14 @@ else
      httpd_create  > /dev/null 2>&1 || exit 2
      tomcat_create > /dev/null 2>&1 || exit 3
 fi
+# create all main tomcat versions for Base tests
+## IMG name might include specific version, we have to handle that
+IMG_NOVER=$(echo $IMG | cut -d: -f1)
+for tomcat_version in "9.0" "10.1" "11.0"
+do
+    IMG="$IMG_NOVER:$tomcat_version" tomcat_create $tomcat_version > /dev/null 2>&1 || exit 3
+done
+
 echo " Done"
 
 # clean everything at first
@@ -48,12 +56,8 @@ echo " Done"
 res=0
 
 if is_enabled "$MOD_PROXY_CLUSTER_TESTS"; then
-    # IMG name might include specific version, we have to handle that
-    IMG_NOVER=$(echo $IMG | cut -d: -f1)
-
     for tomcat_version in "9.0" "10.1" "11.0"
     do
-        IMG="$IMG_NOVER:$tomcat_version" tomcat_create $tomcat_version > /dev/null 2>&1 || exit 3
         IMG="$IMG_NOVER:$tomcat_version" run_test basetests.sh "Basic tests with tomcat $tomcat_version"
         res=$(expr $res + $?)
     done
@@ -80,13 +84,16 @@ if is_enabled "$MOD_PROXY_CLUSTER_TESTS"; then
 fi
 
 if is_enabled "$MOD_PROXY_BALANCER_TESTS"; then
-    MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test basetests.sh "Basic tests with mod_proxy_balancer"
-    res=$(expr $res + $?)
+    for tomcat_version in "9.0" "10.1" "11.0"
+    do
+        IMG="$IMG_NOVER:$tomcat_version" MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test basetests.sh "Basic tests with mod_proxy_balancer and tomcat $tomcat_version"
+        res=$(expr $res + $?)
+    done
     MPC_CONF=MODCLUSTER-640/mod_lbmethod_cluster.conf run_test MODCLUSTER-640/testit.sh   "MODCLUSTER-640 with mod_proxy_balancer"
     res=$(expr $res + $?)
     MPC_CONF=MODCLUSTER-734/mod_lbmethod_cluster.conf run_test MODCLUSTER-734/testit.sh   "MODCLUSTER-734 with mod_proxy_balancer"
     res=$(expr $res + $?)
-    MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test MODCLUSTER-755/testit.sh   "MODCLUSTER-755 with mod_proxy_balancer"
+    MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test MODCLUSTER-755/testit.sh            "MODCLUSTER-755 with mod_proxy_balancer"
     res=$(expr $res + $?)
     MPC_CONF=MODCLUSTER-785/mod_lbmethod_cluster.conf run_test MODCLUSTER-785/testit.sh   "MODCLUSTER-785 with mod_proxy_balancer"
     res=$(expr $res + $?)
