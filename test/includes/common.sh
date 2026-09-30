@@ -47,6 +47,24 @@ is_enabled() {
     return 0
 }
 
+test_create_all_containers() {
+    if is_enabled "$DEBUG"; then
+         httpd_create  || exit 2
+         tomcat_create || exit 3
+    else
+         httpd_create  > /dev/null 2>&1 || exit 2
+         tomcat_create > /dev/null 2>&1 || exit 3
+    fi
+    # create all main tomcat versions for Base tests
+    ## IMG name might include specific version, we have to handle that
+    IMG_NOVER=$(echo $IMG | cut -d: -f1)
+    for tomcat_version in "9.0" "10.1" "11.0"
+    do
+        IMG="$IMG_NOVER:$tomcat_version" tomcat_create $tomcat_version > /dev/null 2>&1 || exit 3
+    done
+}
+
+
 #####################################################
 ### H T T P D   H E L P E R   F U N C T I O N S   ###
 #####################################################

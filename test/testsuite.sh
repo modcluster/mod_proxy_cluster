@@ -16,6 +16,7 @@ fi
 echo "        DEBUG=${DEBUG:-Off (undefined)}"
 echo "        MOD_PROXY_CLUSTER_TESTS=${MOD_PROXY_CLUSTER_TESTS:=On}"
 echo "        MOD_PROXY_BALANCER_TESTS=${MOD_PROXY_BALANCER_TESTS:=On}"
+echo "        SKIP_CONTAINER_CREATION=${SKIP_CONTAINER_CREATION:=Off}"
 export FOREVER_PAUSE TOMCAT_CYCLE_COUNT ITERATION_COUNT IMG HTTPD_IMG
 
 
@@ -25,28 +26,27 @@ fi
 
 . includes/common.sh
 
-if [ ! -d tomcat/target ]; then
-    echo "Missing dependencies. Please run setup-dependencies.sh and then try again"
-    exit 4 
-fi
-
-echo -n "Creating docker containers..."
-if is_enabled "$DEBUG"; then
-     httpd_create  || exit 2
-     tomcat_create || exit 3
-else
-     httpd_create  > /dev/null 2>&1 || exit 2
-     tomcat_create > /dev/null 2>&1 || exit 3
-fi
-# create all main tomcat versions for Base tests
-## IMG name might include specific version, we have to handle that
 IMG_NOVER=$(echo $IMG | cut -d: -f1)
-for tomcat_version in "9.0" "10.1" "11.0"
-do
-    IMG="$IMG_NOVER:$tomcat_version" tomcat_create $tomcat_version > /dev/null 2>&1 || exit 3
-done
 
-echo " Done"
+if is_enabled "$SKIP_CONTAINER_CREATION"; then
+    # let's just check all the containers are present
+    for tomcat_image in "$IMG_NOVER:latest" "$IMG_NOVER:9.0" "$IMG_NOVER:10.1" "$IMG_NOVER:11.0"
+    do
+        if ! docker image inspect $tomcat_image > /dev/null 2>&1; then
+            echo "tomcat image $tomcat_image is missing"
+            exit 3
+        fi
+    done
+    if ! docker image inspect $HTTPD_IMG > /dev/null 2>&1; then
+        echo "httpd image $HTTPD_IMG is missing"
+        exit 2
+    fi
+else
+    # create all containers
+    echo "Creating docker containers..."
+    test_create_all_containers
+    echo "Done"
+fi
 
 # clean everything at first
 echo -n "Cleaning possibly running containers..."
