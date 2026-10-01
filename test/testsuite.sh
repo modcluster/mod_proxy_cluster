@@ -43,6 +43,11 @@ if is_enabled "$SKIP_CONTAINER_CREATION"; then
     fi
 else
     # create all containers
+    if [ ! -d tomcat/target ]; then
+        echo "Missing dependencies. Please run setup-dependencies.sh and then try again"
+        exit 4 
+    fi
+
     echo "Creating docker containers..."
     test_create_all_containers
     echo "Done"
