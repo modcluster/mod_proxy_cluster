@@ -13,11 +13,11 @@ run_test() {
         printf "Running %-64s ..." "$1"
     fi
     if is_enabled "$DEBUG"; then
-        sh $1 > "logs/${2:-$1}.log" 2>&1
+        sh $1 > "logs/${2:-$1}.log" 2>&1 || ret=$?
     else
-        sh $1 > /dev/null 2>&1
+        sh $1 > /dev/null 2>&1 || ret=$?
     fi
-    if [ $? = 0 ]; then
+    if [ $ret = 0 ]; then
         echo "  OK"
     else
         echo " NOK"
