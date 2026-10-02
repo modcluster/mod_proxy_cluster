@@ -47,6 +47,15 @@ on:
         options: [ "on", "off" ]
         default: "on"
 
+env:
+    IMG: local-tomcat
+    HTTPD_IMG: local-httpd
+    DEBUG: ${{ inputs.debug || 'on' }}
+    FOREVER_PAUSE: ${{ inputs.forever-pause || 100 }}
+    ITERATION_COUNT: ${{ inputs.iteration-count || 2 }}
+    TOMCAT_CYCLE_COUNT: ${{ inputs.tomcat-cycle-count || 2 }}
+    SKIP_CONTAINER_CREATION: 'on'
+
 jobs:
 
   cmake-fedora-latest:
@@ -299,9 +308,6 @@ jobs:
         fail-fast: false
         matrix:
             os: [ ubuntu-latest, ubuntu-24.04-arm ]
-    env:
-      IMG: local-tomcat
-      HTTPD_IMG: local-httpd
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -358,14 +364,6 @@ jobs:
 
                 - name: Hanging tests
                   script: hangingtests.sh
-    env:
-      IMG: local-tomcat
-      HTTPD_IMG: local-httpd
-      DEBUG: ${{ inputs.debug || 'on' }}
-      FOREVER_PAUSE: ${{ inputs.forever-pause || 100 }}
-      ITERATION_COUNT: ${{ inputs.iteration-count || 2 }}
-      TOMCAT_CYCLE_COUNT: ${{ inputs.tomcat-cycle-count || 2 }}
-      SKIP_CONTAINER_CREATION: 'on'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -422,15 +420,8 @@ jobs:
               os: [ ubuntu-latest, ubuntu-24.04-arm ]
               suite: [ mod_proxy_cluster, mod_proxy_balancer ]
     env:
-      IMG: local-tomcat
-      HTTPD_IMG: local-httpd
-      DEBUG: ${{ inputs.debug || 'on' }}
-      FOREVER_PAUSE: ${{ inputs.forever-pause || 100 }}
-      ITERATION_COUNT: ${{ inputs.iteration-count || 2 }}
-      TOMCAT_CYCLE_COUNT: ${{ inputs.tomcat-cycle-count || 2 }}
       MOD_PROXY_CLUSTER_TESTS:  ${{ matrix.suite == 'mod_proxy_cluster'  && (inputs.mod_proxy_cluster || 'on') || 'off' }}
       MOD_PROXY_BALANCER_TESTS: ${{ matrix.suite == 'mod_proxy_balancer' && (inputs.balancer          || 'on') || 'off' }}
-      SKIP_CONTAINER_CREATION: 'on'
     steps:
       - name: Checkout
         uses: actions/checkout@v6
