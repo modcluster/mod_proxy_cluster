@@ -297,7 +297,7 @@ jobs:
         if: always()
         with:
           name: Windows logs for ${{ matrix.os }}
-          path: C:\Apache24\logs\
+          path: C:\Apache24\logs\*log
           retention-days: 7
 
   # Both testsuites run against this one image, so that they exercise the very same
