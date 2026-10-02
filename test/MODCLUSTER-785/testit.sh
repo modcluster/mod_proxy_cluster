@@ -67,7 +67,7 @@ do
   if [ ${http_code} = 200 ]; then
     break
   fi
-  i=$(expr $i + 1)
+  i=$(( $i + 1 ))
   if [ $i -gt 60 ]; then
     break
   fi
@@ -92,7 +92,7 @@ do
     echo "MODCLUSTER-785 Failed! return 503"
     exit 1
   fi
-  i=$(expr $i + 1)
+  i=$(( $i + 1 ))
   if [ $i -gt 60 ]; then
     break
   fi

@@ -25,7 +25,7 @@ runtomcatbatch() {
       MPC_NAME=MODCLUSTER-736 tomcat_start $i
     done
 
-    tomcat_count=$(expr 3 + 11 - $t)
+    tomcat_count=$(( 3 + 11 - $t ))
     tomcat_wait_for_n_nodes $tomcat_count || exit 1
     for i in $(seq $t 10);
     do
@@ -94,7 +94,7 @@ singlecycle() {
             echo "Timeout: tomcat$1 is not ready"
             exit 1
         fi
-        i=$(expr $i + 1)
+        i=$(( $i + 1 ))
         sleep 1
     done
     echo "Testing(0) tomcat$1 started"
@@ -112,7 +112,7 @@ singlecycle() {
             echo "Timeout: webapp on tomcat$1 is not ready after 300 seconds"
             exit 1
         fi
-        i=$(expr $i + 1)
+        i=$(( $i + 1 ))
         sleep 1
     done
     echo "Testing(1) tomcat$1"
@@ -132,7 +132,7 @@ singlecycle() {
             echo "Timeout: webapp is still present on tomcat$1 after 300 seconds"
             exit 1
         fi
-        i=$(expr $i + 1)
+        i=$(( $i + 1 ))
         sleep 1
     done
     tomcat_remove $1 || exit 1
@@ -210,7 +210,7 @@ runmodcluster736() {
     runmodcluster736=0
     while true
     do
-        runmodcluster736=$(expr $runmodcluster736 + 1)
+        runmodcluster736=$(( $runmodcluster736 + 1 ))
         if [ $runmodcluster736 -gt 2 ]; then
             echo "Looks OK, runmodcluster736 stopping!"
             break

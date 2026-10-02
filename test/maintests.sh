@@ -60,7 +60,7 @@ while [ "${NODE}" = "${NEWNODE}" ]
 do
   NEWCO=$(curl -v http://localhost:8090/testapp/test.jsp -m 20 -o /dev/null 2>&1 | grep Set-Cookie | awk '{ print $3 } ' | sed 's:;::')
   NEWNODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
-  i=$(expr $i + 1)
+  i=$(( $i + 1 ))
   if [ $i -gt 40 ]; then
     echo "Can't find the 2 webapps"
     exit 1
@@ -90,7 +90,7 @@ echotestlabel "sticky: stopping one node and doing requests..."
 NODE=$(echo ${NEWCO} | awk -F = '{ print $2 }' | awk -F . '{ print $2 }')
 echo $NODE
 PORT=$(curl http://localhost:8090/mod_cluster_manager -m 20 | grep Node | grep $NODE | sed 's:)::' | awk -F : '{ print $3 } ')
-NUMBER=$(expr ${PORT} - 8080 + 1)
+NUMBER=$(( ${PORT} - 8080 + 1 ))
 CODE="200"
 i=0
 while [ "$CODE" = "200" ]
@@ -106,7 +106,7 @@ do
     # We're going to kill instead of removal because kill only tomcat proc (keeps the container in DNS)
     tomcat_kill $NUMBER
   fi
-  i=$(expr $i + 1)
+  i=$(( $i + 1 ))
 done
 if [ ${CODE} != "200" ]; then
   echo "Something was wrong... got: ${CODE}"

@@ -65,46 +65,46 @@ if is_enabled "$MOD_PROXY_CLUSTER_TESTS"; then
     for tomcat_version in "9.0" "10.1" "11.0"
     do
         IMG="$IMG_NOVER:$tomcat_version" run_test basetests.sh "Basic tests with tomcat $tomcat_version"
-        res=$(expr $res + $?)
+        res=$(( $res + $? ))
     done
     run_test hangingtests.sh            "Hanging tests"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test maintests.sh               "Main tests"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test websocket/basic.sh         "Websocket tests"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test usealias/testit.sh         "UseAlias"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test MODCLUSTER-640/testit.sh   "MODCLUSTER-640"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test MODCLUSTER-734/testit.sh   "MODCLUSTER-734"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test MODCLUSTER-736/testit.sh   "MODCLUSTER-736"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test MODCLUSTER-755/testit.sh   "MODCLUSTER-755"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test MODCLUSTER-785/testit.sh   "MODCLUSTER-785"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     run_test MODCLUSTER-794/testit.sh   "MODCLUSTER-794"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
 fi
 
 if is_enabled "$MOD_PROXY_BALANCER_TESTS"; then
     for tomcat_version in "9.0" "10.1" "11.0"
     do
         IMG="$IMG_NOVER:$tomcat_version" MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test basetests.sh "Basic tests with mod_proxy_balancer and tomcat $tomcat_version"
-        res=$(expr $res + $?)
+        res=$(( $res + $? ))
     done
     MPC_CONF=MODCLUSTER-640/mod_lbmethod_cluster.conf run_test MODCLUSTER-640/testit.sh   "MODCLUSTER-640 with mod_proxy_balancer"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     MPC_CONF=MODCLUSTER-734/mod_lbmethod_cluster.conf run_test MODCLUSTER-734/testit.sh   "MODCLUSTER-734 with mod_proxy_balancer"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     MPC_CONF=httpd/mod_lbmethod_cluster.conf run_test MODCLUSTER-755/testit.sh            "MODCLUSTER-755 with mod_proxy_balancer"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     MPC_CONF=MODCLUSTER-785/mod_lbmethod_cluster.conf run_test MODCLUSTER-785/testit.sh   "MODCLUSTER-785 with mod_proxy_balancer"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
     MPC_CONF=MODCLUSTER-794/mod_lbmethod_cluster.conf run_test MODCLUSTER-794/testit.sh   "MODCLUSTER-794 with mod_proxy_balancer"
-    res=$(expr $res + $?)
+    res=$(( $res + $? ))
 fi
 
 echo -n "Cleaning containers if any..."
