@@ -26,33 +26,21 @@ runtomcatbatch() {
     done
 
     tomcat_count=$(( 3 + 11 - $t ))
-    tomcat_wait_for_n_nodes $tomcat_count || exit 1
+    tomcat_wait_for_n_nodes $tomcat_count
     for i in $(seq $t 10);
     do
-      tomcat_start_webapp $i || exit 1
+      tomcat_start_webapp $i
     done
 
     # test the tomcats
     sleep 20
     tomcat_all_test_app $tomcat_count
-    if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_all_test_app $tomcat_count FAILED!"
-      exit 1
-    fi
 
     # "load test" 9 of them
     tomcat_all_run_ab $tomcat_count
-    if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_all_run_ab $tomcat_count FAILED!"
-      exit 1
-    fi
 
     # retest
     tomcat_all_test_app $tomcat_count
-    if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_all_test_app $tomcat_count FAILED!"
-      exit 1
-    fi
 
     # stop the tomcats
     for i in $(seq $t 10);
@@ -61,10 +49,6 @@ runtomcatbatch() {
     done
 
     tomcat_wait_for_n_nodes 3
-    if [ $? -ne 0 ]; then
-      echo "runtomcatbatch tomcat_wait_for_n_nodes 3 FAILED!"
-      exit 1
-    fi
 
     # remove the tomcats
     for i in $(seq $t 10);
@@ -79,7 +63,7 @@ runtomcatbatch() {
 singlecycle() {
     echo "singlecycle: Testing tomcat$1"
     R=$1
-    MPC_NAME=MODCLUSTER-736 tomcat_start $1 || exit 1
+    MPC_NAME=MODCLUSTER-736 tomcat_start $1
 
     # Wait for it to start
     echo "Testing(0) tomcat$1 waiting..."
@@ -98,7 +82,7 @@ singlecycle() {
         sleep 1
     done
     echo "Testing(0) tomcat$1 started"
-    tomcat_start_webapp $1 || exit 1
+    tomcat_start_webapp $1
     echo "Testing(0) tomcat$1 with webapp"
     i=0
     while true
@@ -116,10 +100,10 @@ singlecycle() {
         sleep 1
     done
     echo "Testing(1) tomcat$1"
-    tomcat_test_app $1 || exit 1
+    tomcat_test_app $1
     echo "Testing(2) tomcat$1"
-    tomcat_test_app $1 || exit 1
-    tomcat_run_ab $1 || exit 1
+    tomcat_test_app $1
+    tomcat_run_ab $1
     echo "Testing(3) tomcat$1"
     tomcat_shutdown $1 || exit 1
     while true
@@ -143,7 +127,7 @@ singlecycle() {
 looptomcatforever() {
     while true
     do
-        singlecycle $1 || exit 1
+        singlecycle $1
     done
 }
 
@@ -177,14 +161,16 @@ forevertomcat() {
     tomcat_remove_by_name tomcat14
     tomcat_remove_by_name tomcat15
     tomcat_remove_by_name tomcat16
-    sleep 10
+    # the nodes have to be gone from the manager, otherwise the following
+    # tomcat_wait_for_n_nodes calls would be satisfied by these leftovers
+    tomcat_wait_for_n_nodes 0
 }
 
 # Start and stop successively (one after another) $1 tomcats
 cyclestomcats() {
     for i in $(seq 1 $1); do
         echo -n "$i/$1: "
-        singlecycle $i || exit 1
+        singlecycle $i
     done
     echo "Looks OK, Done!"
 }
@@ -196,15 +182,15 @@ runmodcluster736() {
     MPC_NAME=MODCLUSTER-736 tomcat_start 2
     MPC_NAME=MODCLUSTER-736 tomcat_start 3
     MPC_NAME=MODCLUSTER-736 tomcat_start 4
-    tomcat_wait_for_n_nodes 3 || exit 1
+    tomcat_wait_for_n_nodes 3
     # check them
-    tomcat_start_webapp 2 || exit 1
-    tomcat_start_webapp 3 || exit 1
-    tomcat_start_webapp 4 || exit 1
+    tomcat_start_webapp 2
+    tomcat_start_webapp 3
+    tomcat_start_webapp 4
     sleep 20
-    tomcat_test_app 2 || exit 1
-    tomcat_test_app 3 || exit 1
-    tomcat_test_app 4 || exit 1
+    tomcat_test_app 2
+    tomcat_test_app 3
+    tomcat_test_app 4
 
     # start a bunch of tomcats, test, shutdown, remove and try in a loop.
     runmodcluster736=0
@@ -217,56 +203,23 @@ runmodcluster736() {
         fi
         # cycle the tomcats
         runtomcatbatch
-
-        if [ $? -ne 0 ]; then
-            echo "runtomcatbatch: runmodcluster736 Failed!"
-            exit 1
-        fi
         tomcat_shutdown 2
 
         tomcat_wait_for_n_nodes 2
-        if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 2: runmodcluster736 Failed!"
-            exit 1
-        fi
         tomcat_remove 2
         MPC_NAME=MODCLUSTER-736 tomcat_start 5
 
         tomcat_wait_for_n_nodes 3
-        if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 3: runmodcluster736 Failed!"
-            exit 1
-        fi
         tomcat_start_webapp 5
-        if [ $? -ne 0 ]; then
-            echo "tomcat_start_webapp 5: runmodcluster736 Failed!"
-            exit 1
-        fi
         sleep 20
         tomcat_test_app 5
-        if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 5: runmodcluster736 Failed!"
-            exit 1
-        fi
         # we have 5 3 4 in shared memory
         # read 2
         MPC_NAME=MODCLUSTER-736 tomcat_start 2
         tomcat_wait_for_n_nodes 4
-        if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 4: runmodcluster736 Failed!"
-            exit 1
-        fi
         tomcat_start_webapp 2
-        if [ $? -ne 0 ]; then
-            echo "tomcat_start_webapp 2: runmodcluster736 Failed!"
-            exit 1
-        fi
         sleep 20
         tomcat_test_app 2
-        if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 2: runmodcluster736 Failed!"
-            exit 1
-        fi
 
         sleep 20
 
@@ -275,29 +228,11 @@ runmodcluster736() {
         tomcat_shutdown 5
 
         tomcat_wait_for_n_nodes 3
-        if [ $? -ne 0 ]; then
-            echo "tomcat_wait_for_n_nodes 3: runmodcluster736 Failed!"
-            exit 1
-        fi
         tomcat_remove 5
 
         tomcat_test_app 2
-        if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 2: runmodcluster736 Failed!"
-            exit 1
-        fi
-
         tomcat_test_app 3
-        if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 3: runmodcluster736 Failed!"
-            exit 1
-        fi
-
         tomcat_test_app 4
-        if [ $? -ne 0 ]; then
-            echo "tomcat_test_app 4: runmodcluster736 Failed!"
-            exit 1
-        fi
         echo "runmodcluster736 loop: $runmodcluster736 DONE"
     done
 
@@ -305,7 +240,7 @@ runmodcluster736() {
     tomcat_shutdown 4
     tomcat_shutdown 3
     tomcat_shutdown 2
-    tomcat_wait_for_n_nodes 0 || exit 1
+    tomcat_wait_for_n_nodes 0
     tomcat_remove 2
     tomcat_remove 3
     tomcat_remove 4
@@ -314,16 +249,8 @@ runmodcluster736() {
 # MODCLUSTER-736
 echo "Testing MODCLUSTER-736"
 cyclestomcats ${TOMCAT_CYCLE_COUNT:-10}
-if [ $? -ne 0 ]; then
-  echo "MODCLUSTER-736 cyclestomcats 100 FAILED!"
-  exit 1
-fi
 echo "cycletomcats DONE"
 forevertomcat
-if [ $? -ne 0 ]; then
-  echo "MODCLUSTER-736 forevertomcat FAILED!"
-  exit 1
-fi
 echo "forevertomcat DONE"
 runmodcluster736
 if [ $? -ne 0 ]; then
