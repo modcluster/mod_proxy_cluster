@@ -17,9 +17,7 @@ on:
       debug:
         description: "Test logs are generated when on"
         type: choice
-        options:
-          - "on"
-          - "off"
+        options: [ "on", "off" ]
         default: "on"
 
       forever-pause:
@@ -37,10 +35,30 @@ on:
         type: number
         default: 2
 
+      mod_proxy_cluster:
+        description: "mod_proxy_cluster tests are executed"
+        type: choice
+        options: [ "on", "off" ]
+        default: "on"
+
+      balancer:
+        description: "mod_proxy_balancer tests are executed"
+        type: choice
+        options: [ "on", "off" ]
+        default: "on"
+
+env:
+    IMG: local-tomcat
+    HTTPD_IMG: local-httpd
+    DEBUG: ${{ inputs.debug || 'on' }}
+    FOREVER_PAUSE: ${{ inputs.forever-pause || 100 }}
+    ITERATION_COUNT: ${{ inputs.iteration-count || 2 }}
+    TOMCAT_CYCLE_COUNT: ${{ inputs.tomcat-cycle-count || 2 }}
+    SKIP_CONTAINER_CREATION: 'on'
+
 jobs:
 
   cmake-fedora-latest:
-    name: cmake-fedora-latest
     runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
@@ -81,7 +99,7 @@ jobs:
           path: mod_proxy_cluster
       - name: Setup Podman
         run: |
-          sudo apt update
+          sudo apt-get update
           sudo apt-get -y install podman
       - name: Create container and build
         run: |
@@ -105,17 +123,17 @@ jobs:
           } > Containerfile
           podman build .
 
-  clang-format-style-check:
+  clang-style-checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           path: mod_proxy_cluster
-      - name: Install clang-format
+      - name: Install clang-format and clang-tidy
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-format
+          sudo apt-get install -y clang-format clang-tidy apache2-dev
       - name: Check styles
         run: |
           code=0
@@ -132,18 +150,6 @@ jobs:
             rm diff.txt || true # we don't fail if the file does not exist
           done;
           exit $code
-
-  clang-tidy-naming-check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          path: mod_proxy_cluster
-      - name: Install clang-tidy
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-tidy apache2-dev
       - name: Check naming conventions
         run: |
           code=0
@@ -160,6 +166,7 @@ jobs:
             fi
           done
           exit $code
+
 
   make-httpd-maintainer-mode:
     runs-on: ubuntu-latest
@@ -210,17 +217,15 @@ jobs:
           path: httpd/srclib/apr
       - name: Install necessary packages
         run: |
-          ls
           sudo apt-get update
           sudo apt-get install gcc cmake make libtool libtool-bin python3 autoconf libxml2-dev libpcre2-dev -y
       - name: Build httpd
         run: |
-          ls
           export "APACHE_DIR=/usr/local/apache2/"
           cd httpd
           ./buildconf
           ./configure --prefix=/usr/local/apache2 --with-included-apr --enable-proxy-ajp --enable-maintainer-mode \
-                      --enable-so --enable-proxy --enable-proxy-http --enable-proxy-wstunned --enable-proxy-hcheck \
+                      --enable-so --enable-proxy --enable-proxy-http --enable-proxy-wstunnel --enable-proxy-hcheck \
                       --with-port=8090
           sudo make
           sudo make install
@@ -228,7 +233,6 @@ jobs:
         env:
             CFLAGS: "-Wall -Werror"
         run: |
-          ls
           cd mod_proxy_cluster/native
           for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager/; do \
             cd $module; \
@@ -289,22 +293,17 @@ jobs:
         if: always()
         with:
           name: Windows logs for ${{ matrix.os }}
-          path: C:\Apache24\logs\
+          path: C:\Apache24\logs\*log
           retention-days: 7
 
-  tests:
+  # Both testsuites run against this one image, so that they exercise the very same
+  # binaries and the coverage they gather can be merged (see the merged-coverage job).
+  build-test-containers:
     runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
         matrix:
-              os: [ ubuntu-latest, ubuntu-24.04-arm ]
-    env:
-      IMG: local-tomcat
-      HTTPD_IMG: local-httpd
-      DEBUG: ${{ inputs.debug || 'on' }}
-      FOREVER_PAUSE: ${{ inputs.forever-pause || 100 }}
-      ITERATION_COUNT: ${{ inputs.iteration-count || 2 }}
-      TOMCAT_CYCLE_COUNT: ${{ inputs.tomcat-cycle-count || 2 }}
+            os: [ ubuntu-latest, ubuntu-24.04-arm ]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -316,10 +315,61 @@ jobs:
       - name: Setup dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y podman-docker maven git curl iproute2 wcstools
+          sudo apt-get install -y podman-docker maven git curl iproute2 wcstools zstd
           sudo touch /etc/containers/nodocker
           cd test
           sh setup-dependencies.sh
+      - name: Build the test images
+        run: |
+          cd test
+          . includes/common.sh
+          test_create_all_containers
+          for img in $(docker image ls --format "{{.Repository}}:{{.Tag}}" | sed 's|^localhost/||'); do
+            if [[ "$img" != "$IMG"* ]] && [[ "$img" != "$HTTPD_IMG"* ]]; then continue; fi
+            echo "Saving $img image"
+            docker save $img | zstd -T0 -o /tmp/$(echo $img | sed 's|:|-|').tar.zst
+          done
+      - name: Preserve the test images
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-containers-${{ matrix.os }}
+          path: /tmp/*.tar.zst
+          retention-days: 1
+      # the tests themselves need these, they don't run setup-dependencies.sh
+      - name: Preserve the test dependencies
+        uses: actions/upload-artifact@v6
+        with:
+          name: test-dependencies-${{ matrix.os }}
+          path: |
+            test/websocket/websocket-hello-0.0.1.war
+            test/includes/target/test-1.0.jar
+          retention-days: 1
+
+  test-extra:
+    name: test-extra (${{ matrix.os }}, ${{ matrix.test.name }})
+    runs-on: ${{ matrix.os }}
+    needs: build-test-containers
+    strategy:
+        fail-fast: false
+        matrix:
+              os: [ ubuntu-latest, ubuntu-24.04-arm ]
+              # these tests take a lot of time, that's why we keep them separate
+              test:
+                - name: MODCLUSTER-736
+                  script: MODCLUSTER-736/testit.sh
+
+                - name: Hanging tests
+                  script: hangingtests.sh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y podman-docker git curl iproute2 wcstools zstd
+          sudo touch /etc/containers/nodocker
+          # create the network (usually done by setup-dependencies.sh
+          docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
       - name: Configure Podman logging driver
         run: |
           mkdir -p ~/.config/containers
@@ -330,15 +380,95 @@ jobs:
           [engine]
           events_logger = "file"
           EOF
+      - name: Get the test images built
+        uses: actions/download-artifact@v7
+        with:
+          name: test-containers-${{ matrix.os }}
+          path: /tmp
+      - name: Load the test images
+        run: |
+          cd /tmp
+          for img in $(ls *.tar.zst); do
+            echo "Loading $img image"
+            zstd -dc $img | docker load
+          done
+      - name: Run ${{ matrix.test.name }}
+        run: |
+          cd test
+          mkdir logs
+          . includes/common.sh
+          run_test "${{ matrix.test.script }}" "${{ matrix.test.name }}"
+      - name: Preserve test logs
+        uses: actions/upload-artifact@v6
+        if: ${{ !cancelled() && env.DEBUG == 'on' }}
+        with:
+          name: ${{ matrix.test.name }} logs ${{ matrix.os }}
+          path: |
+            test/logs/*
+          retention-days: 7
+
+  tests:
+    runs-on: ${{ matrix.os }}
+    needs: build-test-containers
+    strategy:
+        fail-fast: false
+        matrix:
+              os: [ ubuntu-latest, ubuntu-24.04-arm ]
+              suite: [ mod_proxy_cluster, mod_proxy_balancer ]
+    env:
+      MOD_PROXY_CLUSTER_TESTS:  ${{ matrix.suite == 'mod_proxy_cluster'  && (inputs.mod_proxy_cluster || 'on') || 'off' }}
+      MOD_PROXY_BALANCER_TESTS: ${{ matrix.suite == 'mod_proxy_balancer' && (inputs.balancer          || 'on') || 'off' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y podman-docker git curl iproute2 wcstools zstd
+          sudo touch /etc/containers/nodocker
+          # create the network (usually done by setup-dependencies.sh
+          docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
+      - name: Configure Podman logging driver
+        run: |
+          mkdir -p ~/.config/containers
+          cat <<EOF > ~/.config/containers/containers.conf
+          [containers]
+          log_driver = "k8s-file"
+
+          [engine]
+          events_logger = "file"
+          EOF
+      - name: Get the test images built
+        uses: actions/download-artifact@v7
+        with:
+          name: test-containers-${{ matrix.os }}
+          path: /tmp
+      - name: Load the test images
+        run: |
+          cd /tmp
+          for img in $(ls *.tar.zst); do
+            echo "Loading $img image"
+            zstd -dc $img | docker load
+          done
+      - name: Get the test dependencies built
+        uses: actions/download-artifact@v7
+        with:
+          name: test-dependencies-${{ matrix.os }}
+          path: test
+      - name: Disable MODCLUSTER-736 and Hanging tests
+        run: |
+          cd test
+          sed -i '/MODCLUSTER-736/s|^|#|' testsuite.sh
+          sed -i '/Hanging tests/s|^|#|'  testsuite.sh
       - name: Run testsuite
         run: |
           cd test
           sh testsuite.sh
       - name: Preserve test logs
         uses: actions/upload-artifact@v6
-        if: ${{ env.DEBUG == 'on' }}
+        if: ${{ !cancelled() && env.DEBUG == 'on' }}
         with:
-          name: Test logs ${{ matrix.os }}
+          name: Test logs ${{ matrix.os }} ${{ matrix.suite }}
           path: |
             test/logs/*
           retention-days: 7
@@ -403,3 +533,38 @@ jobs:
           name: Doxygen docs
           path: doxygen-out/html/*
           retention-days: 30
+
+  gather-results:
+    runs-on: ubuntu-latest
+    if: always()
+    # make-with-httpd-trunk is in there transitively through perl tests 
+    needs: [ tests, perl-tests, clang-style-checks, cmake-fedora-latest, make-httpd-maintainer-mode, make-fedora-latest, doxygen, cmake-windows-latest, test-extra ]
+    steps:
+      # Check that all the needs jobs were successful
+      - name: Check the results of all the jobs
+        if: always()
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $results"
+          for result in $results; do
+            if [ "$result" != "success" ]; then
+              echo "At least one job did not succeed"
+              exit 1
+            fi
+          done
+      - name: Delete all the containers/dependencies we no longer need
+        uses: geekyeggo/delete-artifact@v6
+        with:
+          name: |
+            test-containers*
+            test-dependencies*
+          failOnError: false
+      - name: Merge all the logs
+        uses: actions/upload-artifact/merge@v6
+        with:
+          name: Test logs
+          pattern: '*logs*'
+          separate-directories: true
+          delete-merged: true
+          retention-days: 7
+

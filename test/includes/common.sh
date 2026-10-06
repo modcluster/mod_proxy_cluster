@@ -8,16 +8,16 @@ MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster}
 run_test() {
     local ret=0
     if [ ! -z "$2" ]; then
-        printf "Running %-42s ..." "$2"
+        printf "Running %-64s ..." "$2"
     else
-        printf "Running %-42s ..." "$1"
+        printf "Running %-64s ..." "$1"
     fi
     if is_enabled "$DEBUG"; then
-        sh $1 > "logs/${2:-$1}.log" 2>&1
+        sh $1 > "logs/${2:-$1}.log" 2>&1 || ret=$?
     else
-        sh $1 > /dev/null 2>&1
+        sh $1 > /dev/null 2>&1 || ret=$?
     fi
-    if [ $? = 0 ]; then
+    if [ $ret = 0 ]; then
         echo "  OK"
     else
         echo " NOK"
@@ -46,6 +46,24 @@ is_enabled() {
     esac
     return 0
 }
+
+test_create_all_containers() {
+    if is_enabled "$DEBUG"; then
+         httpd_create  || exit 2
+         tomcat_create || exit 3
+    else
+         httpd_create  > /dev/null 2>&1 || exit 2
+         tomcat_create > /dev/null 2>&1 || exit 3
+    fi
+    # create all main tomcat versions for Base tests
+    ## IMG name might include specific version, we have to handle that
+    IMG_NOVER=$(echo $IMG | cut -d: -f1)
+    for tomcat_version in "9.0" "10.1" "11.0"
+    do
+        IMG="$IMG_NOVER:$tomcat_version" tomcat_create $tomcat_version > /dev/null 2>&1 || exit 3
+    done
+}
+
 
 #####################################################
 ### H T T P D   H E L P E R   F U N C T I O N S   ###
@@ -93,7 +111,7 @@ httpd_wait_until_ready() {
     curl -m 20 localhost:8090 > /dev/null 2>&1
     while [ $? != 0 ];
     do
-        i=$(expr $i + 1)
+        i=$(( $i + 1 ))
         if [ $i -gt 20 ]; then
             echo "$(date) Failed to run httpd container"
             exit 1;
@@ -151,8 +169,8 @@ tomcat_start() {
         exit 1
     fi
 
-    local DEFAULT_OFFSET=$(expr $1 - 1)
-    local shutport=$(expr ${SHUTDOWN_PORT:-8005} + $DEFAULT_OFFSET)
+    local DEFAULT_OFFSET=$(( $1 - 1 ))
+    local shutport=$(( ${SHUTDOWN_PORT:-8005} + $DEFAULT_OFFSET ))
 
     echo "$(date) Starting tomcat$1"
     nohup docker run --network=mod_proxy_cluster_testsuite_net \
@@ -182,14 +200,14 @@ tomcat_wait_for_n_nodes() {
         echo "$(date) httpd isn't running or something is VERY wrong"
         exit 1
     fi
-    NBNODES=-1
+    NBNODES=$(curl -s http://localhost:8090/mod_cluster_manager -m 20 | grep "Status: OK" | awk ' { print $3} ' | wc -l)
     i=0
     while [ ${NBNODES} != ${nodes} ]
     do
         NBNODES=$(curl -s http://localhost:8090/mod_cluster_manager -m 20 | grep "Status: OK" | awk ' { print $3} ' | wc -l)
         sleep 10
         echo "$(date) Waiting for $nodes node to be ready (nodes ready: $NBNODES)"
-        i=$(expr $i + 1)
+        i=$(( $i + 1 ))
         if [ $i -gt 60 ]; then
             echo "($date) Timeout! There are not $nodes nodes but $NBNODES instead"
             exit 1
@@ -272,7 +290,7 @@ tomcat_shutdown() {
     fi
 
     echo "$(date) shutting down tomcat$1"
-    echo "SHUTDOWN" | nc localhost $(expr ${SHUTDOWN_PORT:-8005} + $1 - 1)
+    echo "SHUTDOWN" | nc localhost $(( ${SHUTDOWN_PORT:-8005} + $1 - 1 ))
 }
 
 # Remove the docker image tomcat$1
@@ -352,7 +370,7 @@ tomcat_all_run_ab() {
     while true
     do
         tomcat_run_ab $tc || exit 1
-        tc=$(expr $tc + 1)
+        tc=$(( $tc + 1 ))
         if [ $tc -gt $1 ]; then
             echo "$(date) abtomcats: Done!"
             break
@@ -376,7 +394,7 @@ tomcat_all_test_app() {
     while true
     do
         tomcat_test_app $tc || exit 1
-        tc=$(expr $tc + 1)
+        tc=$(( $tc + 1 ))
         if [ $tc -gt $1 ]; then
             echo "$(date) tomcat_tests $tc Done!"
             break
