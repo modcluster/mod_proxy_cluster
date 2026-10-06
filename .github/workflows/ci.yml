@@ -252,12 +252,6 @@ jobs:
             sudo cp *.so /usr/local/apache2/modules; \
             cd ..; \
           done;
-      - name: Preserve built Apache for perl-test job
-        uses: actions/upload-artifact@v6
-        with:
-          name: apache-trunk
-          path: /usr/local/apache2
-          retention-days: 0 
 
   cmake-windows-latest:
     runs-on: ${{ matrix.os }}
@@ -377,7 +371,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y podman-docker git curl iproute2 wcstools zstd
           sudo touch /etc/containers/nodocker
-          # create the network (usually done by setup-dependencies.sh
+          # create the network (usually done by setup-dependencies.sh)
           docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
       - name: Configure Podman logging driver
         run: |
@@ -404,7 +398,7 @@ jobs:
       - name: Run ${{ matrix.test.name }}
         run: |
           cd test
-          mkdir logs
+          mkdir logs coverage
           . includes/common.sh
           run_test "${{ matrix.test.script }}" "${{ matrix.test.name }}"
       - name: Preserve test logs
@@ -415,6 +409,15 @@ jobs:
           path: |
             test/logs/*
           retention-days: 7
+      # Preserve coverage data if defined
+      - name: Preserve coverage files
+        if: ${{ !cancelled() && env.CODE_COVERAGE == 'on' && matrix.os == 'ubuntu-latest' }}
+        uses: actions/upload-artifact@v6
+        with:
+            name: ${{ matrix.test.name }} coverage ${{ matrix.os }}
+            path: test/coverage/*
+            retention-days: 7
+
 
   tests:
     runs-on: ${{ matrix.os }}
@@ -435,7 +438,7 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y podman-docker git curl iproute2 wcstools zstd
           sudo touch /etc/containers/nodocker
-          # create the network (usually done by setup-dependencies.sh
+          # create the network (usually done by setup-dependencies.sh)
           docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
       - name: Configure Podman logging driver
         run: |
@@ -482,51 +485,52 @@ jobs:
             test/logs/*
           retention-days: 7
       - name: Print the coverage summary
-        if: ${{ env.CODE_COVERAGE == 'on' }}
+        if: ${{ !cancelled() && env.CODE_COVERAGE == 'on' }}
         run: cat test/coverage/test-coverage.txt
       # Preserve coverage data if defined
       - name: Preserve coverage files
-        if: ${{ env.CODE_COVERAGE == 'on' }}
+        if: ${{ !cancelled() && env.CODE_COVERAGE == 'on' && matrix.os == 'ubuntu-latest' }}
         uses: actions/upload-artifact@v6
         with:
-            name: Coverage ${{ matrix.os }}
+            name: Test coverage ${{ matrix.os }} ${{ matrix.suite }}
             path: test/coverage/*
             retention-days: 7
 
   perl-tests:
     runs-on: ubuntu-latest
-    needs: make-with-httpd-trunk
+    needs: build-test-containers
+    env:
+      PERL_IMG: local-perl-tests
     steps:
       - name: Checkout
         uses: actions/checkout@v6
       - name: Setup dependencies
         run: |
           sudo apt-get update
-          sudo apt-get remove apache2*
-          sudo apt-get install -y gcc make perl cpanminus libcrypt-ssleay-perl
-      - name: Get Apache built in the previous job
+          sudo apt-get install -y podman-docker zstd
+          sudo touch /etc/containers/nodocker
+      - name: Get the test images built
         uses: actions/download-artifact@v7
         with:
-          name: apache-trunk
-          path: apache2
-      - name: Put httpd on the right path
+          name: test-containers-ubuntu-latest
+          path: /tmp
+      - name: Load the test images
         run: |
-          mkdir test-perl/t/modules/
-          cp apache2/modules/{mod_proxy_cluster.so,mod_manager.so,mod_advertise.so,mod_lbmethod_cluster.so} test-perl/t/modules/
-          sudo mv apache2/ /usr/local/apache2/
-          sudo chmod -R 755 /usr/local/apache2/
-      - name: Install perl modules
-        run: |
-          sudo cpanm --force Apache::Test Apache::TestMM HTTP::Request LWP::UserAgent
+          cd /tmp
+          for img in $(ls *.tar.zst); do
+            echo "Loading $img image"
+            zstd -dc $img | docker load
+          done
+      - name: Build the perl testsuite image
+        run: docker build -t $PERL_IMG --build-arg HTTPD_IMG=$HTTPD_IMG -f test-perl/Containerfile test-perl/
       - name: Run testsuite
         run: |
-          cd test-perl
-          perl Makefile.PL -httpd /usr/local/apache2/bin/httpd
-          make
-          t/TEST -httpd /usr/local/apache2/bin/httpd 2>&1 | tee test-perl.log
-          mv test-perl.log t/logs/test-perl.log
-          grep "Result: PASS" -q t/logs/test-perl.log
-          exit $?
+          if [ "$CODE_COVERAGE" = "on" ]; then coverage_env="-e ENABLE_COVERAGE=1"; fi
+          docker run --name perl-tests $coverage_env $PERL_IMG
+          # now get the logs and coverage
+          mkdir -p test-perl/t/logs test-perl/coverage
+          docker cp perl-tests:/test-perl/t/logs/. test-perl/t/logs/ || true
+          docker cp perl-tests:/coverage/. test-perl/coverage/ || true
       - name: Preserve test logs
         uses: actions/upload-artifact@v6
         if: always()
@@ -534,6 +538,16 @@ jobs:
           name: Perl tests logs
           path: |
             test-perl/t/logs/*
+          retention-days: 7
+      - name: Print the coverage summary
+        if: ${{ !cancelled() && env.CODE_COVERAGE == 'on' }}
+        run: cat test-perl/coverage/test-coverage.txt
+      - name: Preserve coverage files
+        if: ${{ !cancelled() && env.CODE_COVERAGE == 'on' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: Perl tests coverage
+          path: test-perl/coverage/*
           retention-days: 7
 
   doxygen:
@@ -557,8 +571,17 @@ jobs:
   gather-results:
     runs-on: ubuntu-latest
     if: always()
-    # make-with-httpd-trunk is in there transitively through perl tests 
-    needs: [ tests, perl-tests, clang-style-checks, cmake-fedora-latest, make-httpd-maintainer-mode, make-fedora-latest, doxygen, cmake-windows-latest, test-extra ]
+    needs:
+      - tests
+      - perl-tests
+      - test-extra
+      - clang-style-checks
+      - cmake-fedora-latest
+      - cmake-windows-latest
+      - make-httpd-maintainer-mode
+      - make-fedora-latest
+      - make-with-httpd-trunk
+      - doxygen
     steps:
       # Check that all the needs jobs were successful
       - name: Check the results of all the jobs
@@ -572,13 +595,55 @@ jobs:
               exit 1
             fi
           done
-      - name: Delete all the containers/dependencies we no longer need
+      - name: Setup dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman-docker zstd
+          sudo touch /etc/containers/nodocker
+      - name: Get the httpd/mod_proxy_cluster for merging the coverage reports
+        if: ${{ env.CODE_COVERAGE == 'on' }}
+        uses: actions/download-artifact@v8
+        with:
+          name: test-containers-ubuntu-latest
+      - name: Load the test images
+        if: ${{ env.CODE_COVERAGE == 'on' }}
+        run: |
+          for img in $(ls *.tar.zst); do
+            echo "Loading $img image"
+            zstd -dc $img | docker load
+          done
+      - name: Get all the coverage reports
+        if: ${{ env.CODE_COVERAGE == 'on' }}
+        uses: actions/download-artifact@v7
+        with:
+          pattern: '*coverage*'
+          path: coverage
+          merge-multiple: true
+      - name: Get all the coverage files
+        if: ${{ env.CODE_COVERAGE == 'on' }}
+        run: |
+          rm -rf coverage/lcov coverage/test-coverage.*
+          docker run --rm -v $PWD/coverage:/coverage $HTTPD_IMG \
+                 /native/scripts/coverage.sh report /coverage
+      - name: Print the full coverage summary
+        if: ${{ env.CODE_COVERAGE == 'on' }}
+        run: cat coverage/test-coverage.txt
+      - name: Delete all the artifacts we no longer need
         uses: geekyeggo/delete-artifact@v6
         with:
           name: |
             test-containers*
             test-dependencies*
+            *coverage*
           failOnError: false
+      # First delete the individual coverage archives, then create a final report
+      - name: Preserve coverage files
+        if: ${{ env.CODE_COVERAGE == 'on' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: Test coverage
+          path: coverage/*
+          retention-days: 14
       - name: Merge all the logs
         uses: actions/upload-artifact/merge@v6
         with:
@@ -586,5 +651,5 @@ jobs:
           pattern: '*logs*'
           separate-directories: true
           delete-merged: true
-          retention-days: 7
+          retention-days: 14
 
