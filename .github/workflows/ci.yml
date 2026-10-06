@@ -225,7 +225,7 @@ jobs:
           cd httpd
           ./buildconf
           ./configure --prefix=/usr/local/apache2 --with-included-apr --enable-proxy-ajp --enable-maintainer-mode \
-                      --enable-so --enable-proxy --enable-proxy-http --enable-proxy-wstunned --enable-proxy-hcheck \
+                      --enable-so --enable-proxy --enable-proxy-http --enable-proxy-wstunnel --enable-proxy-hcheck \
                       --with-port=8090
           sudo make
           sudo make install
