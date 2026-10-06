@@ -59,7 +59,6 @@ env:
 jobs:
 
   cmake-fedora-latest:
-    name: cmake-fedora-latest
     runs-on: ${{ matrix.os }}
     strategy:
         fail-fast: false
@@ -100,7 +99,7 @@ jobs:
           path: mod_proxy_cluster
       - name: Setup Podman
         run: |
-          sudo apt update
+          sudo apt-get update
           sudo apt-get -y install podman
       - name: Create container and build
         run: |
@@ -218,12 +217,10 @@ jobs:
           path: httpd/srclib/apr
       - name: Install necessary packages
         run: |
-          ls
           sudo apt-get update
           sudo apt-get install gcc cmake make libtool libtool-bin python3 autoconf libxml2-dev libpcre2-dev -y
       - name: Build httpd
         run: |
-          ls
           export "APACHE_DIR=/usr/local/apache2/"
           cd httpd
           ./buildconf
@@ -236,7 +233,6 @@ jobs:
         env:
             CFLAGS: "-Wall -Werror"
         run: |
-          ls
           cd mod_proxy_cluster/native
           for module in advertise/ mod_proxy_cluster/ balancers/ mod_manager/; do \
             cd $module; \
