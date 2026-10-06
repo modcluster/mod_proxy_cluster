@@ -8,9 +8,9 @@ MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster}
 run_test() {
     local ret=0
     if [ ! -z "$2" ]; then
-        printf "Running %-42s ..." "$2"
+        printf "Running %-64s ..." "$2"
     else
-        printf "Running %-42s ..." "$1"
+        printf "Running %-64s ..." "$1"
     fi
     if is_enabled "$DEBUG"; then
         sh $1 > "logs/${2:-$1}.log" 2>&1
@@ -182,7 +182,7 @@ tomcat_wait_for_n_nodes() {
         echo "$(date) httpd isn't running or something is VERY wrong"
         exit 1
     fi
-    NBNODES=-1
+    NBNODES=$(curl -s http://localhost:8090/mod_cluster_manager -m 20 | grep "Status: OK" | awk ' { print $3} ' | wc -l)
     i=0
     while [ ${NBNODES} != ${nodes} ]
     do
