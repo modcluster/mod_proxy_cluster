@@ -536,9 +536,22 @@ jobs:
 
   gather-results:
     runs-on: ubuntu-latest
+    if: always()
     # make-with-httpd-trunk is in there transitively through perl tests 
     needs: [ tests, perl-tests, clang-style-checks, cmake-fedora-latest, make-httpd-maintainer-mode, make-fedora-latest, doxygen, cmake-windows-latest, test-extra ]
     steps:
+      # Check that all the needs jobs were successful
+      - name: Check the results of all the jobs
+        if: always()
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $results"
+          for result in $results; do
+            if [ "$result" != "success" ]; then
+              echo "At least one job did not succeed"
+              exit 1
+            fi
+          done
       - name: Delete all the containers/dependencies we no longer need
         uses: geekyeggo/delete-artifact@v6
         with:
