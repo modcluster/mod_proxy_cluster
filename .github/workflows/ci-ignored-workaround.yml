@@ -12,42 +12,10 @@ on:
       - 'LICENSE'
 
 jobs:
-  cmake-fedora-latest:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        compiler: [ gcc, clang ]
-    steps:
-      - name: Skip
-        run: echo "Skipping the job"
 
-  clang-format-style-check:
+  gather-results:
     runs-on: ubuntu-latest
     steps:
       - name: Skip
         run: echo "Skipping the job"
 
-  clang-tidy-naming-check:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip
-        run: echo "Skipping the job"
-
-  make-fedora-latest:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip
-        run: echo "Skipping the job"
-
-  tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip
-        run: echo "Skipping the job"
-
-  perl-tests:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Skip
-        run: echo "Skipping the job"
