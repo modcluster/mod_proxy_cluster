@@ -45,7 +45,7 @@ do
    tomcat_shutdown 1
    tomcat_wait_for_n_nodes 0 || exit 1
    tomcat_remove 1
-   iter=$(expr $iter + 1)
+   iter=$(( $iter + 1 ))
 done
 
 tomcat_all_remove

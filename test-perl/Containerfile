@@ -1,0 +1,32 @@
+# Runs the Apache::Test testsuite against the very same image the container testsuite
+# uses. Building on top of it is what makes the code coverage of the two mergeable:
+# the modules are the ones compiled there, so the compiler, the httpd headers and the
+# paths recorded in the coverage data all agree.
+#
+# Pass the image to build upon with --build-arg HTTPD_IMG=<image>.
+
+ARG HTTPD_IMG=mod_proxy_cluster-testsuite-httpd
+
+FROM ${HTTPD_IMG}
+
+RUN dnf install make perl perl-App-cpanminus perl-ExtUtils-MakeMaker \
+                perl-libwww-perl perl-LWP-Protocol-https perl-HTTP-Message \
+                perl-Crypt-SSLeay -y
+
+# Apache::Test is not packaged by Fedora, so this one has to come from CPAN
+# (LWP::Protocol::https above is what lets cpanm reach it)
+RUN cpanm --force Apache::Test Apache::TestMM
+
+# Apache::Test refuses to spawn the httpd children as root, so everything it touches
+# is handed over to a plain user. That includes the build tree, because the .gcda
+# files are written next to the objects the modules were compiled from.
+RUN useradd --create-home tester && mkdir /coverage \
+    && chown -R tester:tester /native /coverage
+
+COPY --chown=tester:tester . /test-perl
+
+USER tester
+
+WORKDIR /test-perl
+
+CMD /test-perl/run.sh
