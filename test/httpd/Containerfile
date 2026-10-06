@@ -7,10 +7,6 @@ RUN dnf install gcc apr-devel apr-util-devel openssl-devel pcre-devel redhat-rpm
 
 ENV HTTPD=${HTTPD_SOURCES}
 
-# make sure you have copy of the local repository at place
-# (our function "httpd_create" takes care of that)
-COPY mod_proxy_cluster /
-
 ADD ${HTTPD} .
 
 RUN mkdir /httpd && tar xvf $(filename $HTTPD) --strip 1 -C /httpd
@@ -27,6 +23,13 @@ RUN make install
 # we don't need any other listeners except the ones we define in our config files
 RUN sed -i 's/\(Listen 80\)/#\1/' /usr/local/apache2/conf/httpd.conf
 
+# the sources come in only now so that a change in them does not invalidate the layers
+# above, the httpd build in particular
+#
+# make sure you have copy of the local repository at place
+# (our function "httpd_create" takes care of that)
+COPY mod_proxy_cluster /
+
 # httpd is installed in /usr/local/apache2/bin/
 # build and install mod_proxy_cluster *.so files.
 WORKDIR /native
@@ -41,7 +44,7 @@ FROM fedora:44
 
 ENV CONF=httpd/mod_proxy_cluster.conf
 
-RUN dnf install pcre apr-util wcstools gcc gcovr lcov -y
+RUN dnf install pcre apr-util wcstools gcc lcov gcovr -y
 
 COPY --from=builder /usr/local/apache2 /usr/local/apache2
 COPY --from=builder /native /native

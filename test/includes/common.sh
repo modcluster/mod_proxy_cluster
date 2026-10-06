@@ -34,11 +34,9 @@ run_test() {
     if is_enabled "$CODE_COVERAGE"; then
         f=$(echo ${2:-$1} | sed 's/ /-/g')
 
-        docker exec ${httpd_cont} mkdir -p /coverage
         docker exec ${httpd_cont} sh -c "/usr/local/apache2/bin/apachectl stop"
         sleep 2 # wait for the coverage dump, just to be sure
-        docker exec ${httpd_cont} sh -c "cd /native && gcovr --gcov-ignore-parse-errors=negative_hits.warn_once_per_file --json /coverage/coverage-$f.json > /coverage/coverage-$f.log 2>&1"
-        docker exec ${httpd_cont} sh -c "lcov --capture --directory /native/build --ignore-errors gcov,negative --exclude '/usr/local/*' --output-file /coverage/coverage-$f.info > /coverage/coverage-lcov-$f.log 2>&1"
+        docker exec ${httpd_cont} /native/scripts/coverage.sh capture "$f" /coverage
 
         for cf in $(docker exec ${httpd_cont} ls /coverage/); do
             docker cp ${httpd_cont}:/coverage/$cf $PWD/coverage/$cf > /dev/null
@@ -101,8 +99,12 @@ httpd_create() {
     cp -r ../native ../test /tmp/mod_proxy_cluster/
     mv /tmp/mod_proxy_cluster httpd/
 
-    docker build -t $HTTPD_IMG ${CODE_COVERAGE:+--build-arg ENABLE_COVERAGE=ON} \
-                 -f httpd/Containerfile httpd/
+    local coverage_arg=""
+    if is_enabled "$CODE_COVERAGE"; then
+        coverage_arg="--build-arg ENABLE_COVERAGE=ON"
+    fi
+
+    docker build -t $HTTPD_IMG $coverage_arg -f httpd/Containerfile httpd/
 }
 
 # Build and run httpd container
@@ -115,11 +117,16 @@ httpd_start() {
         echo "    NAME:    ${MPC_NAME:-httpd-mod_proxy_cluster}"
         echo "You can config those with envars MPC_SOURCES, MPC_BRANCH, MPC_CONF, MPC_NAME respectively"
     fi
+    local coverage_env=""
+    if is_enabled "$CODE_COVERAGE"; then
+        coverage_env="-e ENABLE_COVERAGE=1"
+    fi
+
     docker run -d --network=mod_proxy_cluster_testsuite_net -p 8090:8090 \
                --ulimit nofile=65536:65536 --name ${MPC_NAME:-httpd-mod_proxy_cluster} \
                -e MPC_NAME=${MPC_NAME:-httpd-mod_proxy_cluster} \
                -e CONF=${MPC_CONF:-httpd/mod_proxy_cluster.conf} \
-               ${CODE_COVERAGE:+-e ENABLE_COVERAGE=1} \
+               $coverage_env \
                $HTTPD_IMG
 
     httpd_wait_until_ready
