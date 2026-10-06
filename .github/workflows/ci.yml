@@ -366,35 +366,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y podman-docker git curl iproute2 wcstools zstd
-          sudo touch /etc/containers/nodocker
-          # create the network (usually done by setup-dependencies.sh)
-          docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
-      - name: Configure Podman logging driver
-        run: |
-          mkdir -p ~/.config/containers
-          cat <<EOF > ~/.config/containers/containers.conf
-          [containers]
-          log_driver = "k8s-file"
-
-          [engine]
-          events_logger = "file"
-          EOF
-      - name: Get the test images built
-        uses: actions/download-artifact@v7
+      - name: Setup podman and load the test images
+        uses: ./.github/actions/prepare-test-environment
         with:
-          name: test-containers-${{ matrix.os }}
-          path: /tmp
-      - name: Load the test images
-        run: |
-          cd /tmp
-          for img in $(ls *.tar.zst); do
-            echo "Loading $img image"
-            zstd -dc $img | docker load
-          done
+          os: ${{ matrix.os }}
+          extra-packages: git curl iproute2 wcstools
       - name: Run ${{ matrix.test.name }}
         run: |
           cd test
@@ -433,37 +409,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y podman-docker git curl iproute2 wcstools zstd
-          sudo touch /etc/containers/nodocker
-          # create the network (usually done by setup-dependencies.sh)
-          docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
-      - name: Configure Podman logging driver
-        run: |
-          mkdir -p ~/.config/containers
-          cat <<EOF > ~/.config/containers/containers.conf
-          [containers]
-          log_driver = "k8s-file"
-
-          [engine]
-          events_logger = "file"
-          EOF
-      - name: Get the test images built
-        uses: actions/download-artifact@v7
+      - name: Setup podman and load the test images
+        uses: ./.github/actions/prepare-test-environment
         with:
-          name: test-containers-${{ matrix.os }}
-          path: /tmp
-      - name: Load the test images
-        run: |
-          cd /tmp
-          for img in $(ls *.tar.zst); do
-            echo "Loading $img image"
-            zstd -dc $img | docker load
-          done
+          os: ${{ matrix.os }}
+          extra-packages: git curl iproute2 wcstools
       - name: Get the test dependencies built
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: test-dependencies-${{ matrix.os }}
           path: test
@@ -504,23 +456,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman-docker zstd
-          sudo touch /etc/containers/nodocker
-      - name: Get the test images built
-        uses: actions/download-artifact@v7
-        with:
-          name: test-containers-ubuntu-latest
-          path: /tmp
-      - name: Load the test images
-        run: |
-          cd /tmp
-          for img in $(ls *.tar.zst); do
-            echo "Loading $img image"
-            zstd -dc $img | docker load
-          done
+      - name: Setup podman and load the test images
+        uses: ./.github/actions/prepare-test-environment
       - name: Build the perl testsuite image
         run: docker build -t $PERL_IMG --build-arg HTTPD_IMG=$HTTPD_IMG -f test-perl/Containerfile test-perl/
       - name: Run testsuite
@@ -595,26 +532,16 @@ jobs:
               exit 1
             fi
           done
-      - name: Setup dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman-docker zstd
-          sudo touch /etc/containers/nodocker
-      - name: Get the httpd/mod_proxy_cluster for merging the coverage reports
+      # the checkout is only here so that the local action below can be used
+      - name: Checkout
+        uses: actions/checkout@v6
+      # we need the httpd/mod_proxy_cluster image to merge the coverage reports
+      - name: Setup podman and load the test images
         if: ${{ env.CODE_COVERAGE == 'on' }}
-        uses: actions/download-artifact@v8
-        with:
-          name: test-containers-ubuntu-latest
-      - name: Load the test images
-        if: ${{ env.CODE_COVERAGE == 'on' }}
-        run: |
-          for img in $(ls *.tar.zst); do
-            echo "Loading $img image"
-            zstd -dc $img | docker load
-          done
+        uses: ./.github/actions/prepare-test-environment
       - name: Get all the coverage reports
         if: ${{ env.CODE_COVERAGE == 'on' }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: '*coverage*'
           path: coverage

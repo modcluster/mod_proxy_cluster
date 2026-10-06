@@ -1,0 +1,50 @@
+name: Prepare the test environment
+description: Install and setup dependencies and load the container images built by build-test-containers
+
+inputs:
+  os:
+    description: Runner OS, selects which test-containers artifact to download
+    default: ubuntu-latest
+  extra-packages:
+    description: Additional apt packages the testsuite needs
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Setup dependencies
+      shell: bash
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y podman-docker zstd ${{ inputs.extra-packages }}
+        sudo touch /etc/containers/nodocker
+
+    - name: Create the testsuite network
+      shell: bash
+      run: docker network create mod_proxy_cluster_testsuite_net > /dev/null 2>&1 || true
+
+    - name: Configure Podman logging driver
+      shell: bash
+      run: |
+        mkdir -p ~/.config/containers
+        cat <<EOF > ~/.config/containers/containers.conf
+        [containers]
+        log_driver = "k8s-file"
+
+        [engine]
+        events_logger = "file"
+        EOF
+
+    - name: Get the test images built
+      uses: actions/download-artifact@v8
+      with:
+        name: test-containers-${{ inputs.os }}
+        path: /tmp
+
+    - name: Load the test images
+      shell: bash
+      run: |
+        for img in /tmp/*.tar.zst; do
+          echo "Loading $img image"
+          zstd -dc "$img" | docker load
+        done
